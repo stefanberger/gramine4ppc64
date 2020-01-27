@@ -37,6 +37,8 @@
 
 #ifdef __x86_64__
 # include "sysdep-x86_64.h"
+#elif defined (__powerpc64__)
+# include "sysdep-ppc64.h"
 #endif
 
 #define IS_ERR INTERNAL_SYSCALL_ERROR
@@ -122,7 +124,11 @@ extern struct pal_linux_state {
     (INLINE_SYSCALL(clone, 4, CLONE_VM|CLONE_VFORK, 0, NULL, NULL))
 #endif
 
+#ifdef __x86_64__
 #define PRESET_PAGESIZE (1 << 12)
+#elif defined (__powerpc64__)
+#define PRESET_PAGESIZE (1 << 16)
+#endif
 
 #define DEFAULT_BACKLOG     2048
 
@@ -204,6 +210,7 @@ int pal_thread_init (void * tcbptr);
 
 static inline PAL_TCB_LINUX * get_tcb_linux (void)
 {
+    //printf("get_tcb_linux: PAL_TCB_LINUX at %p\n", pal_get_tcb());
     return (PAL_TCB_LINUX*)pal_get_tcb();
 }
 

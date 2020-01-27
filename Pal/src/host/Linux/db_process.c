@@ -274,11 +274,25 @@ int _DkProcessCreate (PAL_HANDLE * handle, const char * uri, const char ** args)
     int argc = 0;
     if (args)
         for (; args[argc] ; argc++);
+#ifdef __powerpc64__
+    param.argv = __alloca(sizeof(const char *) * (argc + 3));
+#else
     param.argv = __alloca(sizeof(const char *) * (argc + 2));
+#endif
     param.argv[0] = PAL_LOADER;
+#ifdef __powerpc64__
+    // something clears argv[1] every time; nevertheless some environments
+    // (Ubuntu Bionic) need argv[1] to be set even though it will not make
+    // it to argv in the process.
+    param.argv[1] = "";
+    if (args)
+        memcpy(&param.argv[2], args, sizeof(const char *) * argc);
+    param.argv[argc + 2] = NULL;
+#else
     if (args)
         memcpy(&param.argv[1], args, sizeof(const char *) * argc);
     param.argv[argc + 1] = NULL;
+#endif
 
 #if PROFILING == 1
     proc_args->process_create_time = before_create;
@@ -525,6 +539,7 @@ static int proc_attrquerybyhdl(PAL_HANDLE handle, PAL_STREAM_ATTR* attr) {
 
     /* get number of bytes available for reading */
     ret = INLINE_SYSCALL(ioctl, 3, handle->process.stream, FIONREAD, &val);
+    //printf("%s after ioctl: fd: %d ret=%d\n", __func__, handle->process.stream, ret);
     if (IS_ERR(ret))
         return unix_to_pal_error(ERRNO(ret));
 

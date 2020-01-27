@@ -21,7 +21,11 @@
  * The source code is imported and modified from the GNU C Library.
  */
 
+#ifdef __x86_64__
 #include <dl-machine-x86_64.h>
+#elif defined(__powerpc64__)
+#include <dl-machine-ppc64.h>
+#endif
 #include <elf/elf.h>
 #include <pal_internal.h>
 #include <pal_rtld.h>

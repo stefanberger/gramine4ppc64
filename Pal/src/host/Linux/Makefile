@@ -1,3 +1,4 @@
+include ../../../../Scripts/Makefile.Arch
 include ../../../../Scripts/Makefile.configs
 include Makefile.am
 
@@ -15,7 +16,7 @@ ASFLAGS += $(defs)
 commons_objs = bogomips.o
 
 objs = \
-	clone-x86_64.o \
+	clone-$(ARCH).o \
 	db_devices.o \
 	db_eventfd.o \
 	db_events.o \

@@ -3,6 +3,7 @@
 #include "pal.h"
 #include "pal_debug.h"
 
+#if defined(__i386__) || defined(__x86_64__)
 struct stack_frame {
     struct stack_frame* next;
     void* ret;
@@ -22,6 +23,62 @@ PAL_HANDLE _fork(void* args) {
         return NULL;
     }
 }
+
+#elif defined(__powerpc64__)
+
+// mostly a hack
+// we cannot easily return in _fork and expect to resume in main
+// and be able to restore possibly clobbered registers from the stack
+// we'd have to copy some stuff from the parents stack
+static __attribute__((noinline)) void *get_framepointer(void)
+{
+    register void *fp __asm__("r3");
+
+    __asm__ __volatile__(
+        "ld %0, 0(1)\n\t"
+    : "=&r" (fp)
+    );
+    return fp;
+}
+
+static __attribute__((noinline)) void *get_returnaddress(void)
+{
+    register void *ra __asm__("r3");
+
+    __asm__ __volatile__(
+        "ld %0, 0(1)\n\t"
+        "ld %0, 16(%0)\n\t"
+    : "=&r" (ra)
+    );
+    return ra;
+}
+
+static void *get_ra_from_fp(void *_fp)
+{
+    struct fp {
+        void *backchain;  // this is where _fp is at
+        uint64_t save_cr; // 8(r1)
+        uint64_t save_lr; // 16(r1)
+    } *fp = _fp - offsetof(struct fp, backchain);
+
+    return (void *)fp->save_lr;
+}
+
+PAL_HANDLE _fork(void* args) {
+    register struct stack_frame* fp = get_framepointer();
+
+    if (args == NULL) {
+        pal_printf("frame pointer: %p\n", get_framepointer());
+        pal_printf("return address from framepointer: %p\n", get_ra_from_fp(fp));
+        pal_printf("return address is %p\n", get_returnaddress());
+        return DkThreadCreate(&_fork, fp);
+    } else {
+        pal_printf("(in child) return address is %p\n", get_ra_from_fp((void *)args));
+        return NULL;
+    }
+}
+
+#endif
 
 int main(int argc, char** argv) {
     pal_printf("Enter Main Thread\n");
