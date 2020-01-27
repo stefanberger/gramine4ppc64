@@ -156,6 +156,12 @@ void setup_pal_map (struct link_map * pal_map)
 {
     const ElfW(Ehdr) * header = (void *) pal_map->l_addr;
 
+#if 0
+    header = pal_map->header;
+    pal_map->l_addr = (unsigned long)pal_map->header;
+    printf("%s : header before %p and after %p\n", __func__, (void *)pal_map->l_addr, header);
+#endif
+
     pal_map->l_real_ld = pal_map->l_ld = (void *) elf_machine_dynamic();
     pal_map->l_type = OBJECT_RTLD;
     pal_map->l_entry = header->e_entry;

@@ -1,6 +1,7 @@
 export PAL_DIR = $(CURDIR)
 export RUNTIME_DIR = $(CURDIR)/../../Runtime
 
+include ../../Scripts/Makefile.Arch
 include ../../Scripts/Makefile.configs
 include ../../Scripts/Makefile.rules
 
@@ -22,6 +23,9 @@ include host/$(PAL_HOST)/Makefile.am
 
 CFLAGS += -I. -I../include -I../include/pal -I../include/$(HOST_DIR) \
     -I$(HOST_DIR) -I../include/lib
+ifeq ($(ARCH),ppc64)
+CFLAGS += -O0
+endif
 
 PAL_HOST_MACRO = $(shell echo $(PAL_HOST) | tr '[:lower:]' '[:upper:]' | tr '-' '_')
 

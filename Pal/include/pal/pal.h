@@ -79,19 +79,65 @@ typedef union pal_handle
 
 #define PAL_LIBOS_TCB_SIZE  256
 
+#ifdef __powerpc64__
+typedef struct pal_tcb PAL_TCB;
+/* This is glib'c tcb structure; we have to know about it */
+typedef struct {
+    /* Reservation for HWCAP data. */
+        unsigned int hwcap2;
+        unsigned int hwcap; /* not used in LE ABI */
+ 
+    /* Indicate if HTM capable (ISA 2.07). */
+        int tm_capable;
+        int tm_pad;
+ 
+    /* Reservation for dynamic system optimizer ABI. */
+        uintptr_t dso_slot2;
+        uintptr_t dso_slot1;
+ 
+    /* Reservation for tar register (ISA 2.07). */
+        uintptr_t tar_save;
+ 
+    /* GCC split stack support. */
+        void *__private_ss;
+ 
+    /* Reservation for the event-based branching ABI. */
+        uintptr_t ebb_handler;
+        uintptr_t ebb_ctx_pointer;
+        uintptr_t ebb_reserved1;
+        uintptr_t ebb_reserved2;
+        uintptr_t pointer_guard;
+ 
+    /* Reservation for stack guard */
+        uintptr_t stack_guard;
+ 
+    /* DTV pointer */
+        void *dtv;
+} tcbhead_t;
+#endif
+
 typedef struct pal_tcb {
     struct pal_tcb * self;
     /* uint64_t for alignment */
     uint64_t libos_tcb[(PAL_LIBOS_TCB_SIZE + sizeof(uint64_t) - 1) / sizeof(uint64_t)];
     /* data private to PAL implementation follows this struct. */
+#ifdef __powerpc64__
+    tcbhead_t glibc_tcb;
+#endif
 } PAL_TCB;
 
 static inline PAL_TCB * pal_get_tcb (void)
 {
     PAL_TCB * tcb;
+#if defined(__i386__) || defined(__x86_64__)
     __asm__ ("movq %%gs:%c1,%q0"
              : "=r" (tcb)
              : "i" (offsetof(struct pal_tcb, self)));
+#else
+    __asm__ ("addi %0, %%r13, %1\n\r"
+             : "=r" (tcb)
+             : "i" (-0x7000 - sizeof(PAL_TCB)));
+#endif
     return tcb;
 }
 
@@ -216,6 +262,7 @@ typedef struct {
     PAL_FPSTATE fpstate;
     PAL_XSTATE_HEADER header;
 } __attribute__((packed, aligned(PAL_XSTATE_ALIGN))) PAL_XREGS_STATE;
+#elif defined(__powerpc64__)
 #else
 # error "Unsupported architecture"
 #endif
@@ -227,6 +274,13 @@ typedef struct {
     PAL_NUM rsp, rip;
     PAL_NUM efl, csgsfs, err, trapno, oldmask, cr2;
     PAL_XREGS_STATE* fpregs;
+#elif __powerpc64__
+    PAL_NUM r0, r1, r2, r3, r4, r5, r6, r7;
+    PAL_NUM r8, r9, r10, r11, r12, r13, r14, r15;
+    PAL_NUM r16, r17, r18, r19, r20, r21, r22, r23;
+    PAL_NUM r24, r25, r26, r27, r28, r29, r30, r31;
+    PAL_NUM nip, msr, orig_gpr3, ctr, link, xer, ccr, softe;
+    PAL_NUM trap, dar, dsisr, result;
 #else
 # error "Unsupported architecture"
 #endif

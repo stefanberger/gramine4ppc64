@@ -22,3 +22,11 @@ script:
     && popd &>/dev/null
     && [ $ERROR -eq 0 ] || false
 
+matrix:
+  include:
+    - name: Build and test on x86_64
+      os: linux
+      arch: amd64
+    - name: Build and test on ppc64
+      os: linux
+      arch: ppc64le

@@ -1,9 +1,13 @@
+include ../../../../Scripts/Makefile.Arch
 include ../../../../Scripts/Makefile.configs
 include Makefile.am
 
 CFLAGS	+= -I. -Iinclude -I../.. -I../../../include -I../../../include/pal \
 	   -I../../../include/host/Linux -I../../../include/lib \
 	   -I../../../linux-kernel/graphene
+ifeq ($(ARCH),ppc64)
+CFLAGS  += -O0
+endif
 ASFLAGS += -I. -Iinclude -I../.. -I../../../include
 
 host_files = libpal-Linux.a pal.map
@@ -12,7 +16,7 @@ defs	= -DIN_PAL -DPAL_DIR=$(PAL_DIR) -DRUNTIME_DIR=$(RUNTIME_DIR)
 CFLAGS += $(defs)
 ASFLAGS += $(defs)
 objs = \
-	clone-x86_64.o \
+	clone-$(ARCH).o \
 	db_devices.o \
 	db_eventfd.o \
 	db_events.o \

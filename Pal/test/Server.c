@@ -18,6 +18,12 @@
 
 #define MAX_HANDLES 8
 
+#if defined(__i386__) || defined (__x86_64__)
+# define PAGE_SIZE 4096
+#elif defined(__powerpc64__)
+# define PAGE_SIZE 65536
+#endif
+
 int main(int argc, char** argv) {
     if (argc < 2) {
         pal_printf("Specify the port to open!\n");
@@ -33,7 +39,7 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    void* buffer = (void*)DkVirtualMemoryAlloc(NULL, 4096, 0, PAL_PROT_READ | PAL_PROT_WRITE);
+    void* buffer = (void*)DkVirtualMemoryAlloc(NULL, PAGE_SIZE, 0, PAL_PROT_READ | PAL_PROT_WRITE);
     if (!buffer) {
         pal_printf("DkVirtualMemoryAlloc failed\n");
         return -1;
@@ -74,7 +80,7 @@ int main(int argc, char** argv) {
                     hdls[nhdls++] = client_hdl;
                 } else if (revents[i] & PAL_WAIT_READ) {
                     /* event on client -- must read from client */
-                    int bytes = DkStreamRead(hdls[i], 0, 4096, buffer, NULL, 0);
+                    int bytes = DkStreamRead(hdls[i], 0, PAGE_SIZE, buffer, NULL, 0);
                     if (bytes <= 0) {
                         DkObjectClose(hdls[i]);
                         for (int j = i + 1; j < nhdls; j++)
@@ -82,7 +88,7 @@ int main(int argc, char** argv) {
                         nhdls--;
                         continue;
                     }
-                    int last_byte = bytes < 4096 ? bytes : 4095;
+                    int last_byte = bytes < PAGE_SIZE ? bytes : PAGE_SIZE - 1;
                     ((char*)buffer)[last_byte] = 0;
                     pal_printf("[%d] %s", i, (char*)buffer);
 
