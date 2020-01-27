@@ -6,6 +6,7 @@ import subprocess
 import unittest
 
 HAS_SGX = os.environ.get('SGX') == '1'
+ON_PPC = os.uname()[4] in ['ppc64le']
 
 def expectedFailureIf(predicate):
     if predicate:
@@ -32,7 +33,11 @@ class RegressionTestCase(unittest.TestCase):
         if not pathlib.Path(loader).exists():
             self.skipTest('loader ({}) not found'.format(loader))
 
-        with subprocess.Popen([loader, 'init', *args],
+        if ON_PPC:
+            exe = [loader, '_']
+        else:
+            exe = [loader]
+        with subprocess.Popen([*exe, 'init', *args],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 preexec_fn=os.setpgrp,
                 **kwds) as process:

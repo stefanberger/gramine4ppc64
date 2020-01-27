@@ -97,6 +97,8 @@ typedef union pal_handle
 
 #endif /* !IN_PAL */
 
+#ifdef __x86_64__
+
 #define PAL_LIBOS_TCB_SIZE  256
 
 typedef struct pal_tcb {
@@ -105,6 +107,8 @@ typedef struct pal_tcb {
     uint64_t libos_tcb[(PAL_LIBOS_TCB_SIZE + sizeof(uint64_t) - 1) / sizeof(uint64_t)];
     /* data private to PAL implementation follows this struct. */
 } PAL_TCB;
+
+#endif
 
 #include "pal-arch.h"
 
