@@ -1289,6 +1289,27 @@ void * stack_before_call __attribute_unused = NULL;
                      : "rcx", "rdx", "rdi", "rsi", "r8", "r9",          \
                        "r10", "r11", "memory", "cc");                   \
         ret; })
+#elif defined(__powerpc64__)
+#define CALL_ENTRY(l, cookies)						\
+    ({  long ret;							\
+        register long r1_save __asm__("r14") = 0;			\
+        register long r2_save __asm__("r15") = 0;			\
+        __asm__ volatile(						\
+                     "mr %4, 3\n\t"					\
+                     "mr %3, 2\n\t"					\
+                     "mr 12, %1\n\t"					\
+                     "mtctr 12\n\t"					\
+                     "mr 3, %2\n\t"					\
+                     "bctrl\n\t"					\
+                     "mr %0, 3\n\r"					\
+                     "mr 3, %4\n\t"					\
+                     "mr 2, %3\n\t"					\
+                     : "=r" (ret)					\
+                     : "a"((l)->l_entry), "a"(cookies), 		\
+                       "r"(r2_save), "r"(r1_save)			\
+                     : "r0", "r3", "r4", "r5", "r6", "r7", "r8", "r9",	\
+                       "r11", "r12", "lr", "ctr", "memory", "cc");	\
+        ret; })
 #else
 # error "unsupported architecture"
 #endif

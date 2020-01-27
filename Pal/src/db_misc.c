@@ -87,6 +87,7 @@ PAL_NUM DkMemoryAvailableQuota(void) {
     LEAVE_PAL_CALL_RETURN((PAL_NUM)quota);
 }
 
+#if defined(__x86_64__)
 PAL_BOL
 DkCpuIdRetrieve(PAL_IDX leaf, PAL_IDX subleaf, PAL_IDX values[4]) {
     ENTER_PAL_CALL(DkCpuIdRetrieve);
@@ -105,3 +106,4 @@ DkCpuIdRetrieve(PAL_IDX leaf, PAL_IDX subleaf, PAL_IDX values[4]) {
 
     LEAVE_PAL_CALL_RETURN(PAL_TRUE);
 }
+#endif

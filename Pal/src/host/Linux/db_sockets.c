@@ -321,8 +321,8 @@ static bool check_any_addr(struct sockaddr* addr) {
 
 /* listen on a tcp socket */
 static int tcp_listen(PAL_HANDLE* handle, char* uri, int create, int options) {
-    struct sockaddr buffer;
-    struct sockaddr* bind_addr = &buffer;
+    struct sockaddr_storage buffer; /* must fit socketaddr_in6 */
+    struct sockaddr* bind_addr = (struct sockaddr *)&buffer;
     size_t bind_addrlen;
     int ret, fd = -1;
 
@@ -339,7 +339,14 @@ static int tcp_listen(PAL_HANDLE* handle, char* uri, int create, int options) {
         return -PAL_ERROR_INVAL;
 #endif
 
+#ifdef __powerpc64__
+    _Pragma ("GCC diagnostic push")
+    _Pragma ("GCC diagnostic ignored \"-Wnull-dereference\"")
+#endif
     fd = INLINE_SYSCALL(socket, 3, bind_addr->sa_family, SOCK_STREAM | SOCK_CLOEXEC | options, 0);
+#ifdef __powerpc64__
+    _Pragma ("GCC diagnostic pop")
+#endif
 
     if (IS_ERR(fd))
         return -PAL_ERROR_DENIED;
@@ -443,9 +450,9 @@ failed:
 
 /* connect on a tcp socket */
 static int tcp_connect(PAL_HANDLE* handle, char* uri, int options) {
-    struct sockaddr buffer[3];
-    struct sockaddr* bind_addr = buffer;
-    struct sockaddr* dest_addr = buffer + 1;
+    struct sockaddr_storage buffer[3]; /* must fit sockaddr_in6 */
+    struct sockaddr* bind_addr = (struct sockaddr *)buffer;
+    struct sockaddr* dest_addr = (struct sockaddr *)(buffer + 1);
     size_t bind_addrlen, dest_addrlen;
     int ret, fd = -1;
 
@@ -495,7 +502,7 @@ static int tcp_connect(PAL_HANDLE* handle, char* uri, int options) {
 
     if (!bind_addr) {
         /* save some space to get socket address */
-        bind_addr    = buffer + 2;
+        bind_addr    = (struct sockaddr *)(buffer + 2);
         bind_addrlen = sizeof(struct sockaddr);
 
         /* call getsockname to get socket address */
@@ -626,7 +633,14 @@ static int udp_bind(PAL_HANDLE* handle, char* uri, int create, int options) {
         return -PAL_ERROR_INVAL;
 #endif
 
+#ifdef __powerpc64__
+    _Pragma ("GCC diagnostic push")
+    _Pragma ("GCC diagnostic ignored \"-Wnull-dereference\"")
+#endif
     fd = INLINE_SYSCALL(socket, 3, bind_addr->sa_family, SOCK_DGRAM | SOCK_CLOEXEC | options, 0);
+#ifdef __powerpc64__
+    _Pragma ("GCC diagnostic pop")
+#endif
 
     if (IS_ERR(fd))
         return -PAL_ERROR_DENIED;
@@ -879,10 +893,10 @@ static int64_t udp_sendbyaddr(PAL_HANDLE handle, uint64_t offset, size_t len, co
     char* addrbuf = __alloca(addrlen);
     memcpy(addrbuf, addr, addrlen);
 
-    struct sockaddr conn_addr;
+    struct sockaddr_storage conn_addr;
     size_t conn_addrlen;
 
-    int ret = inet_parse_uri(&addrbuf, &conn_addr, &conn_addrlen);
+    int ret = inet_parse_uri(&addrbuf, (struct sockaddr *)&conn_addr, &conn_addrlen);
     if (ret < 0)
         return ret;
 
