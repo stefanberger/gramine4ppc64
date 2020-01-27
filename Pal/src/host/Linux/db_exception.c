@@ -37,7 +37,7 @@
 #include <ucontext.h>
 #include <asm/errno.h>
 
-#if !defined(__i386__)
+#if defined(__x86_64__)
 /* In x86_64 kernels, sigaction is required to have a user-defined
  * restorer. Also, they not yet support SA_INFO. The reference:
  * http://lxr.linux.no/linux+v2.6.35/arch/x86/kernel/signal.c#L448
@@ -85,12 +85,30 @@ static const int nasync_signals = ARRAY_SIZE(async_signals);
 
 int set_sighandler (int * sigs, int nsig, void * handler)
 {
+#if defined(__powerpc64__)
+    struct ppc64_sigaction {
+        __sighandler_t sa_handler;
+        unsigned long sa_flags;
+        __sigrestore_t sa_restorer;
+        __sigset_t sa_mask;
+    } action;
+    // __sigset_t must be 128 bytes large
+    assert(sizeof(__sigset_t) == 128);
+    assert(sizeof(sigset_t) == 8);
+    assert(sizeof(action) == 152);
+#else
     struct sigaction action;
+#endif
 
     if (handler) {
         action.sa_handler = (void (*)(int)) handler;
+#if defined(__powerpc64__)
+        // FIXME: For some reason we cannot use the sigaltstack without some test cases failing
+        action.sa_flags = SA_SIGINFO /*| SA_ONSTACK*/;
+#else
         action.sa_flags = SA_SIGINFO | SA_ONSTACK;
-#if !defined(__i386__)
+#endif
+#if defined(__x86_64__)
         action.sa_flags |= SA_RESTORER;
         action.sa_restorer = __restore_rt;
 #endif
@@ -185,16 +203,26 @@ static void _DkGenericEventTrigger(PAL_EVENT_HANDLER upcall,
     }
 
     PAL_CONTEXT context;
-    memcpy(&context, uc->uc_mcontext.gregs, sizeof(context));
+#if defined(__i386__) || defined(__x86_64__)
+    memcpy(&context, uc->uc_mcontext.gregs, offsetof(PAL_CONTEXT, fpregs));
     context.fpregs = (PAL_XREGS_STATE*)uc->uc_mcontext.fpregs;
+#elif defined (__powerpc64__)
+    memcpy(&context.gpregs, uc->uc_mcontext.gp_regs, sizeof(context.gpregs));
+    memcpy(&context.fpregs, uc->uc_mcontext.fp_regs, sizeof(context.fpregs));
+#endif
     (*upcall)(NULL, arg, &context);
     /* copy the context back to ucontext */
-    memcpy(uc->uc_mcontext.gregs, &context, sizeof(context));
+#if defined(__i386__) || defined(__x86_64__)
+    memcpy(uc->uc_mcontext.gregs, &context, offsetof(PAL_CONTEXT, fpregs));
     uc->uc_mcontext.fpregs = (struct _libc_fpstate*)context.fpregs;
+#elif defined (__powerpc64__)
+    memcpy(uc->uc_mcontext.gp_regs, &context.gpregs, sizeof(context.gpregs));
+    memcpy(uc->uc_mcontext.fp_regs, &context.fpregs, sizeof(context.fpregs));
+#endif
 }
 
 static bool _DkGenericSignalHandle (int event_num, siginfo_t * info,
-                                    ucontext_t * uc)
+                                    struct ucontext * uc)
 {
     PAL_EVENT_HANDLER upcall = _DkGetExceptionHandler(event_num);
 
@@ -220,7 +248,13 @@ static void _DkGenericSighandler (int signum, siginfo_t * info,
     if (event_num == -1)
         return;
 
+#if defined(__i386__) || defined(__x86_64__)
     uintptr_t rip = uc->uc_mcontext.gregs[REG_RIP];
+#elif defined(__powerpc64__)
+    assert(sizeof(uc->uc_sigmask) == 128);
+    assert(offsetof(ucontext_t, uc_mcontext) == 168);
+    uintptr_t rip = uc->uc_mcontext.regs->nip;
+#endif
     if (ADDR_IN_PAL(rip)) {
         // We expect none of the memory faults, illegal instructions, or arithmetic exceptions
         // will happen in PAL. If these exceptions happen in PAL, exit the thread with loud warning.
@@ -240,10 +274,12 @@ static void _DkGenericSighandler (int signum, siginfo_t * info,
 #ifdef DEBUG
         // Hang for debugging
         while (true) {
+#ifndef __powerpc64__
             struct timespec sleeptime;
             sleeptime.tv_sec = 36000;
             sleeptime.tv_nsec = 0;
             INLINE_SYSCALL(nanosleep, 2, &sleeptime, NULL);
+#endif
         }
 #endif
         _DkThreadExit(/*clear_child_tid=*/NULL);
@@ -262,7 +298,11 @@ static void _DkTerminateSighandler (int signum, siginfo_t * info,
     if (event_num == -1)
         return;
 
+#if defined(__i386__) || defined(__x86_64__)
     uintptr_t rip = uc->uc_mcontext.gregs[REG_RIP];
+#elif defined(__powerpc64__)
+    uintptr_t rip = uc->uc_mcontext.regs->nip;
+#endif
 
     // If the signal arrives in the middle of a PAL call, add the event
     // to pending in the current TCB.
@@ -297,11 +337,14 @@ static void _DkPipeSighandler (int signum, siginfo_t * info,
 {
     __UNUSED(signum);
     __UNUSED(info);
+    __UNUSED(uc);
     assert(signum == SIGPIPE);
 
+#if defined(__i386__) || defined(__x86_64__)
     uintptr_t rip = uc->uc_mcontext.gregs[REG_RIP];
     __UNUSED(rip);
     assert(ADDR_IN_PAL(rip)); // This signal can only happens inside PAL
+#endif
     return;
 }
 

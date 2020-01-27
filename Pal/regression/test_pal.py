@@ -14,6 +14,7 @@ import unittest
 
 from regression import (
     HAS_SGX,
+    ON_PPC,
     RegressionTestCase,
     expectedFailureIf,
 )
@@ -54,6 +55,7 @@ class TC_00_BasicSet2(RegressionTestCase):
         self.assertIn('In thread 1', stderr)
         self.assertIn('Success, leave main thread', stderr)
 
+    @unittest.skipIf(ON_PPC, 'does not currently work on ppc')
     def test_Exception2(self):
         _, stderr = self.run_binary(['Exception2'])
         self.assertIn('Enter Main Thread', stderr)
@@ -88,6 +90,7 @@ class TC_00_BasicSet2(RegressionTestCase):
         for i in range(100):
             self.assertIn('In process: Process4 %d ' % i, stderr)
 
+    @unittest.skipIf(ON_PPC, 'does not currently work on ppc')
     def test_Segment(self):
         _, stderr = self.run_binary(['Segment'])
         self.assertIn('TLS = 0x', stderr)
@@ -174,6 +177,7 @@ class TC_01_Bootstrap(RegressionTestCase):
         self.assertIn('argv[3] = c', stderr)
         self.assertIn('argv[4] = d', stderr)
 
+    @unittest.skipIf(ON_PPC, 'does not currently work on ppc')
     def test_102_cpuinfo(self):
         with open('/proc/cpuinfo') as file_:
             cpuinfo = file_.read().strip().split('\n\n')[-1]
@@ -329,6 +333,7 @@ class TC_10_Exception(RegressionTestCase):
             return False
         return True
 
+    @unittest.skipIf(ON_PPC, 'Test case not ported to ppc')
     def test_000_exception(self):
         _, stderr = self.run_binary(['Exception'])
 
@@ -511,6 +516,7 @@ class TC_20_SingleProcess(RegressionTestCase):
         self.assertIn('Get Memory Available Quota OK', stderr)
 
     @expectedFailureIf(HAS_SGX)
+    @unittest.skipIf(ON_PPC, 'Test case not ported to ppc')
     def test_301_memory_nosgx(self):
         _, stderr = self.run_binary(['Memory'])
 
@@ -576,6 +582,7 @@ class TC_20_SingleProcess(RegressionTestCase):
         self.assertIn('UDP Write 4 OK', stderr)
         self.assertIn('UDP Read 4: Hello World 2', stderr)
 
+    @unittest.skipIf(ON_PPC, 'Test case not ported to ppc')
     def test_500_thread(self):
         _, stderr = self.run_binary(['Thread'])
 
