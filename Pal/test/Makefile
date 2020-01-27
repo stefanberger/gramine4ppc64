@@ -1,18 +1,17 @@
+include ../../Scripts/Makefile.Arch
 include ../../Scripts/Makefile.configs
 include ../../Scripts/Makefile.rules
 
 CFLAGS += -fno-builtin -nostdlib -no-pie \
-	  -I../include/pal -I../include/lib
+	  -I../include/pal -I../include/lib -I../include/arch/$(ARCH)
 
 executables = \
 	HelloWorld \
 	File \
 	Failure \
 	Thread \
-	Fork \
 	Event \
 	Process \
-	Exception \
 	Memory \
 	Pipe \
 	Tcp \
@@ -22,9 +21,15 @@ executables = \
 	Wait \
 	HandleSend \
 	Select \
-	Segment \
 	Sleep \
 	Pie
+
+ifeq ($(ARCH),x86_64)
+executables += \
+	Exception \
+	Fork \
+	Segment
+endif
 
 manifests = manifest
 
@@ -37,7 +42,7 @@ include ../../Scripts/Makefile.manifest
 graphene_lib = .lib/graphene-lib.a
 pal_lib = ../../Runtime/libpal-$(PAL_HOST).so
 
-ifneq ($(findstring x86_64,$(SYS))$(findstring linux,$(SYS)),x86_64linux)
+ifneq ($(findstring linux,$(SYS)),linux)
 $(error unsupported platform. $(SYS))
 endif
 
@@ -68,6 +73,18 @@ $(graphene_lib):
 ifeq ($(filter %clean,$(MAKECMDGOALS)),)
 -include $(addsuffix .d, $(executables)) $(addsuffix .i.d, $(executables)) $(addsuffix .s.d, $(executables))
 endif
+
+RUNTIME_DIR = $(CURDIR)/../../Runtime
+export PAL_LOADER = $(RUNTIME_DIR)/pal-$(PAL_HOST)
+export PYTHONPATH=../../Scripts
+
+.PHONY: test
+test:
+	$(RM) pal-test.xml
+	$(MAKE) pal-test.xml
+
+pal-test.xml: test_pal.py $(target) $(call expand_target_to_sig,$(target)) $(call expand_target_to_sgx,$(target)) $(call expand_target_to_token,$(target))
+	python3 -m pytest --junit-xml $@ -v $<
 
 .PHONY: clean
 clean:

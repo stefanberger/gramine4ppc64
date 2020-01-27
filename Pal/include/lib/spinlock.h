@@ -100,7 +100,12 @@ static inline void spinlock_lock(spinlock_t* lock) {
     do {
         /* This check imposes no inter-thread ordering, thus does not slow other threads. */
         while (__atomic_load_n(&lock->lock, __ATOMIC_RELAXED) != SPINLOCK_UNLOCKED) {
+#if defined(__i386__) || defined(__x86_64__)
             __asm__ volatile ("pause");
+#elif defined(__powerpc64__)
+#else
+#error Unsupported architecture
+#endif
         }
         /* Seen lock as free, check if it still is, this time with acquire semantics (but only
          * if we really take it). */
