@@ -257,6 +257,21 @@ int _DkProcessCreate(PAL_HANDLE* handle, const char* uri, const char** args) {
     int argc = 0;
     if (args)
         for (; args[argc] ; argc++);
+#if defined(__powerpc64__)
+    param.argv = __alloca(sizeof(const char*) * (argc + 5));
+    param.argv[0] = PAL_LOADER;
+    // something clears argv[1] every time; nevertheless some environments
+    // (Ubuntu Bionic) need argv[1] to be set even though it will not make
+    // it to argv in the process.
+    param.argv[1] = "";
+    param.argv[2] = "child";
+    char parent_fd_str[16];
+    snprintf(parent_fd_str, sizeof(parent_fd_str), "%u", parent_handle->process.stream);
+    param.argv[3] = parent_fd_str;
+    if (args)
+        memcpy(&param.argv[4], args, sizeof(const char*) * argc);
+    param.argv[argc + 4] = NULL;
+#else
     param.argv = __alloca(sizeof(const char*) * (argc + 4));
     param.argv[0] = PAL_LOADER;
     param.argv[1] = "child";
@@ -266,6 +281,7 @@ int _DkProcessCreate(PAL_HANDLE* handle, const char* uri, const char** args) {
     if (args)
         memcpy(&param.argv[3], args, sizeof(const char*) * argc);
     param.argv[argc + 3] = NULL;
+#endif
 
     /* Child's signal handler may mess with parent's memory during vfork(),
      * so block signals
@@ -497,6 +513,7 @@ static int proc_attrquerybyhdl(PAL_HANDLE handle, PAL_STREAM_ATTR* attr) {
 
     /* get number of bytes available for reading */
     ret = INLINE_SYSCALL(ioctl, 3, handle->process.stream, FIONREAD, &val);
+    //printf("%s after ioctl: fd: %d ret=%d\n", __func__, handle->process.stream, ret);
     if (IS_ERR(ret))
         return unix_to_pal_error(ERRNO(ret));
 

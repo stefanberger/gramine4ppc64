@@ -15,7 +15,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 /*
- * dl-machine.h for x86_64
+ * dl-machine-ppc64.h
  *
  * This files contain architecture-specific implementation of ELF dynamic
  * relocation function.
@@ -25,14 +25,14 @@
 #ifndef DL_MACHINE_H
 #define DL_MACHINE_H
 
-#define ELF_MACHINE_NAME "x86_64"
+#define ELF_MACHINE_NAME "powerpc64"
 
 #include <sysdeps/generic/ldsodefs.h>
 
 #include "pal_internal.h"
 #include "pal_rtld.h"
 
-/* The x86-64 never uses Elf64_Rel relocations.  */
+/* The ppc64 never uses Elf64_Rel relocations.  */
 #define ELF_MACHINE_NO_REL 1
 
 /* Perform the relocation specified by RELOC and SYM (which is fully resolved).
@@ -51,11 +51,11 @@ static void elf_machine_rela(struct link_map* l, Elf64_Rela* reloc, Elf64_Sym* s
 #define debug_reloc(r_type)                                                              \
     do {                                                                                 \
         if (strtab && sym && sym->st_name)                                               \
-            printf("%p " #r_type ": %s %p\n", reloc_addr, strtab + sym->st_name, value); \
+            printf("%p " #r_type ": %s 0x%lx\n", reloc_addr, strtab + sym->st_name, value); \
         else if (value)                                                                  \
-            printf("%p " #r_type ": %p\n", reloc_addr, value);                           \
+            printf("%p " #r_type ": 0x%lx\n", reloc_addr, value);                           \
         else                                                                             \
-            printf("%p " #r_type "\n", reloc_addr, value);                               \
+            printf("%p " #r_type "\n", reloc_addr);                                      \
     } while (0)
 #else
 #define debug_reloc(...) \
@@ -63,7 +63,10 @@ static void elf_machine_rela(struct link_map* l, Elf64_Rela* reloc, Elf64_Sym* s
     } while (0)
 #endif
 
-    if (r_type == R_X86_64_RELATIVE) {
+    //printf("r_type: %ld\n", r_type);
+
+    if (r_type == R_PPC64_RELATIVE) {
+        printf("!!! Skipping over a R_PPC_RELATIVE!\n");
         /* This is defined in rtld.c, but nowhere in the static libc.a;
            make the reference weak so static programs can still link.
            This declaration cannot be done when compiling rtld.c
@@ -75,7 +78,7 @@ static void elf_machine_rela(struct link_map* l, Elf64_Rela* reloc, Elf64_Sym* s
         return;
     }
 
-    if (r_type == R_X86_64_NONE)
+    if (r_type == R_PPC64_NONE)
         return;
 
     Elf64_Addr value = l->l_addr + sym->st_value;
@@ -93,6 +96,13 @@ static void elf_machine_rela(struct link_map* l, Elf64_Rela* reloc, Elf64_Sym* s
             assert(sym);
             value = sym_map->l_addr + sym->st_value;
         }
+
+#if CACHE_LOADED_BINARIES == 1
+        if (!sym_map || sym_map->l_type == OBJECT_RTLD) {
+            assert(l->nrelocs < NRELOCS);
+            l->relocs[l->nrelocs++] = reloc_addr;
+        }
+#endif
     }
 #endif
 
@@ -104,43 +114,24 @@ static void elf_machine_rela(struct link_map* l, Elf64_Rela* reloc, Elf64_Sym* s
        the same thing in libpal.so, so we are gonna to make the same
        assumption */
     switch (r_type) {
-        case R_X86_64_GLOB_DAT:
-            debug_reloc(R_X86_64_GLOB_DAT);
+        case R_PPC64_GLOB_DAT:
+            debug_reloc(R_PPC64_GLOB_DAT);
             *reloc_addr = value + reloc->r_addend;
             break;
 
-        case R_X86_64_JUMP_SLOT:
-            debug_reloc(R_X86_64_JUMP_SLOT);
+        case R_PPC64_JMP_SLOT:
+            debug_reloc(R_PPC64_JMP_SLOT);
             *reloc_addr = value + reloc->r_addend;
             break;
 
-#ifndef RTLD_BOOTSTRAP
-        case R_X86_64_64:
-            debug_reloc(R_X86_64_64);
+        case R_PPC64_ADDR64:
+            debug_reloc(R_PPC64_ADDR64);
             *reloc_addr = value + reloc->r_addend;
             break;
 
-        case R_X86_64_32:
-            debug_reloc(R_X86_64_32);
-            value += reloc->r_addend;
-            *(Elf64_Addr*)reloc_addr = value;
-            break;
-
-        /* Not needed for dl-conflict.c.  */
-        case R_X86_64_PC32:
-            debug_reloc(R_X86_64_PC32);
-            value += reloc->r_addend - (Elf64_Addr)reloc_addr;
-            *(Elf64_Addr*)reloc_addr = value;
-            break;
-
-        case R_X86_64_IRELATIVE:
-            debug_reloc(R_X86_64_IRELATIVE);
-            value       = sym_map->l_addr + reloc->r_addend;
-            value       = ((Elf64_Addr(*)(void))value)();
-            *reloc_addr = value;
-            break;
-#endif
         default:
+            printf("%s @ %d: Unhandled r_type %ld\nSTOP!\n", __func__, __LINE__, r_type);
+            while(1);
             return;
     }
 
@@ -154,7 +145,7 @@ static void elf_machine_rela(struct link_map* l, Elf64_Rela* reloc, Elf64_Sym* s
 static void elf_machine_rela_relative(struct link_map* l, const Elf64_Rela* reloc,
                                       void* const reloc_addr_arg) {
     Elf64_Addr* const reloc_addr = reloc_addr_arg;
-    assert(ELF64_R_TYPE(reloc->r_info) == R_X86_64_RELATIVE);
+    assert(ELF64_R_TYPE(reloc->r_info) == R_PPC64_RELATIVE);
     *reloc_addr = l->l_addr + reloc->r_addend;
 }
 
