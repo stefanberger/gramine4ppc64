@@ -94,6 +94,8 @@ typedef union pal_handle
 
 #endif /* !IN_PAL */
 
+#ifdef __x86_64__
+
 #define PAL_LIBOS_TCB_SIZE  256
 
 typedef struct pal_tcb {
@@ -112,7 +114,6 @@ static inline PAL_TCB * pal_get_tcb (void)
     return tcb;
 }
 
-#ifdef __x86_64__
 union pal_csgsfs {
     struct {
         uint16_t cs;
@@ -233,9 +234,6 @@ typedef struct {
     PAL_FPSTATE fpstate;
     PAL_XSTATE_HEADER header;
 } __attribute__((packed, aligned(PAL_XSTATE_ALIGN))) PAL_XREGS_STATE;
-#else
-# error "Unsupported architecture"
-#endif
 
 typedef struct PAL_CONTEXT_ {
 #ifdef __x86_64__
@@ -244,10 +242,16 @@ typedef struct PAL_CONTEXT_ {
     PAL_NUM rsp, rip;
     PAL_NUM efl, csgsfs, err, trapno, oldmask, cr2;
     PAL_XREGS_STATE* fpregs;
+#endif
+} PAL_CONTEXT;
+
+#elif defined(__powerpc64__)
+
+#include <pal-arch.h>
+
 #else
 # error "Unsupported architecture"
 #endif
-} PAL_CONTEXT;
 
 /********** PAL TYPE DEFINITIONS **********/
 enum {
