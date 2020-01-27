@@ -30,7 +30,15 @@ typedef int __sig_atomic_t;
 
 /* A `sigset_t' has a bit for each signal.  */
 
+#if defined(__i386__) || defined(__x86_64__)
+
 #define _SIGSET_NWORDS (64 / (8 * sizeof(unsigned long int)))
+
+#elif defined(__powerpc64__)
+
+#define _SIGSET_NWORDS (1024 / (8 * sizeof (unsigned long int)))
+
+#endif
 
 typedef struct {
     unsigned long int __val[_SIGSET_NWORDS];

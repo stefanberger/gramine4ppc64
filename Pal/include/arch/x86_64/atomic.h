@@ -170,4 +170,4 @@ static inline int64_t atomic_cmpxchg (struct atomic_int * v, int64_t old, int64_
     return cmpxchg(&v->counter, old, new);
 }
 
-#endif /* _ATOMIC_INT_H_ */
+#endif /* _SHIM_ATOMIC_H_ */

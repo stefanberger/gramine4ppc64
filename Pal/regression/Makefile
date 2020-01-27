@@ -1,8 +1,10 @@
+include ../../Scripts/Makefile.Arch
 include ../../Scripts/Makefile.configs
 include ../../Scripts/Makefile.rules
 
 CFLAGS	+= -fno-builtin -nostdlib \
-	  -I../include/pal -I../include/lib -I../src
+	  -I../include/pal -I../include/lib -I../src \
+	  -I../include/arch/$(ARCH)
 
 preloads = \
 	Preload1.so \
@@ -12,7 +14,6 @@ executables = \
 	..Bootstrap \
 	AtomicMath \
 	avl_tree_test \
-	AvxDisable \
 	Bootstrap \
 	Bootstrap2 \
 	Bootstrap3 \
@@ -20,8 +21,6 @@ executables = \
 	Directory \
 	Event \
 	Event2 \
-	Exception \
-	Exception2 \
 	Exit \
 	Failure \
 	File \
@@ -36,7 +35,6 @@ executables = \
 	Process2 \
 	Process3 \
 	Process4 \
-	Segment \
 	Select \
 	Semaphore \
 	SendHandle \
@@ -44,12 +42,20 @@ executables = \
 	Socket \
 	Symbols \
 	Tcp \
-	Thread \
 	Thread2 \
 	Udp \
 	Wait \
 	Yield \
 	normalize_path
+
+ifeq ($(ARCH),x86_64)
+executables += \
+	AvxDisable \
+	Exception \
+	Exception2 \
+	Segment \
+	Thread
+endif
 
 manifests = \
 	manifest \
@@ -77,7 +83,7 @@ pal_lib = ../../Runtime/libpal-$(PAL_HOST).so
 
 RUNTIME_DIR = $(CURDIR)/../../Runtime
 
-ifneq ($(findstring x86_64,$(SYS))$(findstring linux,$(SYS)),x86_64linux)
+ifneq ($(findstring linux,$(SYS)),linux)
 $(error unsupported platform. $(SYS))
 endif
 
