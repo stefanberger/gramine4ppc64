@@ -1,6 +1,7 @@
 #include "api.h"
 #include "pal.h"
 #include "pal_debug.h"
+#include "page.h"
 
 #define NUM_TO_HEX(num) ((num) >= 10 ? 'a' + ((num) - 10) : '0' + (num))
 #define BUF_SIZE 40
@@ -58,7 +59,7 @@ int main(int argc, char** argv, char** envp) {
 
         /* test file map */
 
-        void* mem1 = (void*)DkStreamMap(file1, NULL, PAL_PROT_READ | PAL_PROT_WRITECOPY, 0, 4096);
+        void* mem1 = (void*)DkStreamMap(file1, NULL, PAL_PROT_READ | PAL_PROT_WRITECOPY, 0, PAGE_SIZE);
         if (mem1) {
             memcpy(buffer1, mem1, 40);
             print_hex("Map Test 1 (0th - 40th): %s\n", buffer1, 40);
@@ -73,7 +74,12 @@ int main(int argc, char** argv, char** envp) {
 
         /* DEP 11/24/17: For SGX writecopy exercises a different path in the PAL */
         void* mem2 =
-            (void*)DkStreamMap(file1, NULL, PAL_PROT_READ | PAL_PROT_WRITECOPY, 4096, 4096);
+#if PAGE_SIZE == 4096
+            (void*)DkStreamMap(file1, NULL, PAL_PROT_READ | PAL_PROT_WRITECOPY, 4096, PAGE_SIZE);
+#else
+            (void*)DkStreamMap(file1, NULL, PAL_PROT_READ | PAL_PROT_WRITECOPY, 0, PAGE_SIZE);
+        mem2 = &((char *)mem2)[4096];
+#endif
         if (mem2) {
             memcpy(buffer3, mem2, 40);
             print_hex("Map Test 3 (4096th - 4136th): %s\n", buffer3, 40);
