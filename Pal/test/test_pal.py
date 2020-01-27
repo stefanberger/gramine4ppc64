@@ -3,6 +3,7 @@
 import unittest
 
 from regression import (
+    ON_PPC,
     RegressionTestCase,
 )
 
@@ -13,6 +14,7 @@ class TC_00_Basic(RegressionTestCase):
         self.assertIn('In thread 1', stderr)
         self.assertIn('Success, leave main thread', stderr)
 
+    @unittest.skipIf(ON_PPC, 'does not currently work on ppc')
     def test_Exception(self):
         _, stderr = self.run_binary(['Exception'])
         self.assertIn('Enter Main Thread', stderr)
@@ -80,6 +82,7 @@ class TC_00_Basic(RegressionTestCase):
         for i in range(100):
             self.assertIn('In process: Process %d ' % i, stderr)
 
+    @unittest.skipIf(ON_PPC, 'does not currently work on ppc')
     def test_Segment(self):
         _, stderr = self.run_binary(['Segment'])
         self.assertIn('TLS = 0x', stderr)

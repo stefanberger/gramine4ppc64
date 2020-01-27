@@ -276,6 +276,22 @@ static inline bool access_ok(const volatile void* addr, size_t size) {
     return !__range_not_ok((uintptr_t)addr, size);
 }
 
+#elif defined __powerpc64__
+
+static inline bool __range_not_ok(uintptr_t addr, size_t size) {
+    addr += size;
+    if (addr < size) {
+        return true;
+    }
+    return false;
+}
+
+/* Check if pointer to memory region is valid. Return true if the memory
+ * region may be valid, false if it is definitely invalid. */
+static inline bool access_ok(const volatile void* addr, size_t size) {
+    return !__range_not_ok((uintptr_t)addr, size);
+}
+
 #else
 # error "Unsupported architecture"
 #endif /* __x86_64__ */
