@@ -60,7 +60,7 @@ static struct link_map * resolve_map (const char **strtab, ElfW(Sym) ** ref)
 #define RESOLVE_MAP(strtab, ref)    resolve_map(strtab, ref)
 
 #include "dynamic_link.h"
-#include "dl-machine-x86_64.h"
+#include "dl-machine.h"
 
 /* Allocate a `struct link_map' for a new object being loaded,
    and enter it into the _dl_loaded list.  */
@@ -1041,6 +1041,12 @@ void * stack_before_call __attribute_unused = NULL;
                      : "rcx", "rdx", "rdi", "rsi", "r8", "r9",          \
                        "r10", "r11", "memory", "cc");                   \
         ret; })
+#elif defined(__powerpc64__)
+#define CALL_ENTRY(l, cookies)						\
+    {									\
+        typedef void (*func)(unsigned long int *);			\
+        ((func)l->l_entry)(cookies);					\
+    }
 #else
 # error "unsupported architecture"
 #endif
