@@ -8,11 +8,11 @@ WORKDIR=$(mktemp -d)
 OUTPUT=${WORKDIR}/output
 
 # simple test cases all started in the same way
-TESTCASES="Cpuid Event Exception Failure File HandleSend
+TESTCASES="Event Exception Failure File HandleSend
 	HelloWorld Memory Pie Pipe Process Select
 	Sleep Tcp Thread Udp Wait Yield"
 # a bit more complex test setup needed
-OTHER_TESTCASES="Broadcast Segment Server"
+OTHER_TESTCASES="Segment Server"
 #the following ones do not work on ppc64 yet
 # - Fork
 
@@ -115,10 +115,6 @@ function wait_port_open() {
 # Simple test cases that are started the saem way and
 # where we only need to check for expected output
 #
-
-function test_Cpuid() {
-	find_in_output '^cpuid\[0\] = ([[:xdigit:]]{8} ){3}[[:xdigit:]]{8}$' 1
-}
 
 function test_HelloWorld() {
 	find_in_output '^Hello World$' 1
@@ -274,32 +270,6 @@ function test_Yield() {
 #
 # More complex test cases
 #
-
-function test_Broadcast() {
-	# This test uses multi cast, which may not be enabled everywhere...
-	local i
-
-	run_test_bg
-	# give it some time to run; if mcast is not supported it will not
-	# terminate and that's why we run it in the background
-	sleep 4
-
-	for ((i = 1; i <= 4; i++)); do
-		find_in_output \
-			"^process $i started$" 1 \
-			"^process $i received: Hello World$" 1 \
-			"^process $i exited$" 1
-	done
-	kill -0 ${TESTCASEPID} &>/dev/null
-	[ $? -eq 0 ] && kill -9 ${TESTCASEPID}
-	# we trust that it works if mcast is enabled; convert a fail into a skip
-	if [ $TEST_FAILS -ne 0 ]; then
-		echo "SKIP: ${TESTCASE} (IP multicast may not work)"
-		SKIP_CNT=$((SKIP_CNT + 1))
-	else
-		test_end
-	fi
-}
 
 function test_Segment() {
 	# This test case may not work in all environments; fails on Travis for example
