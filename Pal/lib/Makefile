@@ -1,8 +1,11 @@
+include ../../Scripts/Makefile.Arch
 include ../../Scripts/Makefile.configs
 include ../../Scripts/Makefile.rules
 include ../src/host/$(PAL_HOST)/Makefile.am
 
-CFLAGS += -I../include/lib -I../include -I../include/pal -Icrypto/mbedtls/include -I../include/host/$(PAL_HOST)
+CFLAGS += -I../include/lib -I../include -I../include/pal \
+	-Icrypto/mbedtls/include -I../include/host/$(PAL_HOST) \
+	-I../include/arch/$(ARCH)
 
 CRYPTO_PROVIDER ?= mbedtls
 
@@ -17,7 +20,6 @@ CRYPTO_PROVIDER ?= mbedtls
 ifeq ($(CRYPTO_PROVIDER),mbedtls)
 crypto_mbedtls_library_objs = \
 	crypto/mbedtls/library/aes.o \
-	crypto/mbedtls/library/aesni.o \
 	crypto/mbedtls/library/base64.o \
 	crypto/mbedtls/library/bignum.o \
 	crypto/mbedtls/library/cipher.o \
@@ -38,7 +40,10 @@ crypto_mbedtls_library_objs = \
 	crypto/mbedtls/library/ssl_cli.o \
 	crypto/mbedtls/library/ssl_srv.o \
 	crypto/mbedtls/library/ssl_tls.o
-
+ifeq ($(ARCH),x86_64)
+crypto_mbedtls_library_objs += \
+	crypto/mbedtls/library/aesni.o
+endif
 objs += $(crypto_mbedtls_library_objs)
 endif
 
@@ -92,7 +97,10 @@ objs += \
 $(addprefix $(target),crypto/adapters/mbedtls_adapter.o crypto/adapters/mbedtls_dh.o crypto/adapters/mbedtls_encoding.o): crypto/mbedtls/library/aes.c
 
 ifeq ($(CRYPTO_PROVIDER),mbedtls)
-CFLAGS += -DCRYPTO_USE_MBEDTLS -mrdrnd
+CFLAGS += -DCRYPTO_USE_MBEDTLS
+ifeq ($(ARCH),x86_64)
+CFLAGS += -mrdrnd
+endif
 objs += crypto/adapters/mbedtls_adapter.o
 objs += crypto/adapters/mbedtls_dh.o
 objs += crypto/adapters/mbedtls_encoding.o

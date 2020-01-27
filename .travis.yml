@@ -10,9 +10,6 @@ script:
   - make -j$(nproc)
   - make -j$(nproc) test
   - ERROR=0
-    && pushd Pal/src/host/Linux &>/dev/null
-    && export LD_LIBRARY_PATH=${PWD}
-    && popd &>/dev/null
     && pushd Pal/test &>/dev/null
     && _VERBOSE=1 ./run_tests.sh || ERROR=1
     && popd &>/dev/null
@@ -22,3 +19,11 @@ script:
     && popd &>/dev/null
     && [ $ERROR -eq 0 ] || false
 
+matrix:
+  include:
+    - name: Build and test on x86_64
+      os: linux
+      arch: amd64
+    - name: Build and test on ppc64
+      os: linux
+      arch: ppc64le

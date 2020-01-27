@@ -41,12 +41,25 @@
 /* At the begining of entry point, rsp starts at argc, then argvs,
    envps and auxvs. Here we store rsp to rdi, so it will not be
    messed up by function calls */
+#if defined(__i386__) || defined (__x86_64__)
 __asm__ (".global pal_start\n"
      "  .type pal_start,@function\n"
      "pal_start:\n"
      "  movq %rsp, %rdi\n"
      "  andq $~15, %rsp\n"
      "  call pal_linux_main\n");
+#elif defined(__powerpc64__)
+__asm__ (
+     "  .section \".text\"\n"
+     ".global pal_start \n"
+     "  .type pal_start,@function \n"
+     "pal_start:\n"
+     "0:\taddis 2, 12, (.TOC.-0b)@ha\n"
+     "  addi 2, 2, (.TOC.-0b)@l\n"
+     ".localentry pal_start,.-pal_start\n"
+     "  mr 3,1\n"
+     "  b pal_linux_main \n");
+#endif
 
 #define RTLD_BOOTSTRAP
 
@@ -70,7 +83,7 @@ static int uid, gid;
 static ElfW(Addr) sysinfo_ehdr;
 #endif
 
-static void pal_init_bootstrap (void * args, const char ** pal_name,
+static void __attribute__((noinline)) pal_init_bootstrap (void * args, const char ** pal_name,
                                 int * pargc,
                                 const char *** pargv,
                                 const char *** penvp)
@@ -134,6 +147,15 @@ static void pal_init_bootstrap (void * args, const char ** pal_name,
     *pal_name = argv[0];
     argv++;
     argc--;
+#ifdef __powerpc64__
+    /* for some reason we need to skip over one argument that is always NULL
+     * and use the following one
+     */
+    if (argc > 0) {
+        argv++;
+        argc--;
+    }
+ #endif
     *pargc = argc;
     *pargv = argv;
     *penvp = envp;
@@ -203,11 +225,7 @@ void setup_vdso_map (ElfW(Addr) addr);
 
 static struct link_map pal_map;
 
-#ifdef __x86_64__
-# include "elf-x86_64.h"
-#else
-# error "unsupported architecture"
-#endif
+#include "elf-arch.h"
 
 void pal_linux_main (void * args)
 {
@@ -251,8 +269,13 @@ void pal_linux_main (void * args)
     tcb->alt_stack = alt_stack; // Stack bottom
     tcb->callback  = NULL;
     tcb->param     = NULL;
+#ifdef __powerpc64__
+    tcb->common.glibc_tcb.LibOS_TCB = &tcb->common;
+#endif
+    printf(">>>>>>>> Setting PAL_TCB_LINUX to %p\n", tcb);
     pal_thread_init(tcb);
 
+    //printf("%s @ %d  BEFORE setup_pal_map\n", __func__, __LINE__);
     setup_pal_map(&pal_map);
 
 #if USE_VDSO_GETTIME == 1
@@ -261,11 +284,15 @@ void pal_linux_main (void * args)
 #endif
 
     pal_state.start_time = start_time;
+    //printf("%s @ %d  BEFORE init_child_process\n", __func__, __LINE__);
     init_child_process(&parent, &exec, &manifest);
+    //printf("%s @ %d  AFTER init_child_process\n", __func__, __LINE__);
 
     if (!pal_sec.process_id)
         pal_sec.process_id = INLINE_SYSCALL(getpid, 0);
+    //printf("%s @ %d: after get pid\n",__func__, __LINE__);
     linux_state.pid = pal_sec.process_id;
+//    printf("PID: %d\n", linux_state.pid);
 
     linux_state.uid = uid;
     linux_state.gid = gid;
@@ -323,6 +350,7 @@ done_init:
              manifest, exec, NULL, parent, first_thread, argv, envp);
 }
 
+#if defined(__i386__) || defined (__x86_64__)
 /* the following code is borrowed from CPUID */
 void cpuid (unsigned int leaf, unsigned int subleaf,
             unsigned int words[])
@@ -335,6 +363,7 @@ void cpuid (unsigned int leaf, unsigned int subleaf,
       : "a" (leaf),
         "c" (subleaf));
 }
+#endif
 
 #define FOUR_CHARS_VALUE(s, w)      \
     (s)[0] = (w) & 0xff;            \
@@ -351,6 +380,7 @@ void cpuid (unsigned int leaf, unsigned int subleaf,
 #define BIT_EXTRACT_LE(value, start, after) \
    (((unsigned long)(value) & RIGHTMASK(after)) >> start)
 
+#if defined(__i386__) || defined (__x86_64__)
 static char * cpu_flags[]
       = { "fpu",    // "x87 FPU on chip"
           "vme",    // "virtual-8086 mode enhancement"
@@ -385,6 +415,7 @@ static char * cpu_flags[]
           "ia64",   // "IA64"
           "pbe",    // "pending break event"
         };
+#endif
 
 /*
  * Returns the number of online CPUs read from /sys/devices/system/cpu/online, -errno on failure.
@@ -433,6 +464,7 @@ int get_cpu_count(void) {
     return cpu_count;
 }
 
+#if defined(__i386__) || defined (__x86_64__)
 static double get_bogomips(void) {
     int fd = -1;
     char buf[0x800] = { 0 };
@@ -451,11 +483,13 @@ static double get_bogomips(void) {
 
     return sanitize_bogomips_value(get_bogomips_from_cpuinfo_buf(buf, sizeof(buf)));
 }
+#endif
 
 int _DkGetCPUInfo (PAL_CPU_INFO * ci)
 {
-    unsigned int words[PAL_CPUID_WORD_NUM];
     int rv = 0;
+#if defined(__i386__) || defined (__x86_64__)
+    unsigned int words[PAL_CPUID_WORD_NUM];
 
     const size_t VENDOR_ID_SIZE = 13;
     char* vendor_id = malloc(VENDOR_ID_SIZE);
@@ -529,5 +563,13 @@ int _DkGetCPUInfo (PAL_CPU_INFO * ci)
         printf("Warning: bogomips could not be retrieved, passing 0.0 to the application\n");
     }
 
+#elif defined(__powerpc64__)
+    int cores = get_cpu_count();
+    if (cores < 0) {
+        return cores;
+    }
+    ci->cpu_num = cores;
+    ci->cpu_bogomips = 0;
+#endif
     return rv;
 }
