@@ -154,8 +154,9 @@ size_t _DkRandomBitsRead(void* buffer, size_t size) {
 
 #if defined(__i386__)
 #include <asm/ldt.h>
-#else
+#elif defined(__x86_64__)
 #include <asm/prctl.h>
+#else
 #endif
 
 int _DkSegmentRegisterSet(int reg, const void* addr) {
@@ -173,7 +174,7 @@ int _DkSegmentRegisterSet(int reg, const void* addr) {
     u_info->base_addr    = (unsigned int)addr;
 
     ret = INLINE_SYSCALL(set_thread_area, 1, &u_info);
-#else
+#elif defined(__x86_64__)
     if (reg == PAL_SEGMENT_FS) {
         ret = INLINE_SYSCALL(arch_prctl, 2, ARCH_SET_FS, addr);
     } else if (reg == PAL_SEGMENT_GS) {
@@ -181,6 +182,9 @@ int _DkSegmentRegisterSet(int reg, const void* addr) {
     } else {
         return -PAL_ERROR_INVAL;
     }
+#elif defined(__powerpc64__)
+    (void)reg;
+    (void)addr;
 #endif
     if (IS_ERR(ret))
         return -PAL_ERROR_DENIED;
@@ -189,9 +193,8 @@ int _DkSegmentRegisterSet(int reg, const void* addr) {
 }
 
 int _DkSegmentRegisterGet(int reg, void** addr) {
-    int ret;
-
 #if defined(__i386__)
+    int ret;
     struct user_desc u_info;
 
     ret = INLINE_SYSCALL(get_thread_area, 1, &u_info);
@@ -200,7 +203,8 @@ int _DkSegmentRegisterGet(int reg, void** addr) {
         return -PAL_ERROR_DENIED;
 
     *addr = (void*)u_info->base_addr;
-#else
+#elif defined(__x86_64__)
+    int ret;
     unsigned long ret_addr;
 
     if (reg == PAL_SEGMENT_FS) {
@@ -216,6 +220,9 @@ int _DkSegmentRegisterGet(int reg, void** addr) {
         return -PAL_ERROR_DENIED;
 
     *addr = (void*)ret_addr;
+#else
+    (void)reg;
+    (void)addr;
 #endif
     return 0;
 }
@@ -227,10 +234,12 @@ int _DkInstructionCacheFlush(const void* addr, int size) {
     return -PAL_ERROR_NOTIMPLEMENTED;
 }
 
+#if defined(__x86_64__)
 int _DkCpuIdRetrieve(unsigned int leaf, unsigned int subleaf, unsigned int values[4]) {
     cpuid(leaf, subleaf, values);
     return 0;
 }
+#endif
 
 int _DkAttestationQuote(PAL_PTR report_data, PAL_NUM report_data_size, PAL_PTR quote,
                         PAL_NUM* quote_size) {
