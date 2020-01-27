@@ -88,6 +88,7 @@ static int inet_parse_uri(char** uri, struct sockaddr* addr, size_t* addrlen) {
         struct sockaddr_in6* addr_in6 = (struct sockaddr_in6*)addr;
 
         slen = sizeof(struct sockaddr_in6);
+        assert(*addrlen >= slen);
         memset(addr, 0, slen);
 
         end = strchr(tmp + 1, ']');
@@ -107,6 +108,7 @@ static int inet_parse_uri(char** uri, struct sockaddr* addr, size_t* addrlen) {
         struct sockaddr_in* addr_in = (struct sockaddr_in*)addr;
 
         slen = sizeof(struct sockaddr_in);
+        assert(*addrlen >= slen);
         memset(addr, 0, slen);
 
         end = strchr(tmp, ':');
@@ -148,7 +150,7 @@ static int inet_create_uri(char* uri, size_t count, struct sockaddr* addr, size_
     size_t len = 0;
 
     if (addr->sa_family == AF_INET) {
-        if (addrlen != sizeof(struct sockaddr_in))
+        if (addrlen < sizeof(struct sockaddr_in))
             return -PAL_ERROR_INVAL;
 
         struct sockaddr_in* addr_in = (struct sockaddr_in*)addr;
@@ -158,7 +160,7 @@ static int inet_create_uri(char* uri, size_t count, struct sockaddr* addr, size_
         len = snprintf(uri, count, "%u.%u.%u.%u:%u", (unsigned char)addr[0], (unsigned char)addr[1],
                        (unsigned char)addr[2], (unsigned char)addr[3], __ntohs(addr_in->sin_port));
     } else if (addr->sa_family == AF_INET6) {
-        if (addrlen != sizeof(struct sockaddr_in6))
+        if (addrlen < sizeof(struct sockaddr_in6))
             return -PAL_ERROR_INVAL;
 
         struct sockaddr_in6* addr_in6 = (struct sockaddr_in6*)addr;
@@ -321,9 +323,9 @@ static bool check_any_addr(struct sockaddr* addr) {
 
 /* listen on a tcp socket */
 static int tcp_listen(PAL_HANDLE* handle, char* uri, int create, int options) {
-    struct sockaddr buffer;
-    struct sockaddr* bind_addr = &buffer;
-    size_t bind_addrlen;
+    struct sockaddr_storage buffer; /* must fit socketaddr_in6 */
+    struct sockaddr* bind_addr = (struct sockaddr *)&buffer;
+    size_t bind_addrlen = sizeof(buffer);
     int ret, fd = -1;
 
     if ((ret = socket_parse_uri(uri, &bind_addr, &bind_addrlen, NULL, NULL)) < 0)
@@ -339,7 +341,14 @@ static int tcp_listen(PAL_HANDLE* handle, char* uri, int create, int options) {
         return -PAL_ERROR_INVAL;
 #endif
 
+#ifdef __powerpc64__
+    _Pragma ("GCC diagnostic push")
+    _Pragma ("GCC diagnostic ignored \"-Wnull-dereference\"")
+#endif
     fd = INLINE_SYSCALL(socket, 3, bind_addr->sa_family, SOCK_STREAM | SOCK_CLOEXEC | options, 0);
+#ifdef __powerpc64__
+    _Pragma ("GCC diagnostic pop")
+#endif
 
     if (IS_ERR(fd))
         return -PAL_ERROR_DENIED;
@@ -407,8 +416,8 @@ static int tcp_accept(PAL_HANDLE handle, PAL_HANDLE* client) {
 
     struct sockaddr* bind_addr = (struct sockaddr*)handle->sock.bind;
     size_t bind_addrlen        = addr_size(bind_addr);
-    struct sockaddr buffer;
-    socklen_t addrlen = sizeof(struct sockaddr);
+    struct sockaddr_storage buffer;
+    socklen_t addrlen = sizeof(buffer);
     int ret           = 0;
 
     int newfd = INLINE_SYSCALL(accept4, 4, handle->sock.fd, &buffer, &addrlen, O_CLOEXEC);
@@ -423,7 +432,7 @@ static int tcp_accept(PAL_HANDLE handle, PAL_HANDLE* client) {
                 return unix_to_pal_error(ERRNO(newfd));
         }
 
-    struct sockaddr* dest_addr = &buffer;
+    struct sockaddr* dest_addr = (struct sockaddr *)&buffer;
     size_t dest_addrlen        = addrlen;
 
     *client = socket_create_handle(pal_type_tcp, newfd, 0, bind_addr, bind_addrlen, dest_addr,
@@ -443,10 +452,10 @@ failed:
 
 /* connect on a tcp socket */
 static int tcp_connect(PAL_HANDLE* handle, char* uri, int options) {
-    struct sockaddr buffer[3];
-    struct sockaddr* bind_addr = buffer;
-    struct sockaddr* dest_addr = buffer + 1;
-    size_t bind_addrlen, dest_addrlen;
+    struct sockaddr_storage buffer[3]; /* must fit sockaddr_in6 */
+    struct sockaddr* bind_addr = (struct sockaddr *)buffer;
+    struct sockaddr* dest_addr = (struct sockaddr *)(buffer + 1);
+    size_t bind_addrlen = sizeof(buffer[0]), dest_addrlen = sizeof(buffer[1]);
     int ret, fd = -1;
 
     /* accepting two kind of different uri:
@@ -495,8 +504,8 @@ static int tcp_connect(PAL_HANDLE* handle, char* uri, int options) {
 
     if (!bind_addr) {
         /* save some space to get socket address */
-        bind_addr    = buffer + 2;
-        bind_addrlen = sizeof(struct sockaddr);
+        bind_addr    = (struct sockaddr *)(buffer + 2);
+        bind_addrlen = sizeof(buffer[2]);
 
         /* call getsockname to get socket address */
         if ((ret = INLINE_SYSCALL(getsockname, 3, fd, bind_addr, &bind_addrlen)) < 0)
@@ -608,9 +617,9 @@ static int64_t tcp_write(PAL_HANDLE handle, uint64_t offset, size_t len, const v
 
 /* used by 'open' operation of tcp stream for bound socket */
 static int udp_bind(PAL_HANDLE* handle, char* uri, int create, int options) {
-    struct sockaddr buffer;
-    struct sockaddr* bind_addr = &buffer;
-    size_t bind_addrlen;
+    struct sockaddr_storage buffer;
+    struct sockaddr* bind_addr = (struct sockaddr *)&buffer;
+    size_t bind_addrlen = sizeof(buffer);
     int ret = 0, fd = -1;
 
     if ((ret = socket_parse_uri(uri, &bind_addr, &bind_addrlen, NULL, NULL)) < 0)
@@ -626,7 +635,14 @@ static int udp_bind(PAL_HANDLE* handle, char* uri, int create, int options) {
         return -PAL_ERROR_INVAL;
 #endif
 
+#ifdef __powerpc64__
+    _Pragma ("GCC diagnostic push")
+    _Pragma ("GCC diagnostic ignored \"-Wnull-dereference\"")
+#endif
     fd = INLINE_SYSCALL(socket, 3, bind_addr->sa_family, SOCK_DGRAM | SOCK_CLOEXEC | options, 0);
+#ifdef __powerpc64__
+    _Pragma ("GCC diagnostic pop")
+#endif
 
     if (IS_ERR(fd))
         return -PAL_ERROR_DENIED;
@@ -671,10 +687,10 @@ failed:
 
 /* used by 'open' operation of tcp stream for connected socket */
 static int udp_connect(PAL_HANDLE* handle, char* uri, int create, int options) {
-    struct sockaddr buffer[2];
-    struct sockaddr* bind_addr = buffer;
-    struct sockaddr* dest_addr = buffer + 1;
-    size_t bind_addrlen, dest_addrlen;
+    struct sockaddr_storage buffer[2];
+    struct sockaddr* bind_addr = (struct sockaddr *)buffer;
+    struct sockaddr* dest_addr = (struct sockaddr *)(buffer + 1);
+    size_t bind_addrlen = sizeof(buffer[0]), dest_addrlen = sizeof(buffer[1]);
     int ret, fd = -1;
 
     if ((ret = socket_parse_uri(uri, &bind_addr, &bind_addrlen, &dest_addr, &dest_addrlen)) < 0)
@@ -799,7 +815,7 @@ static int64_t udp_receivebyaddr(PAL_HANDLE handle, uint64_t offset, size_t len,
     if (handle->sock.fd == PAL_IDX_POISON)
         return -PAL_ERROR_BADHANDLE;
 
-    struct sockaddr conn_addr;
+    struct sockaddr_storage conn_addr;
     socklen_t conn_addrlen = sizeof(struct sockaddr);
 
     struct msghdr hdr;
@@ -823,7 +839,7 @@ static int64_t udp_receivebyaddr(PAL_HANDLE handle, uint64_t offset, size_t len,
     if (!addr_uri)
         return -PAL_ERROR_OVERFLOW;
 
-    int ret = inet_create_uri(addr_uri, addr + addrlen - addr_uri, &conn_addr, hdr.msg_namelen);
+    int ret = inet_create_uri(addr_uri, addr + addrlen - addr_uri, (struct sockaddr *)&conn_addr, hdr.msg_namelen);
     if (ret < 0)
         return ret;
 
@@ -879,10 +895,10 @@ static int64_t udp_sendbyaddr(PAL_HANDLE handle, uint64_t offset, size_t len, co
     char* addrbuf = __alloca(addrlen);
     memcpy(addrbuf, addr, addrlen);
 
-    struct sockaddr conn_addr;
-    size_t conn_addrlen;
+    struct sockaddr_storage conn_addr;
+    size_t conn_addrlen = sizeof(conn_addr);
 
-    int ret = inet_parse_uri(&addrbuf, &conn_addr, &conn_addrlen);
+    int ret = inet_parse_uri(&addrbuf, (struct sockaddr *)&conn_addr, &conn_addrlen);
     if (ret < 0)
         return ret;
 
