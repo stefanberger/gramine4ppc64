@@ -15,7 +15,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 /*
- * dl-machine-x86_64.h
+ * dl-machine.h for x86_64
  *
  * This files contain architecture-specific implementation of ELF dynamic
  * relocation function.
