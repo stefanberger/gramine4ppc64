@@ -37,7 +37,7 @@
 #include <sysdeps/generic/ldsodefs.h>
 #include <elf/elf.h>
 
-#include "elf-x86_64.h"
+#include "elf-arch.h"
 
 /* This structure communicates dl state to the debugger.  The debugger
    normally finds it via the DT_DEBUG entry in the dynamic section, but in
@@ -155,6 +155,12 @@ extern void setup_elf_hash (struct link_map *map);
 void setup_pal_map (struct link_map * pal_map)
 {
     const ElfW(Ehdr) * header = (void *) pal_map->l_addr;
+
+#if 0
+    header = pal_map->header;
+    pal_map->l_addr = (unsigned long)pal_map->header;
+    printf("%s : header before %p and after %p\n", __func__, (void *)pal_map->l_addr, header);
+#endif
 
     pal_map->l_real_ld = pal_map->l_ld = (void *) elf_machine_dynamic();
     pal_map->l_type = OBJECT_RTLD;
