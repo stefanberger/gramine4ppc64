@@ -75,7 +75,7 @@ int main(int argc, char** argv) {
                 } else if (revents[i] & PAL_WAIT_READ) {
                     /* event on client -- must read from client */
                     int bytes = DkStreamRead(hdls[i], 0, 4096, buffer, NULL, 0);
-                    if (bytes == 0) {
+                    if (bytes <= 0) {
                         DkObjectClose(hdls[i]);
                         for (int j = i + 1; j < nhdls; j++)
                             hdls[j - 1] = hdls[j];
