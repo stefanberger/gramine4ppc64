@@ -1,12 +1,30 @@
 SYS ?= $(shell gcc -dumpmachine)
 ARCH := $(word 1,$(subst -, -, $(SYS)))
+
+# where libraries are found
+ARCH_LIBDIR := lib/$(SYS)
+
+# part of filenames
+ARCH_DIR := $(SYS)
+
+# /usr/lib/gcc/<here>
+GCC_ARCH_DIR := $(SYS)
+
 $(info Detected arch $(ARCH))
 ifeq ($(ARCH),powerpc64le)
+    # Ubuntu
     ARCH := ppc64
 endif
 ifeq ($(ARCH),ppc64le)
+    # Redhat/Fedora
     ARCH := ppc64
+    ARCH_DIR := ppc64le-linux-gnu
+    ARCH_LIBDIR := lib64
 endif
 
-$(info Using arch $(ARCH))
+$(info Using arch $(ARCH) / $(ARCH_LIBDIR) / $(ARCH_DIR))
 export ARCH
+export ARCH_LIBDIR
+export ARCH_DIR
+export GCC_ARCH_DIR
+
