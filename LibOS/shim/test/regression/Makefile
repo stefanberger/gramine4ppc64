@@ -1,11 +1,9 @@
 c_executables = \
 	abort \
 	abort_multithread \
-	attestation \
 	bootstrap \
 	bootstrap_pie \
 	bootstrap_static \
-	cpuid \
 	dev \
 	epoll_wait_timeout \
 	eventfd \
@@ -62,6 +60,12 @@ c_executables = \
 	unix \
 	vfork_and_exec
 
+ifeq ($(ARCH),x86_64)
+c_executables += \
+	attestation \
+	cpuid
+endif
+
 cxx_executables = bootstrap-c++
 
 manifests = \
@@ -107,6 +111,7 @@ extra_rules = \
 	-e 's:\$$(RA_CLIENT_SPID):$(if $(RA_CLIENT_SPID),$(RA_CLIENT_SPID),AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA):g' \
 	-e 's:\$$(RA_CLIENT_LINKABLE):$(if $(RA_CLIENT_LINKABLE),$(RA_CLIENT_LINKABLE),0):g'
 
+include ../../../../Scripts/Makefile.Arch
 include ../../../../Scripts/Makefile.configs
 include ../../../../Scripts/Makefile.manifest
 include ../../../../Scripts/Makefile.Test
@@ -114,7 +119,7 @@ include ../../../../Scripts/Makefile.Test
 CFLAGS-bootstrap_static = -static
 CFLAGS-bootstrap_pie = -fPIC -pie
 CFLAGS-shared_object = -fPIC -pie
-CFLAGS-syscall += -I$(PALDIR)/../include -I$(PALDIR)/host/$(PAL_HOST)
+CFLAGS-syscall += -I$(PALDIR)/../include -I$(PALDIR)/../include/arch/$(ARCH) -I$(PALDIR)/host/$(PAL_HOST)
 CFLAGS-openmp = -fopenmp
 CFLAGS-multi_pthread = -pthread
 CFLAGS-exit_group = -pthread
