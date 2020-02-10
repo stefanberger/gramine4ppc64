@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+
+ERROR=0
+
+# skip on Travis; cannot download
+case "$(uname -p)${TRAVIS_CPU_ARCH}" in
+x86_64)
+	# python libraries do not compile on ppc64 with python3.6
+	pushd Examples/pytorch &>/dev/null
+	TEST="pytorch"; echo ">>>>>> $TEST <<<<<<"; RESULT="PASS"
+	if [ -n "${INSTALL_DEPS}" ]; then
+		sudo apt-get -y install python3-pip lsb-release &>/dev/null
+		sudo pip3 install torchvision pillow
+		pip3 --user install torchvision pillow
+		python3 -c 'import torchvision ; torchvision.models.alexnet(pretrained=True)'
+	fi
+	make pal_loader pytorch.manifest
+	./pal_loader ./pytorch.manifest ./pytorchexample.py || { ERROR=1; RESULT="FAIL"; }
+	echo ">>>>> ${TEST}: $RESULT <<<<<"
+	popd &>/dev/null
+	;;
+*)
+	;;
+esac
+
+pushd Examples/busybox &>/dev/null
+TEST="busybox"; echo ">>>>>> $TEST <<<<<<"; RESULT="PASS"
+make -j$(nproc) all
+res=$(./pal_loader busybox.manifest sh -c 'echo -en | sha256sum | cut -d" " -f1')
+exp="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+if [ "$res" != "$exp" ]; then
+	echo "Error: Unexpected result: $res"
+	echo "Error: Expected         : $exp"
+	ERROR=1
+	RESULT="FAIL"
+fi
+echo ">>>>> ${TEST}: $RESULT <<<<<"
+popd &>/dev/null
+
+# Error on Travis for ppc64le: cannot resolve sourceforge.org
+case "${TRAVIS_CPU_ARCH:-not-travis}" in
+x86_64|not-travis)
+	pushd Examples/lmbench &>/dev/null
+	TEST="lmbench"; echo ">>>>>> $TEST <<<<<<"
+	make
+	make test || { ERROR=1; RESULT="FAIL"; }
+	echo ">>>>> ${TEST}: $RESULT"
+	popd &>/dev/null
+	;;
+esac
+
+case "$(uname -p)" in
+x86_64|ppc64le)
+	pushd Examples/nginx &>/dev/null
+	TEST="nginx"; echo ">>>>>> $TEST <<<<<<"; RESULT="PASS"
+	if [ -n "${INSTALL_DEPS}" ]; then sudo apt-get -y install apache2-utils &>/dev/null; fi
+	make
+	make -j$(nproc)
+	./pal_loader ./nginx.manifest -c conf/nginx-graphene.conf & PID=$!
+	sleep 3
+	./benchmark-http.sh 127.0.0.1:8002 || { ERROR=1; RESULT="FAIL"; }
+	kill -SIGTERM $PID
+	echo ">>>>> ${TEST}: $RESULT <<<<<"
+	popd &>/dev/null
+	;;
+esac
+
+pushd Examples/lighttpd &>/dev/null
+TEST="lighttpd"; echo ">>>>> $TEST <<<<<"; RESULT="PASS"
+make -j$(nproc)
+bash -c "./pal_loader lighttpd.manifest -D -m install/lib -f lighttpd.conf" & PID=$!
+sleep 1
+wget http://127.0.0.1:8003/random/10K.1.html || { ERROR=1; RESULT="FAIL"; }
+kill -SIGKILL $PID
+echo ">>>>> ${TEST}: $RESULT <<<<<"
+popd &>/dev/null
+
+pushd Examples/redis &>/dev/null
+TEST="redis"; echo ">>>>>> $TEST <<<<<<"; RESULT="PASS"
+make -j$(nproc) MALLOC=libc
+bash -c "./pal_loader redis-server --save '' --protected-mode no" & PID=$!
+sleep 1
+src/src/redis-benchmark || { ERROR=1; RESULT="FAIL"; }
+kill -SIGKILL $PID
+echo ">>>>> ${TEST}: $RESULT <<<<<"
+popd &>/dev/null
+
+if [ $ERROR -eq 0 ]; then
+	echo "OVERALL: PASS"
+else
+	echo "OVERALL: FAIL"
+fi
+
+exit $ERROR
