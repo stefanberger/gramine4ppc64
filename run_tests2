@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+
+ERROR=0
+
+# skip on Travis; cannot download
+case "$(uname -p)${TRAVIS_CPU_ARCH}" in
+x86_64)
+	# python libraries do not compile on ppc64 with python3.6
+	pushd Examples/pytorch &>/dev/null
+	echo ">>>>>> pytorch <<<<<<"
+	if [ -n "${INSTALL_DEPS}" ]; then
+		sudo apt-get -y install python3-pip lsb-release &>/dev/null
+		sudo pip3 install torchvision pillow
+		pip3 --user install torchvision pillow
+		python3 -c 'import torchvision ; torchvision.models.alexnet(pretrained=True)'
+	fi
+	make pal_loader pytorch.manifest
+	./pal_loader ./pytorch.manifest ./pytorchexample.py || { ERROR=1; echo ">>>>> FAIL <<<<<"; }
+	popd &>/dev/null
+	;;
+*)
+	;;
+esac
+
+pushd Examples/busybox &>/dev/null
+echo ">>>>>> busybox <<<<<<"
+make -j$(nproc) all
+res=$(./pal_loader busybox.manifest sh -c 'echo -en | sha256sum | cut -d" " -f1')
+if [ "$res" != e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 ]; then
+	ERROR=1
+	echo ">>>>> FAIL <<<<<"
+fi
+popd &>/dev/null
+
+# Error on Travis for ppc64le: cannot resolve sourceforge.org
+case "${TRAVIS_CPU_ARCH:-not-travis}" in
+x86_64|not-travis)
+	pushd Examples/lmbench &>/dev/null
+	echo ">>>>>> lmbench <<<<<<"
+	make
+	pushd lmbench-2.5/bin/linux &>/dev/null
+	for params in "bw_pipe" "clock" "enough" "hello" "hello.manifest" "lat_fs" \
+		"lat_pipe" "lat_proc fork" "lat_proc exec" \
+		"lat_sig catch" "lat_syscall null" "lat_syscall read" "lat_syscall write" \
+		"loop_o" "memsize" "mhz" "timing_o"
+	do
+		echo "Running: $params"
+		./pal_loader $params || { ERROR=1; echo ">>>>> FAIL $params <<<<<"; }
+	done
+	popd &>/dev/null
+	popd &>/dev/null
+	;;
+esac
+
+case "$(uname -p)" in
+x86_64)
+	pushd Examples/nginx &>/dev/null
+	echo ">>>>>> nginx <<<<<<"
+	if [ -n "${INSTALL_DEPS}" ]; then sudo apt-get -y install apache2-utils &>/dev/null; fi
+	make
+	make -j$(nproc)
+	bash -c "./pal_loader ./nginx.manifest -c conf/nginx-graphene.conf" & PID=$!
+	sleep 3
+	./benchmark-http.sh 127.0.0.1:8002 || { ERROR=1; echo ">>>>> FAIL <<<<<"; }
+	kill -SIGKILL $PID
+	popd &>/dev/null
+	;;
+esac
+
+pushd Examples/lighttpd &>/dev/null
+echo ">>>>> lighthttpd <<<<<"
+make -j$(nproc)
+bash -c "./pal_loader lighttpd.manifest -D -m install/lib -f lighttpd.conf" & PID=$!
+sleep 1
+wget http://127.0.0.1:8003/random/10K.1.html || { ERROR=1; echo ">>>>> FAIL <<<<<"; }
+kill -SIGKILL $PID
+popd &>/dev/null
+
+pushd Examples/redis &>/dev/null
+echo ">>>>>> redis <<<<<<"
+make -j$(nproc) MALLOC=libc
+bash -c "./pal_loader redis-server --save '' --protected-mode no" & PID=$!
+sleep 1
+src/src/redis-benchmark || { ERROR=1; echo ">>>>> FAIL <<<<<"; }
+kill -SIGKILL $PID
+popd &>/dev/null
+
+exit $ERROR

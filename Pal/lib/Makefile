@@ -1,4 +1,3 @@
-include ../../Scripts/Makefile.Arch
 include ../../Scripts/Makefile.configs
 include ../../Scripts/Makefile.rules
 include ../src/host/$(PAL_HOST)/Makefile.am

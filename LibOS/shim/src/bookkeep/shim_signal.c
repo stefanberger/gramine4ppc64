@@ -168,6 +168,7 @@ void __store_context (shim_tcb_t * tcb, PAL_CONTEXT * pal_context,
 {
     ucontext_t * context = &signal->context;
 
+#if defined(__i386__) || defined(__x86_64__)
     if (tcb && tcb->context.regs && tcb->context.regs->orig_rax) {
         struct shim_context * ct = &tcb->context;
 
@@ -195,6 +196,36 @@ void __store_context (shim_tcb_t * tcb, PAL_CONTEXT * pal_context,
         signal->context_stored = true;
         return;
     }
+#elif defined(__powerpc64__)
+    if (tcb && tcb->context.regs) {
+        struct shim_context * ct = &tcb->context;
+
+        if (ct->regs) {
+            struct shim_regs * regs = ct->regs;
+            size_t i;
+
+            /* shim_regs being pt_regs, this should just be a memcpy */
+            for (i = 0; i < 32; i++)
+                context->uc_mcontext.gregs[REG_R0 + i] = regs->gpr[i];
+            context->uc_mcontext.gregs[REG_NIP] = regs->nip;
+            context->uc_mcontext.gregs[REG_MSR] = regs->msr;
+            context->uc_mcontext.gregs[REG_ORIG_GPR3] = regs->orig_gpr3;
+            context->uc_mcontext.gregs[REG_CTR] = regs->ctr;
+            context->uc_mcontext.gregs[REG_LINK] = regs->link;
+            context->uc_mcontext.gregs[REG_XER] = regs->xer;
+            context->uc_mcontext.gregs[REG_CCR] = regs->ccr;
+            context->uc_mcontext.gregs[REG_SOFTE] = regs->softe;
+            context->uc_mcontext.gregs[REG_TRAP] = regs->trap;
+            context->uc_mcontext.gregs[REG_DAR] = regs->dar;
+            context->uc_mcontext.gregs[REG_DSISR] = regs->dsisr;
+            context->uc_mcontext.gregs[REG_RESULT] = regs->result;
+        }
+
+        signal->context_stored = true;
+        return;
+    }
+    
+#endif
 
     if (pal_context) {
         memcpy(context->uc_mcontext.gregs, pal_context, sizeof(PAL_CONTEXT));
@@ -256,6 +287,8 @@ void deliver_signal (siginfo_t * info, PAL_CONTEXT * context)
 
 #ifdef __x86_64__
 #define IP rip
+#elif defined(__powerpc64__)
+#define IP gpregs.nip
 #else
 #define IP eip
 #endif
@@ -306,7 +339,11 @@ static void memfault_upcall (PAL_PTR event, PAL_NUM arg, PAL_CONTEXT * context)
         && (void *) arg <= tcb->test_range.end) {
         assert(context);
         tcb->test_range.has_fault = true;
+#if defined(__i386__) || defined(__x86_64__)
         context->rip = (PAL_NUM) tcb->test_range.cont_addr;
+#elif defined(__powerpc64__)
+        context->gpregs.nip = (PAL_NUM) tcb->test_range.cont_addr;
+#endif
         goto ret_exception;
     }
 
@@ -335,11 +372,13 @@ static void memfault_upcall (PAL_PTR event, PAL_NUM arg, PAL_CONTEXT * context)
             if (arg > eof_in_vma) {
                 signo = SIGBUS;
                 code = BUS_ADRERR;
+#if defined(__i386__) || defined(__x86_64__)
             } else if ((context->err & 4) && !(vma_info.flags & PROT_WRITE)) {
                 /* DEP 3/3/17: If the page fault gives a write error, and
                  * the VMA is read-only, return SIGSEGV+SEGV_ACCERR */
                 signo = SIGSEGV;
                 code = SEGV_ACCERR;
+#endif
             } else {
                 /* XXX: need more sophisticated judgement */
                 signo = SIGBUS;
@@ -550,6 +589,7 @@ static void illegal_upcall (PAL_PTR event, PAL_NUM arg, PAL_CONTEXT * context)
         assert(context);
         debug("illegal instruction at 0x%08lx\n", context->IP);
 
+#if defined(__i386__) || defined(__x86_64__)
         uint8_t * rip = (uint8_t*)context->IP;
         /*
          * Emulate syscall instruction (opcode 0x0f 0x05);
@@ -590,6 +630,8 @@ static void illegal_upcall (PAL_PTR event, PAL_NUM arg, PAL_CONTEXT * context)
             deliver_signal(ALLOC_SIGINFO(SIGILL, ILL_ILLOPC,
                                          si_addr, (void *) arg), context);
         }
+#elif defined(__powerpc64__)
+#endif
     } else {
         internal_fault("Internal illegal fault", arg, context);
     }
@@ -732,12 +774,21 @@ __handle_one_signal(shim_tcb_t* tcb, int sig, struct shim_signal* signal) {
 
     struct shim_context * context = NULL;
 
+#if defined(__i386__) || defined(__x86_64__)
     if (tcb->context.regs && tcb->context.regs->orig_rax) {
         context = __alloca(sizeof(struct shim_context));
         memcpy(context, &tcb->context, sizeof(struct shim_context));
         tcb->context.regs->orig_rax = 0;
         tcb->context.next = context;
     }
+#elif defined(__powerpc64__)
+    if (tcb->context.regs && tcb->context.regs->orig_gpr3) {
+        context = __alloca(sizeof(struct shim_context));
+        memcpy(context, &tcb->context, sizeof(struct shim_context));
+        tcb->context.regs->orig_gpr3 = 0;
+        tcb->context.next = context;
+    }
+#endif
 
     debug("run signal handler %p (%d, %p, %p)\n", handler, sig, &signal->info,
           &signal->context);
@@ -794,6 +845,7 @@ void handle_signal (void)
         return;
 
     int64_t preempt = __disable_preempt(tcb);
+    debug(">>> handle_signal: preempt = %ld  (SHOULD BE 1)\n", preempt);
 
     if (preempt > 1)
         debug("signal delayed (%ld)\n", preempt);
@@ -811,6 +863,7 @@ void append_signal(struct shim_thread* thread, int sig, siginfo_t* info, bool ne
     /* only want to check if sighandler exists without actual invocation, so don't
      * reset even if SA_RESETHAND */
     __rt_sighandler_t handler = __get_sighandler(thread, sig, /*allow_reset=*/false);
+    debug("%s @ %u: handler = %p\n", __func__, __LINE__, (void *)handler);
 
     if (!handler) {
         // SIGSTOP and SIGKILL cannot be ignored
