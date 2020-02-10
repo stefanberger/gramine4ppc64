@@ -1,0 +1,92 @@
+---
+ syscallas.S |   16 ++++++++++++++++
+ syscalldb.h |   26 ++++++++++++++++++++++++++
+ 2 files changed, 42 insertions(+)
+
+Index: glibc-2.31/syscallas.S
+===================================================================
+--- glibc-2.31.orig/syscallas.S
++++ glibc-2.31/syscallas.S
+@@ -3,9 +3,25 @@
+ .weak syscalldb
+ .type syscalldb,@function
+ 
++#if defined(__i386__) || defined(__x86_64__)
+ syscalldb:
+ 	.cfi_startproc
+ 	syscall
+ 	retq
+ 	.cfi_endproc
+ 	.size syscalldb,.-syscalldb
++#elif defined(__powerpc64__)
++syscalldb:
++	.cfi_startproc
++	std %r0, -8(%r1)
++	mflr %r0
++	std %r0, 16(%r1)
++	ld %r0, -8(%r1)
++	sc
++	ld %r0, 16(%r1)
++	mtlr %r0
++	blr
++	.cfi_endproc
++	.size syscalldb,.-syscalldb
++
++#endif
+\ No newline at end of file
+Index: glibc-2.31/syscalldb.h
+===================================================================
+--- glibc-2.31.orig/syscalldb.h
++++ glibc-2.31/syscalldb.h
+@@ -5,6 +5,7 @@
+ .weak syscalldb
+ .type syscalldb, @function
+ 
++#if defined(__i386__) || defined(__x86_64__)
+ # if defined(PSEUDO) && defined(SYSCALL_NAME) && defined(SYSCALL_SYMBOL)
+ #  define SYSCALLDB                     \
+     subq $128, %rsp;                    \
+@@ -15,11 +16,34 @@
+     callq *syscalldb@GOTPCREL(%rip)
+ # endif
+ 
++#elif defined(__powerpc64__)
++
++/* We do an ABI compliant call with r9 holding syscall number
++ * (rather than r0) and registers r3-r8 holding parameters.
++ * This way we don't need to worry about the runtimer linker
++ * clobbering r0.
++ */
++# define SYSCALLDB_R9(FRAMESIZE)	\
++    std 0,-FRAMESIZE(1);                \
++    mflr 0;                             \
++    std 0,16(1);                        \
++    ld 0,-FRAMESIZE(1);                 \
++    stdu 1,-FRAMESIZE(1);               \
++    mr 9,0;                             \
++    bl syscalldb;                       \
++    nop;                                \
++    addi 1,1,FRAMESIZE;                 \
++    ld 0,16(1);                         \
++    mtlr 0;
++
++#endif /* __powerpc64 */
++
+ #else /* !__ASSEMBLER__ */
+ asm (
+ ".weak syscalldb\r\n"
+ ".type syscalldb, @function\r\n");
+ 
++#if defined(__i386__) || defined(__x86_64__)
+ #define SYSCALLDB                           \
+     "subq $128, %%rsp\n\t"                  \
+     "callq *syscalldb@GOTPCREL(%%rip)\n\t"  \
+@@ -28,6 +52,8 @@ asm (
+ #define SYSCALLDB_ASM                       \
+     "callq *syscalldb@GOTPCREL(%rip)\n\t"
+ 
++#endif /* i386 || x86_64 */
++
+ #endif /* Assembler */
+ 
+ #endif /* _SYSCALLDB_H */

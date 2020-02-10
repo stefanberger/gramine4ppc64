@@ -7,6 +7,7 @@ import subprocess
 
 from regression import (
     HAS_SGX,
+    ON_PPC,
     RegressionTestCase,
 )
 
@@ -473,6 +474,7 @@ class TC_40_FileSystem(RegressionTestCase):
         stdout, _ = self.run_binary(['fdleak'], timeout=10)
         self.assertIn("Test succeeded.", stdout)
 
+    @unittest.skipIf(ON_PPC, "times out on Travis")
     def test_040_str_close_leak(self):
         stdout, _ = self.run_binary(['str_close_leak'], timeout=60)
         self.assertIn("Success", stdout)

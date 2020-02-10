@@ -12,7 +12,6 @@ GLIBC_LIBS = \
 	csu/crti.o \
 	csu/crtn.o \
 	dlfcn/libdl.so.2 \
-	elf/ld-linux-x86-64.so.2 \
 	libc.so \
 	libc.so.6 \
 	libos/liblibos.so.1 \
@@ -23,6 +22,15 @@ GLIBC_LIBS = \
 	resolv/libnss_dns.so.2 \
 	resolv/libresolv.so.2 \
 	rt/librt.so.1
+ifeq ($(ARCH),x86_64)
+GLIBC_LIBS += \
+	elf/ld-linux-x86-64.so.2
+endif
+ifeq ($(ARCH),ppc64)
+GLIBC_LIBS += \
+	elf/ld64.so.2
+endif
+
 GLIBC_TARGET = $(addprefix $(BUILD_DIR)/, $(GLIBC_LIBS))
 GLIBC_RUNTIME = $(addprefix $(RUNTIME_DIR)/, $(notdir $(GLIBC_TARGET)))
 
@@ -40,7 +48,7 @@ all: $(GLIBC_TARGET) $(GLIBC_RUNTIME)
 format:
 	$(MAKE) -C $(SHIM_DIR) format
 
-ifeq ($(findstring x86_64,$(SYS))$(findstring linux,$(SYS)),x86_64linux)
+ifeq ($(ARCH),$(filter $(ARCH),x86_64 ppc64))
 
 .SECONDARY: $(BUILD_DIR)/Build.success
 
@@ -73,7 +81,9 @@ GLIBC_MIRRORS ?= https://ftp.gnu.org/gnu/ \
 
 GLIBC_PATCHES = \
 	glibc-patches/$(GLIBC_SRC).patch \
+	glibc-patches/$(GLIBC_SRC)-ppc64.patch \
 	glibc-patches/syscalldb-api.patch \
+	glibc-patches/syscalldb-api-ppc64.patch \
 	glibc-patches/liblibos.patch
 
 GLIBC_PATCHES_2.23 = \
