@@ -1,0 +1,233 @@
+---
+ sysdeps/powerpc/nptl/tls.h                                  |   17 +++++
+ sysdeps/powerpc/powerpc64/sysdep.h                          |    2 
+ sysdeps/unix/sysv/linux/powerpc/powerpc64/____longjmp_chk.S |    2 
+ sysdeps/unix/sysv/linux/powerpc/powerpc64/clone.S           |    8 ++
+ sysdeps/unix/sysv/linux/powerpc/powerpc64/setcontext.S      |    4 -
+ sysdeps/unix/sysv/linux/powerpc/powerpc64/swapcontext.S     |    4 -
+ sysdeps/unix/sysv/linux/powerpc/powerpc64/sysdep.h          |   35 +++++-------
+ sysdeps/unix/sysv/linux/powerpc/syscall.S                   |   14 ++++
+ 8 files changed, 60 insertions(+), 26 deletions(-)
+
+Index: glibc-2.27/sysdeps/unix/sysv/linux/powerpc/powerpc64/setcontext.S
+===================================================================
+--- glibc-2.27.orig/sysdeps/unix/sysv/linux/powerpc/powerpc64/setcontext.S
++++ glibc-2.27/sysdeps/unix/sysv/linux/powerpc/powerpc64/setcontext.S
+@@ -213,7 +213,7 @@ L(nv_error_exit):
+ L(nv_do_sigret):
+   mr   r1,r3,
+   li   r0,SYS_ify(rt_sigreturn)
+-  sc
++  sc /* need not patch */
+   /* No return.  */
+ 
+ PSEUDO_END(__novec_setcontext)
+@@ -505,7 +505,7 @@ L(error_exit):
+ L(do_sigret):
+   mr   r1,r3,
+   li   r0,SYS_ify(rt_sigreturn)
+-  sc
++  SYSCALLDB_R9(128)
+   /* No return.  */
+ 
+ PSEUDO_END(__setcontext)
+Index: glibc-2.27/sysdeps/unix/sysv/linux/powerpc/powerpc64/sysdep.h
+===================================================================
+--- glibc-2.27.orig/sysdeps/unix/sysv/linux/powerpc/powerpc64/sysdep.h
++++ glibc-2.27/sysdeps/unix/sysv/linux/powerpc/powerpc64/sysdep.h
+@@ -23,6 +23,7 @@
+ #include <sysdeps/unix/sysv/linux/sysdep.h>
+ #include <sysdeps/unix/powerpc/sysdep.h>
+ #include <tls.h>
++#include <syscalldb.h>
+ 
+ /* Define __set_errno() for INLINE_SYSCALL macro below.  */
+ #ifndef __ASSEMBLER__
+@@ -123,28 +124,24 @@
+ #undef INTERNAL_SYSCALL
+ #define INTERNAL_SYSCALL_NCS(name, err, nr, args...) \
+   ({									\
+-    register long int r0  __asm__ ("r0");				\
+-    register long int r3  __asm__ ("r3");				\
+-    register long int r4  __asm__ ("r4");				\
+-    register long int r5  __asm__ ("r5");				\
+-    register long int r6  __asm__ ("r6");				\
+-    register long int r7  __asm__ ("r7");				\
+-    register long int r8  __asm__ ("r8");				\
++    register long int r0;						\
++    register long int r3 = 0;						\
++    register long int r4 = 0;						\
++    register long int r5 = 0;						\
++    register long int r6 = 0;						\
++    register long int r7 = 0;						\
++    register long int r8 = 0;						\
++    unsigned long syscalldb(unsigned long, unsigned long, unsigned long,\
++                            unsigned long, unsigned long, unsigned long,\
++                            unsigned long);				\
+     LOADARGS_##nr (name, ##args);					\
+     ABORT_TRANSACTION;							\
+-    __asm__ __volatile__						\
+-      ("sc\n\t"								\
+-       "mfcr  %0\n\t"							\
+-       "0:"								\
+-       : "=&r" (r0),							\
+-         "=&r" (r3), "=&r" (r4), "=&r" (r5),				\
+-         "=&r" (r6), "=&r" (r7), "=&r" (r8)				\
+-       : ASM_INPUT_##nr							\
+-       : "r9", "r10", "r11", "r12",					\
+-         "cr0", "ctr", "memory");					\
+-	  err = r0;  \
+-    r3;  \
++    r3 = syscalldb(r3, r4, r5, r6, r7, r8, r0);				\
++    __asm__ __volatile__("mfcr %0\n\t" : "=&r" (r0) ::);		\
++    err = r0;								\
++    r3;									\
+   })
++
+ #define INTERNAL_SYSCALL(name, err, nr, args...)			\
+   INTERNAL_SYSCALL_NCS (__NR_##name, err, nr, args)
+ 
+Index: glibc-2.27/sysdeps/unix/sysv/linux/powerpc/powerpc64/swapcontext.S
+===================================================================
+--- glibc-2.27.orig/sysdeps/unix/sysv/linux/powerpc/powerpc64/swapcontext.S
++++ glibc-2.27/sysdeps/unix/sysv/linux/powerpc/powerpc64/swapcontext.S
+@@ -300,7 +300,7 @@ L(nv_error_exit):
+ L(nv_do_sigret):
+   mr   r1,r3,
+   li   r0,SYS_ify(rt_sigreturn)
+-  sc
++  sc /* need not patch */
+   /* No return.  */
+ 
+ PSEUDO_END(__novec_swapcontext)
+@@ -789,7 +789,7 @@ L(error_exit):
+ L(do_sigret):
+   mr   r1,r3,
+   li   r0,SYS_ify(rt_sigreturn)
+-  sc
++  SYSCALLDB_R9(32)
+   /* No return.  */
+ 
+ PSEUDO_END(__swapcontext)
+Index: glibc-2.27/sysdeps/unix/sysv/linux/powerpc/syscall.S
+===================================================================
+--- glibc-2.27.orig/sysdeps/unix/sysv/linux/powerpc/syscall.S
++++ glibc-2.27/sysdeps/unix/sysv/linux/powerpc/syscall.S
+@@ -19,6 +19,10 @@
+ 
+ ENTRY (syscall)
+ 	ABORT_TRANSACTION
++	mflr r0
++	std  r0,16(r1)
++	stdu r1,-32(r1)
++
+ 	mr   r0,r3
+ 	mr   r3,r4
+ 	mr   r4,r5
+@@ -26,6 +30,14 @@ ENTRY (syscall)
+ 	mr   r6,r7
+ 	mr   r7,r8
+ 	mr   r8,r9
+-	sc
++
++	mr   r9,r0
++
++	bl   syscalldb
++	nop
++
++	addi r1,r1,32
++	ld   r0,16(r1)
++	mtlr r0
+ 	PSEUDO_RET
+ PSEUDO_END (syscall)
+Index: glibc-2.27/sysdeps/unix/sysv/linux/powerpc/powerpc64/____longjmp_chk.S
+===================================================================
+--- glibc-2.27.orig/sysdeps/unix/sysv/linux/powerpc/powerpc64/____longjmp_chk.S
++++ glibc-2.27/sysdeps/unix/sysv/linux/powerpc/powerpc64/____longjmp_chk.S
+@@ -43,7 +43,7 @@
+ 	li	r3,0;					\
+ 	addi	r4,r1,FRAME_MIN_SIZE;			\
+ 	li	r0,__NR_sigaltstack;			\
+-	sc;						\
++	SYSCALLDB_R9(128)				\
+ 	/* Without working sigaltstack we cannot perform the test.  */ \
+ 	bso	.Lok2;					\
+ 	lwz	r0,FRAME_MIN_SIZE+8(r1);		\
+Index: glibc-2.27/sysdeps/powerpc/powerpc64/sysdep.h
+===================================================================
+--- glibc-2.27.orig/sysdeps/powerpc/powerpc64/sysdep.h
++++ glibc-2.27/sysdeps/powerpc/powerpc64/sysdep.h
+@@ -282,7 +282,7 @@ LT_LABELSUFFIX(name,_name_end): ; \
+ #define DO_CALL(syscall) \
+     ABORT_TRANSACTION \
+     li 0,syscall; \
+-    sc
++    SYSCALLDB_R9(256)
+ 
+ /* ppc64 is always PIC */
+ #undef JUMPTARGET
+Index: glibc-2.27/sysdeps/powerpc/nptl/tls.h
+===================================================================
+--- glibc-2.27.orig/sysdeps/powerpc/nptl/tls.h
++++ glibc-2.27/sysdeps/powerpc/nptl/tls.h
+@@ -55,6 +55,8 @@
+    are private.  */
+ typedef struct
+ {
++  /* LibOS needs its own TCB */
++  void *LibOS_TCB;
+   /* Reservation for HWCAP data.  To be accessed by GCC in
+      __builtin_cpu_supports(), so it is a part of public ABI.  */
+   uint64_t hwcap;
+@@ -141,10 +143,18 @@ register void *__thread_register __asm__
+    operation can cause a failure 'errno' must not be touched.  */
+ # define TLS_INIT_TP(tcbp) \
+   ({ 									      \
++    /*_dl_printf("r13: 0x%lx\n", (unsigned long)__thread_register);*/	      \
++    void *libostcb = NULL;						      \
++    if (__thread_register) {						      \
++      libostcb = THREAD_GET_LIBOS_TCB();				      \
++      _dl_printf("LibOS TCB at 0x%lx\n", (unsigned long)THREAD_GET_LIBOS_TCB());\
++    }									      \
+     __thread_register = (void *) (tcbp) + TLS_TCB_OFFSET;		      \
+     THREAD_SET_TM_CAPABLE (__tcb_hwcap & PPC_FEATURE2_HAS_HTM ? 1 : 0);	      \
+     THREAD_SET_HWCAP (__tcb_hwcap);					      \
+     THREAD_SET_AT_PLATFORM (__tcb_platform);				      \
++    THREAD_SET_LIBOS_TCB (libostcb);					      \
++    /*_dl_printf("CHECK LibOS TCB IN NEW STRUCT at 0x%lx\n", (unsigned long)THREAD_GET_LIBOS_TCB());*/\
+     NULL;								      \
+   })
+ 
+@@ -231,6 +241,13 @@ register void *__thread_register __asm__
+ # define THREAD_SET_AT_PLATFORM(value) \
+     (THREAD_GET_AT_PLATFORM () = (value))
+ 
++/* LibOS_TCN filed in TCB head.  */
++# define THREAD_GET_LIBOS_TCB() \
++    (((tcbhead_t *) ((char *) __thread_register				      \
++		     - TLS_TCB_OFFSET))[-1].LibOS_TCB)
++# define THREAD_SET_LIBOS_TCB(value) \
++    (THREAD_GET_LIBOS_TCB () = (value))
++
+ /* l_tls_offset == 0 is perfectly valid on PPC, so we have to use some
+    different value to mean unset l_tls_offset.  */
+ # define NO_TLS_OFFSET		-1
+Index: glibc-2.27/sysdeps/unix/sysv/linux/powerpc/powerpc64/clone.S
+===================================================================
+--- glibc-2.27.orig/sysdeps/unix/sysv/linux/powerpc/powerpc64/clone.S
++++ glibc-2.27/sysdeps/unix/sysv/linux/powerpc/powerpc64/clone.S
+@@ -50,6 +50,14 @@ ENTRY (__clone)
+ 	li	r0,0
+ 	stdu	r0,-FRAME_MIN_SIZE_PARM(r4)
+ 
++	/* For Graphene we pass the function address and parameter via the
++	 * stack since a child thread will not come back up here.
++         * Graphene will launch the thread using these parameters.
++         * We will come back up after a fork, though.
++	 */
++	std	r3,FRAME_LR_SAVE(r4)
++	std	r6,FRAME_PARM_SAVE(r4)
++
+ 	/* Save fn, args, stack across syscall.  */
+ 	mr	r30,r3			/* Function in r30.  */
+ 	mr	r29,r5			/* Flags in r29.  */

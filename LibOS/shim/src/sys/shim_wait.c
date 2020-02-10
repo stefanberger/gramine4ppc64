@@ -20,7 +20,9 @@
  * Implementation of system call "wait4".
  */
 
+#if defined(__i386__) || defined(__x86_64__)
 #include <asm/prctl.h>
+#endif
 #include <errno.h>
 #include <linux/wait.h>
 #include <pal.h>
@@ -141,4 +143,8 @@ found:
     del_thread(thread);
     put_thread(thread);
     return ret;
+}
+
+pid_t shim_do_waitpid(pid_t pid, int* status, int option) {
+    return shim_do_wait4(pid, status, option, NULL);
 }

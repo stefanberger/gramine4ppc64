@@ -320,8 +320,7 @@ int _DkAttestationQuote(PAL_PTR user_report_data, PAL_NUM user_report_data_size,
 #if defined(__i386__) || defined(__x86_64__)
 #define DEFAULT_OBJECT_EXEC_ADDR ((void*)0x555555554000) /* Linux base location for PIE binaries */
 #elif defined(__powerpc64__)
-/* we have to use NULL otherwise we loose tests in Examples/ and many other tests */
-#define DEFAULT_OBJECT_EXEC_ADDR ((void*)NULL)
+#define DEFAULT_OBJECT_EXEC_ADDR ((void*)0x79d4bfbc0000)
 #endif
 enum object_type { OBJECT_RTLD, OBJECT_EXEC, OBJECT_PRELOAD, OBJECT_EXTERNAL };
 

@@ -1,7 +1,6 @@
 export PAL_DIR = $(CURDIR)
 export RUNTIME_DIR = $(CURDIR)/../../Runtime
 
-include ../../Scripts/Makefile.Arch
 include ../../Scripts/Makefile.configs
 include ../../Scripts/Makefile.rules
 
