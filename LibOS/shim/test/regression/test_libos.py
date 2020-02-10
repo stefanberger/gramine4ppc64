@@ -6,6 +6,7 @@ import subprocess
 
 from regression import (
     HAS_SGX,
+    ON_PPC,
     RegressionTestCase,
 )
 
@@ -92,6 +93,7 @@ class TC_01_Bootstrap(RegressionTestCase):
         self.assertIn('child exited with status: 0', stdout)
         self.assertIn('test completed successfully', stdout)
 
+    @unittest.skipIf(ON_PPC, "Does not run on PPC yet (vfork)")
     def test_203_vfork_and_exec(self):
         stdout, _ = self.run_binary(['vfork_and_exec'], timeout=60)
 
@@ -99,6 +101,7 @@ class TC_01_Bootstrap(RegressionTestCase):
         self.assertIn('child exited with status: 0', stdout)
         self.assertIn('test completed successfully', stdout)
 
+    @unittest.skipIf(ON_PPC, "Does not run on PPC yet (vfork)")
     def test_204_system(self):
         stdout, _ = self.run_binary(['system'], timeout=60)
         self.assertIn('hello from system', stdout)
@@ -439,6 +442,8 @@ class TC_40_FileSystem(RegressionTestCase):
         stdout, _ = self.run_binary(['fdleak'], timeout=10)
         self.assertIn("Test succeeded.", stdout)
 
+    # ppc: doesn't finish on Travis
+    @unittest.skipIf(ON_PPC, "Does not run on PPC yet (vfork)")
     def test_040_str_close_leak(self):
         stdout, _ = self.run_binary(['str_close_leak'], timeout=60)
         self.assertIn("Success", stdout)

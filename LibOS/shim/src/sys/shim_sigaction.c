@@ -160,7 +160,17 @@ int shim_do_sigaltstack(const stack_t* ss, stack_t* oss) {
     if (oss)
         *oss = *cur_ss;
 
+#if defined(__i386__) || defined(__x86_64__)
     void* sp = (void*)shim_get_tcb()->context.regs->rsp;
+#elif defined(__powerpc64__)
+    debug(">>>>>>>>> FIXME! %s @ %u: %p\n", __func__, __LINE__, shim_get_tcb());
+    // FIXME
+    //void* sp = (void*)shim_get_tcb()->context.regs->gpr[1];
+#else
+# error Unsupported architecture
+#endif
+
+#ifndef __powerpc64__
     /* check if thread is currently executing on an active altstack */
     if (!(cur_ss->ss_flags & SS_DISABLE) && sp && cur_ss->ss_sp <= sp &&
             sp < cur_ss->ss_sp + cur_ss->ss_size) {
@@ -171,6 +181,7 @@ int shim_do_sigaltstack(const stack_t* ss, stack_t* oss) {
             return -EPERM;
         }
     }
+#endif
 
     if (ss) {
         if (ss->ss_flags & SS_DISABLE) {
@@ -294,6 +305,7 @@ static int __kill_proc(struct shim_thread* thread, void* arg, bool* unlocked) {
     if (!thread->in_vm) {
         unlock(&thread_list_lock);
         *unlocked = true;
+        debug("%s @ %u: kill_send\n", __func__, __LINE__);
         return (!ipc_pid_kill_send(warg->sender, warg->id, KILL_PROCESS, warg->sig)) ? 1 : 0;
     } else {
         lock(&thread->lock);
@@ -302,6 +314,7 @@ static int __kill_proc(struct shim_thread* thread, void* arg, bool* unlocked) {
             goto out_locked;
 
         if (thread->in_vm) {
+            debug("%s @ %u: appending signal\n", __func__, __LINE__);
             if (warg->sig > 0)
                 __append_signal(thread, warg->sig, warg->sender);
             srched = 1;
@@ -310,6 +323,7 @@ static int __kill_proc(struct shim_thread* thread, void* arg, bool* unlocked) {
             unlock(&thread->lock);
             unlock(&thread_list_lock);
             *unlocked = true;
+            debug("%s @ %u: kill_send\n", __func__, __LINE__);
             return (!ipc_pid_kill_send(warg->sender, warg->id, KILL_PROCESS, warg->sig)) ? 1 : 0;
         }
     }

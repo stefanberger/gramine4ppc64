@@ -84,8 +84,17 @@ if [ ! -f "$PAL_CMD" ]; then
 	exit 1
 fi
 
+case "$(uname -p)" in
+ppc64le)
+	DUMMY="_"
+	;;
+*)
+	DUMMY=""
+	;;
+esac
+
 if [ ${#PREFIX[@]} -eq 0 ]; then
-    exec "$PAL_CMD" "$MANIFEST" "$@"
+    exec "$PAL_CMD" ${DUMMY} "$MANIFEST" "$@"
 else
-    exec "${PREFIX[@]}" "$PAL_CMD" "$MANIFEST" "$@"
+    exec "${PREFIX[@]}" "$PAL_CMD" ${DUMMY} "$MANIFEST" "$@"
 fi
