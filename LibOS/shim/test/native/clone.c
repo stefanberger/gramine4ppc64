@@ -1,5 +1,7 @@
 #define _GNU_SOURCE
+#if defined(__i386__) || defined(__x86_64__)
 #include <asm/prctl.h>
+#endif
 #include <malloc.h>
 #include <sched.h>
 #include <signal.h>
@@ -14,11 +16,22 @@
 
 __thread int mypid = 0;
 
+#if defined(__x86_64__)
 unsigned long gettls(void) {
     unsigned long tls;
     syscall(__NR_arch_prctl, ARCH_GET_FS, &tls);
     return tls;
 }
+#elif defined(__powerpc64__)
+unsigned long gettls(void) {
+    unsigned long tls;
+    __asm__ __volatile__(
+        "mr %0, 13\n"
+        : "=r" (tls)
+    );
+    return tls;
+}
+#endif
 
 int thread_function(void* argument) {
     mypid    = getpid();

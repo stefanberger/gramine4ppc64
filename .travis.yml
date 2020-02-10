@@ -5,17 +5,17 @@ addons:
   apt:
       packages:
         - python3-pip
-        - python3-pytest
+        - python3.6
+        - npm
+        - node-gyp
+        - nodejs-dev
+        - libssl1.0-dev
+        - python3-numpy
+        - python3-scipy
 script:
   - make -j$(nproc)
-    && ERROR=0
-    && pushd Pal/test &>/dev/null
-    &&  make test || ERROR=1
-    && popd &>/dev/null
-    && pushd Pal/regression &>/dev/null
-    &&  make regression || ERROR=1
-    && popd &>/dev/null
-    && [ $ERROR -eq 0 ] || false
+    && sudo pip3 install pytest
+    && ./run_tests.sh
 
 matrix:
   include:
