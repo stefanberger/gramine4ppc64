@@ -1,12 +1,18 @@
 SYS ?= $(shell gcc -dumpmachine)
 ARCH := $(word 1,$(subst -, -, $(SYS)))
+ARCH_LIBDIR := $(SYS)
 $(info Detected arch $(ARCH))
 ifeq ($(ARCH),powerpc64le)
+    # Ubuntu
     ARCH := ppc64
+    ARCH_LIBDIR := $(SYS)
 endif
 ifeq ($(ARCH),ppc64le)
+    # Redhat/Fedora
     ARCH := ppc64
+    ARCH_LIBDIR :=
 endif
 
-$(info Using arch $(ARCH))
+$(info Using arch $(ARCH) / $(ARCH_LIBDIR))
 export ARCH
+export ARCH_LIBDIR

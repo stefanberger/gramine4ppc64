@@ -42,8 +42,15 @@ void* shim_do_mmap(void* addr, size_t length, int prot, int flags, int fd, off_t
      * According to the manpage, both addr and offset have to be page-aligned,
      * but not the length. mmap() will automatically round up the length.
      */
-    if (addr && !IS_ALLOC_ALIGNED_PTR(addr))
-        return (void*)-EINVAL;
+    if (addr && !IS_ALLOC_ALIGNED_PTR(addr)) {
+#if defined(__powerpc64__)
+        // with this nodejs gets is memory
+        if (!(flags & MAP_FIXED))
+            addr = 0;
+        else
+#endif
+            return (void*)-EINVAL;
+    }
 
     if (fd >= 0 && !IS_ALLOC_ALIGNED(offset))
         return (void*)-EINVAL;
@@ -55,8 +62,10 @@ void* shim_do_mmap(void* addr, size_t length, int prot, int flags, int fd, off_t
         return (void*)-EINVAL;
 
     /* ignore MAP_32BIT when MAP_FIXED is set */
+#ifdef MAP_32BIT
     if ((flags & (MAP_32BIT | MAP_FIXED)) == (MAP_32BIT | MAP_FIXED))
         flags &= ~MAP_32BIT;
+#endif
 
     assert(!(flags & (VMA_UNMAPPED | VMA_TAINTED)));
 
