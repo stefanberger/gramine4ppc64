@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+ERROR=0
+
+pushd Examples/lighttpd &>/dev/null
+echo ">>>>> lighthttpd <<<<<"
+make -j$(nproc)
+bash -c "./pal_loader lighttpd.manifest -D -m install/lib -f lighttpd.conf" & PID=$!
+sleep 1
+wget http://127.0.0.1:8003/random/10K.1.html || { ERROR=1; echo ">>>>> FAIL <<<<<"; }
+kill -SIGKILL $PID
+popd &>/dev/null
+
+pushd Examples/redis &>/dev/null
+echo ">>>>>> redis <<<<<<"
+make -j$(nproc) MALLOC=libc
+bash -c "./pal_loader redis-server --save '' --protected-mode no" & PID=$!
+sleep 1
+src/src/redis-benchmark || { ERROR=1; echo ">>>>> FAIL <<<<<"; }
+kill -SIGKILL $PID
+popd &>/dev/null
+
+exit $ERROR
