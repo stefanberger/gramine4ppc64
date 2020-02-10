@@ -1379,6 +1379,15 @@ ssize_t shim_do_recvfrom(int sockfd, void* buf, size_t len, int flags, struct so
     return do_recvmsg(sockfd, &iovbuf, 1, flags, addr, addrlen);
 }
 
+ssize_t shim_do_recv(int sockfd, void* buf, size_t len, int flags)
+{
+    struct iovec iovbuf;
+    iovbuf.iov_base = (void*)buf;
+    iovbuf.iov_len  = len;
+
+    return do_recvmsg(sockfd, &iovbuf, 1, flags, NULL, 0);
+}
+
 ssize_t shim_do_recvmsg(int sockfd, struct msghdr* msg, int flags) {
     return do_recvmsg(sockfd, msg->msg_iov, msg->msg_iovlen, flags, msg->msg_name,
                       &msg->msg_namelen);

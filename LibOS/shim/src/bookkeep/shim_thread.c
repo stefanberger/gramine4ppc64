@@ -540,7 +540,9 @@ void cleanup_thread(IDTYPE caller, void* arg) {
 
     /* wait on clear_child_tid_pal; this signals that PAL layer exited child thread */
     while (__atomic_load_n(&thread->clear_child_tid_pal, __ATOMIC_RELAXED) != 0) {
+#if defined(__i386__) || defined(__x86_64__)
         __asm__ volatile ("pause");
+#endif
     }
 
     /* notify parent if any */
@@ -812,7 +814,11 @@ static int resume_wrapper (void * param)
        based on saved thread->shim_tcb */
     shim_tcb_init();
     shim_tcb_t* saved_tcb = thread->shim_tcb;
+#if defined(__i386__) || defined(__x86_64__)
     assert(saved_tcb->context.regs && saved_tcb->context.regs->rsp);
+#elif defined(__powerpc64__)
+    assert(saved_tcb->context.regs && saved_tcb->context.regs->gpr[1]);
+#endif
     set_cur_thread(thread);
     unsigned long fs_base = saved_tcb->context.fs_base;
     assert(fs_base);
@@ -870,7 +876,11 @@ BEGIN_RS_FUNC(running_thread)
             __shim_tcb_init(tcb);
             set_cur_thread(thread);
 
+#if defined(__i386__) || defined(__x86_64__)
             assert(tcb->context.regs && tcb->context.regs->rsp);
+#elif defined(__powerpc64__)
+            assert(tcb->context.regs && tcb->context.regs->gpr[1]);
+#endif
             update_fs_base(tcb->context.fs_base);
             /* Temporarily disable preemption until the thread resumes. */
             __disable_preempt(tcb);

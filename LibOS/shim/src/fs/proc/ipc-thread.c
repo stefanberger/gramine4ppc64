@@ -2,7 +2,9 @@
 
 #include <asm/fcntl.h>
 #include <asm/mman.h>
+#if defined(__i386__) || defined(__x86_64__)
 #include <asm/prctl.h>
+#endif
 #include <asm/unistd.h>
 #include <errno.h>
 #include <linux/fcntl.h>
