@@ -20,7 +20,9 @@
  * Implementation of system call "vfork".
  */
 
+#if defined(__i386__) || defined(__x86_64__)
 #include <asm/prctl.h>
+#endif
 #include <errno.h>
 #include <linux/futex.h>
 #include <pal.h>
