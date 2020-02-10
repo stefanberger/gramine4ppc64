@@ -41,6 +41,10 @@
 #include <atomic.h>
 #include <shim_tcb.h>
 
+#if defined(__powerpc64__)
+#include <shim_sysdep-ppc64.h>
+#endif
+
 noreturn void shim_clean_and_exit(int exit_code);
 
 /* important macros and static inline functions */
@@ -152,7 +156,11 @@ static inline void do_pause (void);
 #if USE_PAUSE == 1
 # define PAUSE() do { do_pause(); } while (0)
 #else
-# define PAUSE() do { __asm__ volatile ("int $3"); } while (0)
+# if defined(__i386__) || defined(__x86_64__)
+#  define PAUSE() do { __asm__ volatile ("int $3"); } while (0)
+# else
+#  define PAUSE() do { /*do_pause();*/ } while (0)
+# endif
 #endif
 
 #define BUG()                                                               \
@@ -838,6 +846,50 @@ static inline bool access_ok(const volatile void* addr, size_t size) {
     return !__range_not_ok((unsigned long)addr, (unsigned long)size);
 }
 
+#elif defined(__powerpc64__)
+
+
+#define FRAME_MIN_SIZE_PARM	96
+
+#define __SWITCH_STACK(stack_top, func, arg)                    \
+    do {                                                        \
+        /* 16 Bytes align of stack */                           \
+        uintptr_t __stack_top = (uintptr_t)(stack_top);         \
+        __stack_top &= ~0xf;                                    \
+        __stack_top -= FRAME_MIN_SIZE_PARM;                     \
+        memset((void *)__stack_top, 0, FRAME_MIN_SIZE_PARM);    \
+        __asm__ volatile (                                      \
+            "mr %%r1, %0\n\t"                                   \
+            "mr %%r3, %2\n\t"                                   \
+            "mr %%r12, %1\n\t"                                  \
+            "mtctr %%r12\n\t"                                   \
+            "bctr\n\t"                                          \
+            ::"r"(__stack_top), "r"(func), "r"(arg): "memory"); \
+    } while (0)
+
+static_always_inline void * current_stack(void)
+{
+    void * _rsp;
+    __asm__ volatile ("mr %0, %%r1" : "=r"(_rsp) :: "memory");
+    return _rsp;
+}
+
+static_always_inline bool __range_not_ok(unsigned long addr, unsigned long size) {
+    addr += size;
+    if (addr < size) {
+        /* pointer arithmetic overflow, this check is x86-64 specific */
+        return true;
+    }
+    return false;
+}
+
+/* Check if pointer to memory region is valid. Return true if the memory
+ * region may be valid, false if it is definitely invalid. */
+static inline bool access_ok(const volatile void* addr, size_t size) {
+    return !__range_not_ok((unsigned long)addr, (unsigned long)size);
+}
+
+#elif defined(__powerpc64__)
 #else
 # error "Unsupported architecture"
 #endif /* __x86_64__ */

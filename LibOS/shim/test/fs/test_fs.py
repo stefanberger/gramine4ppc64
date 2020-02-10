@@ -8,6 +8,7 @@ import unittest
 
 from regression import (
     HAS_SGX,
+    ON_PPC,
     RegressionTestCase,
     expectedFailureIf,
 )
@@ -279,6 +280,7 @@ class TC_00_FileSystem(RegressionTestCase):
         self.do_copy_test('copy_mmap_whole', 30)
 
     @expectedFailureIf(HAS_SGX)
+    # @unittest.skipIf(ON_PPC, "Does not current work on PPC")
     def test_204_copy_dir_mmap_seq(self):
         self.do_copy_test('copy_mmap_seq', 60)
 

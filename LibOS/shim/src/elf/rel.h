@@ -22,7 +22,9 @@ typedef Elf64_Xword d_tag_utype, d_val_utype;
                                               : (ElfW(Addr))(addr) + (ElfW(Addr))((l)->l_addr)))
 
 #ifdef __x86_64__
-#include "dl-machine-x86_64.h"
+# include "dl-machine-x86_64.h"
+#elif defined __powerpc64__
+# include "dl-machine-ppc64.h"
 #endif
 
 /* Read the dynamic section at DYN and fill in INFO with indices DT_*.  */

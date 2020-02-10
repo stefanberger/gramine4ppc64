@@ -21,6 +21,7 @@ long __shim_fstat(long, long);
 long __shim_lstat(long, long);
 long __shim_poll(long, long, long);
 long __shim_lseek(long, long, long);
+long __shim__llseek(long, long, long, long, long);
 long __shim_mmap(long, long, long, long, long, long);
 long __shim_mprotect(long, long, long);
 long __shim_munmap(long, long);
@@ -58,6 +59,7 @@ long __shim_connect(long, long, long);
 long __shim_accept(long, long, long);
 long __shim_sendto(long, long, long, long, long, long);
 long __shim_recvfrom(long, long, long, long, long, long);
+long __shim_recv(long, long, long, long);
 long __shim_sendmsg(long, long, long);
 long __shim_recvmsg(long, long, long);
 long __shim_shutdown(long, long);
@@ -74,6 +76,7 @@ long __shim_vfork(void);
 long __shim_execve(long, long, long);
 long __shim_exit(long);
 long __shim_wait4(long, long, long, long);
+long __shim_waitpid(long, long, long);
 long __shim_kill(long, long);
 long __shim_uname(long);
 long __shim_semget(long, long, long);
@@ -332,6 +335,8 @@ int shim_do_fstat(int fd, struct stat* statbuf);
 int shim_do_lstat(const char* file, struct stat* stat);
 int shim_do_poll(struct pollfd* fds, nfds_t nfds, int timeout);
 off_t shim_do_lseek(int fd, off_t offset, int origin);
+int shim_do__llseek(int fd, unsigned long offset_high, unsigned long offset_low,
+                    unsigned long resultaddr, int origin);
 void* shim_do_mmap(void* addr, size_t length, int prot, int flags, int fd, off_t offset);
 int shim_do_mprotect(void* addr, size_t len, int prot);
 int shim_do_munmap(void* addr, size_t len);
@@ -370,6 +375,7 @@ ssize_t shim_do_sendto(int fd, const void* buf, size_t len, int flags,
                        const struct sockaddr* dest_addr, socklen_t addrlen);
 ssize_t shim_do_recvfrom(int fd, void* buf, size_t len, int flags, struct sockaddr* addr,
                          socklen_t* addrlen);
+ssize_t shim_do_recv(int fd, void* buf, size_t len, int flags);
 int shim_do_bind(int sockfd, struct sockaddr* addr, socklen_t addrlen);
 int shim_do_listen(int sockfd, int backlog);
 ssize_t shim_do_sendmsg(int fd, struct msghdr* msg, int flags);
@@ -387,6 +393,7 @@ int shim_do_vfork(void);
 int shim_do_execve(const char* file, const char** argv, const char** envp);
 noreturn int shim_do_exit(int error_code);
 pid_t shim_do_wait4(pid_t pid, int* stat_addr, int option, struct __kernel_rusage* ru);
+pid_t shim_do_waitpid(pid_t pid, int* stat_addr, int option);
 int shim_do_kill(pid_t pid, int sig);
 int shim_do_uname(struct old_utsname* buf);
 int shim_do_semget(key_t key, int nsems, int semflg);
@@ -709,14 +716,18 @@ time_t shim_time(time_t* tloc);
 int shim_futex(int* uaddr, int op, int val, void* utime, int* uaddr2, int val3);
 int shim_sched_setaffinity(pid_t pid, size_t len, __kernel_cpu_set_t* user_mask_ptr);
 int shim_sched_getaffinity(pid_t pid, size_t len, __kernel_cpu_set_t* user_mask_ptr);
+#if defined(__i386__) || defined(__x86_64__)
 int shim_set_thread_area(struct user_desc* u_info);
+#endif
 int shim_io_setup(unsigned nr_reqs, aio_context_t* ctx);
 int shim_io_destroy(aio_context_t ctx);
 int shim_io_getevents(aio_context_t ctx_id, long min_nr, long nr, struct io_event* events,
                       struct timespec* timeout);
 int shim_io_submit(aio_context_t ctx_id, long nr, struct iocb** iocbpp);
 int shim_io_cancel(aio_context_t ctx_id, struct iocb* iocb, struct io_event* result);
+#if defined(__i386__) || defined(__x86_64__)
 int shim_get_thread_area(struct user_desc* u_info);
+#endif
 int shim_lookup_dcookie(unsigned long cookie64, char* buf, size_t len);
 int shim_epoll_create(int size);
 int shim_remap_file_pages(void* start, size_t size, int prot, ssize_t pgoff, int flags);

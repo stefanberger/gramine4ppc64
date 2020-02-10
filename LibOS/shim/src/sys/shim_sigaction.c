@@ -160,7 +160,17 @@ int shim_do_sigaltstack(const stack_t* ss, stack_t* oss) {
     if (oss)
         *oss = *cur_ss;
 
+#if defined(__i386__) || defined(__x86_64__)
     void* sp = (void*)shim_get_tcb()->context.regs->rsp;
+#elif defined(__powerpc64__)
+    debug(">>>>>>>>> FIXME! %s @ %u: %p\n", __func__, __LINE__, shim_get_tcb());
+    // FIXME
+    //void* sp = (void*)shim_get_tcb()->context.regs->gpr[1];
+#else
+# error Unsupported architecture
+#endif
+
+#ifndef __powerpc64__
     /* check if thread is currently executing on an active altstack */
     if (!(cur_ss->ss_flags & SS_DISABLE) && sp && cur_ss->ss_sp <= sp &&
             sp < cur_ss->ss_sp + cur_ss->ss_size) {
@@ -171,6 +181,7 @@ int shim_do_sigaltstack(const stack_t* ss, stack_t* oss) {
             return -EPERM;
         }
     }
+#endif
 
     if (ss) {
         if (ss->ss_flags & SS_DISABLE) {

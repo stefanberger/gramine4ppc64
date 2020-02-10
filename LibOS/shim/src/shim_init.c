@@ -649,6 +649,8 @@ noreturn void* shim_init (int argc, void * args)
                                        // that arrives during initialization
     debug_setbuf(shim_get_tcb(), true);
 
+    debug("shim_init: argc: %d\n", argc);
+
 #ifdef PROFILE
     unsigned long begin_time = GET_PROFILE_INTERVAL();
 #endif
@@ -792,10 +794,12 @@ noreturn void* shim_init (int argc, void * args)
     shim_tcb_t * cur_tcb = shim_get_tcb();
     struct shim_thread * cur_thread = (struct shim_thread *) cur_tcb->tp;
 
+#if defined(__i386__) || defined(__x86_64__)
     if (cur_tcb->context.regs && cur_tcb->context.regs->rsp) {
         vdso_map_migrate();
         restore_context(&cur_tcb->context);
     }
+#endif
 
     if (cur_thread->exec)
         execute_elf_object(cur_thread->exec, argcp, argp, auxp);
@@ -1045,7 +1049,13 @@ void check_stack_hook (void)
     struct shim_thread * cur_thread = get_cur_thread();
 
     void * rsp;
+#if defined(__i386__) || defined(__x86_64__)
     __asm__ volatile ("movq %%rsp, %0" : "=r"(rsp) :: "memory");
+#elif defined(__powerpc64__)
+    __asm__ volatile ("mr %0, %%r1": "=r"(rsp) :: "memory");
+#else
+# error Missing architecture support
+#endif
 
     if (rsp <= cur_thread->stack_top && rsp > cur_thread->stack) {
         if ((uintptr_t)rsp - (uintptr_t)cur_thread->stack < PAL_CB(alloc_align))

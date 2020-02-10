@@ -22,7 +22,11 @@
  * Most of the source codes are imported from GNU C library.
  */
 
+#if defined(__i386__) || defined(__x86_64__)
 #include "dl-machine-x86_64.h"
+#elif defined(__powerpc64__)
+#include "dl-machine-ppc64.h"
+#endif
 
 #define elf_dynamic_do_rel       elf_dynamic_do_rela
 #define RELCOUNT_IDX             VERSYMIDX(DT_RELACOUNT)

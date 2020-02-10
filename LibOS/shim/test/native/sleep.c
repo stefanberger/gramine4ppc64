@@ -2,6 +2,7 @@
 #include <unistd.h>
 
 int main(int argc, char** argv) {
+    printf("main\n");
     sleep(3);
     printf("Hello world (%s)!\n", argv[0]);
     return 0;

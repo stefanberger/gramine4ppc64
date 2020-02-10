@@ -66,6 +66,7 @@ static void elf_machine_rela(struct link_map* l, Elf64_Rela* reloc, Elf64_Sym* s
     //printf("r_type: %ld\n", r_type);
 
     if (r_type == R_PPC64_RELATIVE) {
+        printf("!!! Skipping over a R_PPC_RELATIVE!\n");
         /* This is defined in rtld.c, but nowhere in the static libc.a;
            make the reference weak so static programs can still link.
            This declaration cannot be done when compiling rtld.c

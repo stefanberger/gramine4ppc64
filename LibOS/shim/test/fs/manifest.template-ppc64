@@ -1,0 +1,16 @@
+loader.preload = file:../../../../Runtime/libsysdb.so
+loader.env.LD_LIBRARY_PATH = /lib
+loader.debug_type = inline
+loader.syscall_symbol = syscalldb
+
+fs.mount.graphene_lib.type = chroot
+fs.mount.graphene_lib.path = /lib
+fs.mount.graphene_lib.uri = file:../../../../Runtime
+
+fs.mount.bin.type = chroot
+fs.mount.bin.path = /bin
+fs.mount.bin.uri = file:/bin
+
+fs.mount.output.type = chroot
+fs.mount.output.path = /mounted
+fs.mount.output.uri = file:tmp

@@ -4,7 +4,6 @@ c_executables = \
 	bootstrap \
 	bootstrap_pie \
 	bootstrap_static \
-	cpuid \
 	epoll_wait_timeout \
 	eventfd \
 	exec \
@@ -56,6 +55,11 @@ c_executables = \
 	udp \
 	unix \
 	vfork_and_exec
+
+ifeq ($(ARCH),x86_64)
+c_executables += \
+	cpuid
+endif
 
 cxx_executables = bootstrap-c++
 

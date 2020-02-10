@@ -35,7 +35,9 @@
 #include <errno.h>
 #include <sys/syscall.h>
 #include <sys/mman.h>
+#if defined(__i386__) || defined(__x86_64__)
 #include <asm/prctl.h>
+#endif
 #include <linux/futex.h>
 
 void release_robust_list (struct robust_list_head * head);

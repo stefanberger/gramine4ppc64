@@ -6,8 +6,13 @@
 #define THREAD_STACK_SIZE (PRESET_PAGESIZE * 2)
 #define ALT_STACK_SIZE    PRESET_PAGESIZE
 
+#ifdef __powerpc64__
+#define USE_VSYSCALL_GETTIME 1
+#define USE_VDSO_GETTIME     0
+#else
 #define USE_VSYSCALL_GETTIME 0
 #define USE_VDSO_GETTIME     1
+#endif
 #define USE_CLOCK_GETTIME    1
 
 #define USE_ARCH_RDRAND 0

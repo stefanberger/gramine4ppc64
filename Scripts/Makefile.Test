@@ -22,7 +22,7 @@ CXXFLAGS-libos-debug = -I$(SHIMDIR)/include -I$(PALDIR)/../include/pal -I$(PALDI
 LDFLAGS-libos-debug = -L$(SHIMDIR)/src -L$(PALDIR)/host/$(PAL_HOST) -Wl,-rpath-link=$(abspath $(RUNTIME)) -lpal -lsysdb_debug
 
 .PHONY: all
-ifeq ($(findstring x86_64,$(SYS))$(findstring linux,$(SYS)),x86_64linux)
+ifeq ($(ARCH), $(filter $(ARCH),x86_64 ppc64))
 all: pal_loader $(target) | $(exec_target) $(call expand_target_to_sgx,$(exec_target)) $(call expand_target_to_sig,$(exec_target))
 else
 all: pal_loader

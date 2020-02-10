@@ -20,7 +20,9 @@
  * Implementation of system call "execve".
  */
 
+#if defined(__i386__) || defined(__x86_64__)
 #include <asm/prctl.h>
+#endif
 #include <errno.h>
 #include <linux/futex.h>
 #include <sys/mman.h>
@@ -159,6 +161,16 @@ retry_dump_vmas:
         if (vma->addr == cur_thread->stack)
             continue;
 
+#if defined(__powerpc64__)
+        // FIXME: Why do we have to do this on ppc64 ?
+        // printf accesses require to keep the tcb around
+        // Maybe we should have a static TCB we use when fs_base = 0??
+        register void *tcb __asm__("r13");
+        if (vma->addr <= (tcb - 0x7000) && (tcb - 0x7000) <= vma->addr + vma->length) {
+            debug("FIXME: PRESERVING TCB MEMORY AREA.");
+            continue;
+        }
+#endif
         /* Free all the mapped VMAs */
         if (!(vma->flags & VMA_UNMAPPED))
             DkVirtualMemoryFree(vma->addr, vma->length);
@@ -241,6 +253,7 @@ static int shim_do_execve_rtld(struct shim_handle* hdl, const char** argv, const
         .new_argcp     = new_argcp,
         .new_auxp      = new_auxp
     };
+    debug("%s: DOING SWITCH_STACK\n", __func__);
     __SWITCH_STACK(new_argcp, &__shim_do_execve_rtld, &arg);
     return 0;
 }

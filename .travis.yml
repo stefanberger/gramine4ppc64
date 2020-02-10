@@ -20,6 +20,16 @@ script:
     && _VERBOSE=1 ./run_tests.sh || ERROR=1
     && sudo apt-get -y update && sudo apt-get -y install python3-pip && sudo pip3 install --upgrade pytest && make pal-regression.xml || ERROR=1
     && popd &>/dev/null
+    && pushd LibOS/shim/test/fs &>/dev/null
+    &&  [ $(uname -m) = "ppc64le" ] && cp manifest.template-ppc64 manifest
+    ;   rm -f fs-test.xml && make fs-test.xml || ERROR=1
+    && popd &>/dev/null
+    && pushd LibOS/shim/test/regression &>/dev/null
+    &&  [ $(uname -m) = "ppc64le" ]
+       && sudo mkdir -p /usr/lib64
+       && for f in *template-ppc64; do cp $f ${f%%.template-ppc64}; done
+    ;   rm -f libos-regression.xml && make libos-regression.xml || ERROR=1
+    && popd &>/dev/null
     && [ $ERROR -eq 0 ] || false
 
 matrix:
