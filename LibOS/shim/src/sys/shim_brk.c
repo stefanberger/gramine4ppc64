@@ -30,7 +30,11 @@
 #include <shim_utils.h>
 #include <shim_vma.h>
 
-#define BRK_SIZE 4096
+#if defined(__i386__) || defined(__x86_64__)
+# define BRK_SIZE 4096
+#else
+# define BRK_SIZE 65536
+#endif
 
 struct shim_brk_info {
     size_t data_segment_size;

@@ -4,7 +4,6 @@ c_executables = \
 	bootstrap \
 	bootstrap_pie \
 	bootstrap_static \
-	cpuid \
 	epoll_wait_timeout \
 	eventfd \
 	exec \
@@ -57,6 +56,11 @@ c_executables = \
 	unix \
 	vfork_and_exec
 
+ifeq ($(ARCH),x86_64)
+c_executables += \
+	cpuid
+endif
+
 cxx_executables = bootstrap-c++
 
 manifests = \
@@ -91,6 +95,7 @@ target = \
 
 clean-extra += clean-tmp
 
+include ../../../../Scripts/Makefile.Arch
 include ../../../../Scripts/Makefile.configs
 include ../../../../Scripts/Makefile.manifest
 include ../../../../Scripts/Makefile.Test
@@ -98,7 +103,7 @@ include ../../../../Scripts/Makefile.Test
 CFLAGS-bootstrap_static = -static
 CFLAGS-bootstrap_pie = -fPIC -pie
 CFLAGS-shared_object = -fPIC -pie
-CFLAGS-syscall += -I$(PALDIR)/../include -I$(PALDIR)/host/$(PAL_HOST)
+CFLAGS-syscall += -I$(PALDIR)/../include -I$(PALDIR)/../include/arch/$(ARCH) -I$(PALDIR)/host/$(PAL_HOST)
 CFLAGS-openmp = -fopenmp
 CFLAGS-multi_pthread = -pthread
 CFLAGS-exit_group = -pthread

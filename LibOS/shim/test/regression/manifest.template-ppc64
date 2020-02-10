@@ -1,0 +1,24 @@
+loader.preload = file:../../../../Runtime/libsysdb.so
+loader.env.LD_LIBRARY_PATH = /lib:/usr/lib64
+loader.debug_type = inline
+loader.syscall_symbol = syscalldb
+
+fs.mount.lib.type = chroot
+fs.mount.lib.path = /lib
+fs.mount.lib.uri = file:../../../../Runtime
+
+fs.mount.host_usr_lib.type = chroot
+fs.mount.host_usr_lib.path = /usr/lib64
+fs.mount.host_usr_lib.uri = file:/usr/lib64
+
+fs.mount.bin.type = chroot
+fs.mount.bin.path = /bin
+fs.mount.bin.uri = file:/bin
+
+sys.brk.size = 32M
+sys.stack.size = 4M
+
+# allow to bind on port 8000
+net.allow_bind.1 = 127.0.0.1:8000
+# allow to connect to port 8000
+net.allow_peer.1 = 127.0.0.1:8000

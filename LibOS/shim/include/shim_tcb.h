@@ -8,6 +8,7 @@
 #define SHIM_TCB_CANARY 0xdeadbeef
 
 struct shim_regs {
+#if defined(__i386__) || defined(__x86_64__)
     uint64_t    orig_rax;
     uint64_t    rsp;
     uint64_t    r15;
@@ -26,6 +27,22 @@ struct shim_regs {
     uint64_t    rbp;
     uint64_t    rflags;
     uint64_t    rip;
+#elif defined(__powerpc64__)
+    /* same layout as pt_regs */
+    uint64_t    gpr[32];
+    uint64_t    nip;
+    uint64_t    msr;
+    uint64_t    orig_gpr3;
+    uint64_t    ctr;
+    uint64_t    link;
+    uint64_t    xer;
+    uint64_t    ccr;
+    uint64_t    softe;
+    uint64_t    trap;
+    uint64_t    dar;
+    uint64_t    dsisr;
+    uint64_t    result;
+#endif
 };
 
 struct shim_context {
@@ -57,6 +74,17 @@ struct shim_tcb {
         bool has_fault;
     } test_range;
 };
+
+#if defined(__i386__) || defined(__x86_64__)
+
+static inline uint64_t shim_context_get_sp(struct shim_context *context) {
+    return context->regs->rsp;
+}
+
+static inline void shim_context_set_sp(struct shim_context *context,
+                                       uint64_t rsp) {
+    context->regs->rsp = rsp;
+}
 
 #define SHIM_TCB_GET(member)                                            \
     ({                                                                  \
@@ -137,6 +165,109 @@ struct shim_tcb {
             __abort();                                                  \
         }                                                               \
     } while (0)
+
+#elif defined(__powerpc64__)
+
+static inline uint64_t shim_context_get_sp(struct shim_context *context) {
+    return context->regs->gpr[1];
+}
+
+static inline void shim_context_set_sp(struct shim_context *context,
+                                       uint64_t rsp) {
+    context->regs->gpr[1] = rsp;
+}
+
+#define TLS_TCB_OFFSET 0x7000
+
+#define TLS_PAL_TCB_OFFSET (sizeof(PAL_TCB) + TLS_TCB_OFFSET)
+
+static inline PAL_TCB *shim_get_pal_tcb(void) {
+    void *r13;
+
+    __asm__ ("mr %0, %%r13\n\t"
+             : "=r" (r13)
+    );
+    if (r13)
+        return r13 - TLS_TCB_OFFSET - sizeof(PAL_TCB);
+    return NULL;
+}
+
+static inline PAL_TCB *_shim_set_r13(PAL_TCB *ptcb) {
+    PAL_TCB *orig_tcb = shim_get_pal_tcb();
+
+    if (ptcb) {
+        __asm__("addi %%r13, %0, %1\n\t"
+                :
+                : "r" (ptcb),
+                  "i" (sizeof(PAL_TCB) + TLS_TCB_OFFSET)
+                : "r13"
+        );
+    } else {
+        __asm__("li %%r13, 0\n\t"
+                :
+                :
+                : "r13"
+        );
+    }
+    return orig_tcb;
+}
+
+#define SHIM_TCB_GET(member)                                            \
+    ({                                                                  \
+        shim_tcb_t* tcb;                                                \
+        PAL_TCB *ptcb;							\
+        __typeof__(tcb->member) ret;                                    \
+        static_assert(sizeof(ret) == 8 ||                               \
+                      sizeof(ret) == 4 ||                               \
+                      sizeof(ret) == 2 ||                               \
+                      sizeof(ret) == 1,                                 \
+                      "SHIM_TCB_GET can be used only for "              \
+                      "8, 4, 2, or 1-byte(s) members");                 \
+        ptcb = shim_get_pal_tcb();                                      \
+        tcb = (shim_tcb_t *)&ptcb->glibc_tcb.LibOS_TCB->libos_tcb[0];   \
+        ret = tcb->member;                                              \
+        ret;                                                            \
+    })
+
+#define SHIM_TCB_SET(member, value)                                     \
+    do {                                                                \
+        shim_tcb_t* tcb;                                                \
+        PAL_TCB *ptcb;							\
+        static_assert(sizeof(tcb->member) == 8 ||                       \
+                      sizeof(tcb->member) == 4 ||                       \
+                      sizeof(tcb->member) == 2 ||                       \
+                      sizeof(tcb->member) == 1,                         \
+                      "SHIM_TCB_SET can be used only for "              \
+                      "8, 4, 2, or 1-byte(s) members");                 \
+        ptcb = shim_get_pal_tcb();                                      \
+        tcb = (shim_tcb_t *)&ptcb->glibc_tcb.LibOS_TCB->libos_tcb[0];   \
+        tcb->member = value;                                            \
+    } while (0)
+
+// fs_base == NULL: switch to the shim_tcb if there is a glibc TCB set
+// fs_base != NULL: assume fs_base is from glibc, so we set it and
+//                  connect the shim_tcb to it via its LibOS_TCB pointer
+static inline void *shim_tcb_set_fs_base(unsigned long fs_base, shim_tcb_t *tcb) {
+    PAL_TCB *orig_ptcb = shim_get_pal_tcb();
+
+    if (fs_base == 0) {
+        PAL_TCB *ptcb = NULL;
+
+        if (orig_ptcb)
+            ptcb = orig_ptcb->glibc_tcb.LibOS_TCB;
+
+        /* If shim's and active TCB are different, switch to shim's TCB */
+        if (ptcb != orig_ptcb)
+            _shim_set_r13(ptcb);
+    } else {
+        PAL_TCB *r13_ptcb = (PAL_TCB *)fs_base;
+        PAL_TCB *ptcb = (void *)tcb - offsetof(PAL_TCB, libos_tcb);
+        r13_ptcb->glibc_tcb.LibOS_TCB = ptcb;
+        _shim_set_r13(r13_ptcb);
+    }
+    return orig_ptcb;
+}
+#endif
 
 static inline void __shim_tcb_init(shim_tcb_t* shim_tcb) {
     shim_tcb->canary = SHIM_TCB_CANARY;

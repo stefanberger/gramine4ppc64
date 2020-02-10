@@ -23,7 +23,9 @@
  * "setsid" and "getsid".
  */
 
+#if defined(__i386__) || defined(__x86_64__)
 #include <asm/prctl.h>
+#endif
 #include <errno.h>
 #include <pal.h>
 #include <pal_error.h>

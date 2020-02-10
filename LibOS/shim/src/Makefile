@@ -1,5 +1,6 @@
 RUNTIME_DIR = $(CURDIR)/../../../Runtime
 
+include ../../../Scripts/Makefile.Arch
 include ../../../Scripts/Makefile.configs
 
 CFLAGS += -fPIC -Winline -Wwrite-strings \
@@ -8,7 +9,8 @@ CFLAGS += -fPIC -Winline -Wwrite-strings \
 	  $(cc-option, -Wnull-dereference) \
 	  -fno-stack-protector -fno-builtin -Wno-inline \
 	  -I../include -I../../../Pal/include/lib -I../../../Pal/include/pal \
-	  -I../../../Pal/include/elf
+	  -I../../../Pal/include/elf -I../../../Pal/include/arch/$(ARCH) \
+	  -I../include/arch/$(ARCH)
 
 CFLAGS += -Wextra
 
@@ -33,9 +35,9 @@ objs = \
 	shim_object.o \
 	shim_parser.o \
 	shim_syscalls.o \
-	shim_table.o \
-	start.o \
-	syscallas.o \
+	shim_table-$(ARCH).o \
+	start-$(ARCH).o \
+	syscallas-$(ARCH).o \
 	bookkeep/shim_handle.o \
 	bookkeep/shim_signal.o \
 	bookkeep/shim_thread.o \
@@ -108,7 +110,7 @@ all_objs = \
 graphene_lib = .lib/graphene-lib.a
 pal_lib = $(RUNTIME_DIR)/libpal-$(PAL_HOST).so
 
-ifeq ($(findstring x86_64,$(SYS))$(findstring linux,$(SYS)),x86_64linux)
+ifeq ($(ARCH),$(filter $(ARCH),x86_64 ppc64))
 all: $(files_to_build) $(files_to_install)
 else
 all:
@@ -117,15 +119,15 @@ endif
 $(files_to_install): $(RUNTIME_DIR)/%: %
 	$(call cmd,ln_sf)
 
-LDFLAGS-libsysdb.so += --version-script shim.map -T shim.lds
+LDFLAGS-libsysdb.so += --version-script shim.map -T shim-$(ARCH).lds
 libsysdb.so: $(objs) $(filter %.map %.lds,$(LDFLAGS-$@)) \
-	     $(graphene_lib) $(pal_lib) shim.map shim.lds
+	     $(graphene_lib) $(pal_lib) shim.map shim-$(ARCH).lds
 	$(call cmd,ld_so_o)
 
-LDFLAGS-libsysdb_debug.so += --version-script shim-debug.map -T shim.lds
+LDFLAGS-libsysdb_debug.so += --version-script shim-debug.map -T shim-$(ARCH).lds
 libsysdb_debug.so: $(filter-out syscallas.o,$(objs)) \
 		   $(filter %.map %.lds,$(LDFLAGS-$@)) \
-		   $(graphene_lib) $(pal_lib) shim-debug.map shim.lds
+		   $(graphene_lib) $(pal_lib) shim-debug.map shim-$(ARCH).lds
 	$(call cmd,ld_so_o)
 
 .PHONY: graphene_lib_recurse
@@ -153,17 +155,26 @@ libsysdb.a: $(objs)
 %.s: %.S
 	$(call cmd,cpp_s_S)
 
-syscallas.S shim_checkpoint.c: asm-offsets.h
+syscallas-$(ARCH).S shim_checkpoint.c: asm-offsets.h
 
 include ../../../Scripts/Makefile.rules
 
+ifeq ($(ARCH),x86_64)
 LDFLAGS-vdso/vdso.so.dbg = -nostdlib -shared \
 	--hash-style=both --build-id -Bsymbolic \
 	-m elf_x86_64 --no-undefined \
 	-z max-page-size=4096 -z common-page-size=4096 \
-	-T vdso/vdso.lds -soname linux-vdso.so.1
+	-T vdso/vdso-x86_64.lds -soname linux-vdso.so.1
+endif
+ifeq ($(ARCH),ppc64)
+LDFLAGS-vdso/vdso.so.dbg = -nostdlib -shared \
+	--hash-style=both --build-id -Bsymbolic \
+	-m elf64ppc --no-undefined \
+	-z max-page-size=65536 -z common-page-size=65536 \
+	-T vdso/vdso-ppc64.lds -soname linux-vdso.so.1
+endif
 vdso/vdso.so.dbg: LDFLAGS =
-vdso/vdso.so.dbg: vdso/vdso.lds vdso/vdso.o vdso/vdso-note.o | vdso/.vdso-no-reloc-checked
+vdso/vdso.so.dbg: vdso/vdso-$(ARCH).lds vdso/vdso.o vdso/vdso-note.o | vdso/.vdso-no-reloc-checked
 	$(call cmd,ld)
 
 # vdso.so is required to have no relocations. This rule checks it.
