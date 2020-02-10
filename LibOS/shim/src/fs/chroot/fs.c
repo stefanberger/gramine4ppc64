@@ -38,7 +38,9 @@
 #include <asm/fcntl.h>
 #include <asm/mman.h>
 #include <asm/unistd.h>
-#include <asm/prctl.h>
+#if defined(__i386__) || defined(__x86_64__)
+# include <asm/prctl.h>
+#endif
 
 #define URI_MAX_SIZE    STR_SIZE
 
