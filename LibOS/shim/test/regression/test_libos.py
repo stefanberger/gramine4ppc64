@@ -6,6 +6,7 @@ import subprocess
 
 from regression import (
     HAS_SGX,
+    ON_PPC,
     RegressionTestCase,
 )
 
@@ -92,6 +93,7 @@ class TC_01_Bootstrap(RegressionTestCase):
         self.assertIn('child exited with status: 0', stdout)
         self.assertIn('test completed successfully', stdout)
 
+    @unittest.skipIf(ON_PPC, "Does not run on PPC yet (vfork)")
     def test_203_vfork_and_exec(self):
         stdout, _ = self.run_binary(['vfork_and_exec'], timeout=60)
 
@@ -134,6 +136,7 @@ class TC_01_Bootstrap(RegressionTestCase):
         with self.expect_returncode(134):
             self.run_binary(['abort'])
 
+    @unittest.skipIf(ON_PPC, "Does not run on PPC yet")
     def test_403_signalexit_multithread(self):
         with self.expect_returncode(134):
             self.run_binary(['abort_multithread'])
@@ -284,11 +287,13 @@ class TC_30_Syscall(RegressionTestCase):
         # Futex Timeout Test
         self.assertIn('futex correctly timed out', stdout)
 
+    # flaky
     def test_042_futex_requeue(self):
         stdout, _ = self.run_binary(['futex_requeue'])
 
         self.assertIn('Test successful!', stdout)
 
+    # flaky
     def test_043_futex_wake_op(self):
         stdout, _ = self.run_binary(['futex_wake_op'])
 

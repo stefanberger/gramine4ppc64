@@ -1,0 +1,430 @@
+---
+ elf/dl-init.c                             |   51 ++++++++++++++++++++++++++++--
+ elf/dl-load.c                             |    8 ++++
+ elf/dl-open.c                             |    1 
+ elf/dl-sysdep.c                           |   20 +++++++++++
+ elf/rtld.c                                |   26 ++++++++++++++-
+ nptl/pthread_create.c                     |    4 ++
+ sysdeps/powerpc/nptl/tls.h                |   12 ++++++-
+ sysdeps/unix/sysv/linux/createthread.c    |    9 +++++
+ sysdeps/unix/sysv/linux/powerpc/syscall.S |    2 -
+ 9 files changed, 125 insertions(+), 8 deletions(-)
+
+Index: glibc-2.27/elf/dl-load.c
+===================================================================
+--- glibc-2.27.orig/elf/dl-load.c
++++ glibc-2.27/elf/dl-load.c
+@@ -2149,9 +2149,15 @@ _dl_map_object (struct link_map *loader,
+ 			  : N_("wrong ELF class: ELFCLASS32"));
+       else
+ 	_dl_signal_error (errno, name, NULL,
+-			  N_("cannot open shared object file"));
++			  N_("(PATCHED) cannot open shared object file"));
+     }
+ 
++#if 0
++	_dl_signal_error (errno, name, NULL,
++			  N_("GOOD!"));
++#endif
++
++
+   void *stack_end = __libc_stack_end;
+   return _dl_map_object_from_fd (name, origname, fd, &fb, realname, loader,
+ 				 type, mode, &stack_end, nsid);
+Index: glibc-2.27/elf/dl-sysdep.c
+===================================================================
+--- glibc-2.27.orig/elf/dl-sysdep.c
++++ glibc-2.27/elf/dl-sysdep.c
+@@ -116,11 +116,15 @@ _dl_sysdep_start (void **start_argptr,
+   user_entry = (ElfW(Addr)) ENTRY_POINT;
+   GLRO(dl_platform) = NULL; /* Default to nothing known about the platform.  */
+ 
+-  for (av = GLRO(dl_auxv); av->a_type != AT_NULL; set_seen (av++))
++  //_dl_printf("IN _dl_sysdep_start!!\n");
++
++  for (av = GLRO(dl_auxv); av->a_type != AT_NULL; set_seen (av++)) {
++    //_dl_printf("av->a_type = 0x%lx\n", av->a_type);
+     switch (av->a_type)
+       {
+       case AT_PHDR:
+ 	phdr = (void *) av->a_un.a_val;
++	//_dl_printf("%s @ %u: phdr: 0x%lx\n", __func__, __LINE__, (unsigned long)phdr);
+ 	break;
+       case AT_PHNUM:
+ 	phnum = av->a_un.a_val;
+@@ -184,6 +188,9 @@ _dl_sysdep_start (void **start_argptr,
+       DL_PLATFORM_AUXV
+ #endif
+       }
++  }
++
++  //_dl_printf("%s @ %u: phdr: 0x%lx\n", __func__, __LINE__, (unsigned long)phdr);
+ 
+ #ifndef HAVE_AUX_SECURE
+   if (seen != -1)
+@@ -205,11 +212,15 @@ _dl_sysdep_start (void **start_argptr,
+     }
+ #endif
+ 
++  //_dl_printf("%s @ %u: phdr: 0x%lx\n", __func__, __LINE__, (unsigned long)phdr);
++
+ #ifndef HAVE_AUX_PAGESIZE
+   if (GLRO(dl_pagesize) == 0)
+     GLRO(dl_pagesize) = __getpagesize ();
+ #endif
+ 
++  //_dl_printf("%s @ %u: phdr: 0x%lx\n", __func__, __LINE__, (unsigned long)phdr);
++
+ #ifdef NEED_DL_SYSINFO
+   if (new_sysinfo != 0)
+     {
+@@ -221,20 +232,24 @@ _dl_sysdep_start (void **start_argptr,
+     }
+ #endif
+ 
++  //_dl_printf("%s @ %u: phdr: 0x%lx\n", __func__, __LINE__, (unsigned long)phdr);
+   __tunables_init (_environ);
+ 
+ #ifdef DL_SYSDEP_INIT
+   DL_SYSDEP_INIT;
+ #endif
++//  _dl_printf("%s @ %u: phdr: 0x%lx\n", __func__, __LINE__, (unsigned long)phdr);
+ 
+ #ifdef DL_PLATFORM_INIT
+   DL_PLATFORM_INIT;
+ #endif
++//  _dl_printf("%s @ %u: phdr: 0x%lx\n", __func__, __LINE__, (unsigned long)phdr);
+ 
+   /* Determine the length of the platform name.  */
+   if (GLRO(dl_platform) != NULL)
+     GLRO(dl_platformlen) = strlen (GLRO(dl_platform));
+ 
++//  _dl_printf("%s @ %u: phdr: 0x%lx\n", __func__, __LINE__, (unsigned long)phdr);
+   if (__sbrk (0) == _end)
+     /* The dynamic linker was run as a program, and so the initial break
+        starts just after our bss, at &_end.  The malloc in dl-minimal.c
+@@ -244,13 +259,16 @@ _dl_sysdep_start (void **start_argptr,
+     __sbrk (GLRO(dl_pagesize)
+ 	    - ((_end - (char *) 0) & (GLRO(dl_pagesize) - 1)));
+ 
++//  _dl_printf("%s @ %u: phdr: 0x%lx\n", __func__, __LINE__, (unsigned long)phdr);
+   /* If this is a SUID program we make sure that FDs 0, 1, and 2 are
+      allocated.  If necessary we are doing it ourself.  If it is not
+      possible we stop the program.  */
+   if (__builtin_expect (__libc_enable_secure, 0))
+     __libc_check_standard_fds ();
+ 
++//  _dl_printf("%s @ %u: Calling dl_main with phdr: 0x%lx\n", __func__, __LINE__, (unsigned long)phdr);
+   (*dl_main) (phdr, phnum, &user_entry, GLRO(dl_auxv));
++//  _dl_printf("%s @ %u: returning user_entry 0x%lx\n", __func__, __LINE__, (unsigned long)user_entry);
+   return user_entry;
+ }
+ 
+Index: glibc-2.27/elf/rtld.c
+===================================================================
+--- glibc-2.27.orig/elf/rtld.c
++++ glibc-2.27/elf/rtld.c
+@@ -436,6 +436,8 @@ _dl_start_final (void *arg, struct dl_st
+ #endif
+     }
+ 
++  //_dl_printf("%s @ %u: LEAVE: start_addr = 0x%lx\n", __func__, __LINE__, (unsigned long)start_addr);
++
+   return start_addr;
+ }
+ 
+@@ -547,6 +549,8 @@ _dl_start (void *arg)
+ # define ELF_MACHINE_START_ADDRESS(map, start) (start)
+ #endif
+ 
++//    _dl_printf("%s @ %u: returning address: 0x%lx\n", __func__, __LINE__, ELF_MACHINE_START_ADDRESS (GL(dl_ns)[LM_ID_BASE]._ns_loaded, entry));
++
+     return ELF_MACHINE_START_ADDRESS (GL(dl_ns)[LM_ID_BASE]._ns_loaded, entry);
+   }
+ }
+@@ -756,10 +760,17 @@ cannot allocate TLS data structures for
+      so it knows not to pass this dtv to the normal realloc.  */
+   GL(dl_initial_dtv) = GET_DTV (tcbp);
+ 
++  //_dl_printf("%s @ %u   DISABLED TLS RELATED CODE\n", __func__, __LINE__);
+   /* And finally install it for the main thread.  */
++
++  //_dl_printf("%s @ %u   EXPECT A CRASH HERE   tcbp: 0x%lx\n", __func__, __LINE__, (unsigned long)tcbp);
+   const char *lossage = TLS_INIT_TP (tcbp);
++  //_dl_printf("%s @ %u\n", __func__, __LINE__);
+   if (__glibc_unlikely (lossage != NULL))
+     _dl_fatal_printf ("cannot set up thread-local storage: %s\n", lossage);
++
++  //_dl_printf("%s @ %u   SURVIVED CRASH HERE   tcbp: 0x%lx\n", __func__, __LINE__, (unsigned long)tcbp);
++
+   tls_init_tp_called = true;
+ 
+   return tcbp;
+@@ -904,6 +915,8 @@ dl_main (const ElfW(Phdr) *phdr,
+ #endif
+   void *tcbp = NULL;
+ 
++//  _dl_printf("%s @ %u: phdr: 0x%lx\n", __func__, __LINE__, (unsigned long)phdr);
++
+   GL(dl_init_static_tls) = &_dl_nothread_init_static_tls;
+ 
+ #if defined SHARED && defined _LIBC_REENTRANT \
+@@ -1101,7 +1114,9 @@ of this helper program; chances are you
+ #ifdef HAVE_AUX_VECTOR
+       /* Adjust the on-stack auxiliary vector so that it looks like the
+ 	 binary was executed directly.  */
+-      for (ElfW(auxv_t) *av = auxv; av->a_type != AT_NULL; av++)
++      //_dl_printf("%s @ %u: auxv: 0x%lx\n", __func__, __LINE__, (unsigned long)auxv);
++      for (ElfW(auxv_t) *av = auxv; av->a_type != AT_NULL; av++) {
++        //_dl_printf("%s @ %u: av: 0x%lx\n", __func__, __LINE__, (unsigned long)av);
+ 	switch (av->a_type)
+ 	  {
+ 	  case AT_PHDR:
+@@ -1117,6 +1132,7 @@ of this helper program; chances are you
+ 	    av->a_un.a_val = (uintptr_t) _dl_argv[0];
+ 	    break;
+ 	  }
++      }
+ #endif
+     }
+   else
+@@ -1162,7 +1178,9 @@ of this helper program; chances are you
+   ++main_map->l_direct_opencount;
+ 
+   /* Scan the program header table for the dynamic section.  */
+-  for (ph = phdr; ph < &phdr[phnum]; ++ph)
++  //_dl_printf("%s @ %u: phdr: 0x%lx\n", __func__, __LINE__, (unsigned long)phdr);
++  for (ph = phdr; ph < &phdr[phnum]; ++ph) {
++    //_dl_printf("%s @ %u: ph: 0x%lx\n", __func__, __LINE__, (unsigned long)ph);
+     switch (ph->p_type)
+       {
+       case PT_PHDR:
+@@ -1262,6 +1280,7 @@ of this helper program; chances are you
+ 	main_map->l_relro_size = ph->p_memsz;
+ 	break;
+       }
++  }
+ 
+   /* Adjust the address of the TLS initialization image in case
+      the executable is actually an ET_DYN object.  */
+@@ -1646,8 +1665,10 @@ ERROR: ld.so: object '%s' cannot be load
+      the work but this does not matter, since it is not for production
+      use.  */
+   static const char preload_file[] = "/etc/ld.so.preload";
++  //_dl_printf("Result from __access(...) = %u\n", __access(preload_file, R_OK));
+   if (__glibc_unlikely (__access (preload_file, R_OK) == 0))
+     {
++      _dl_printf("SHOULD PROBABLY NOT BE EXECUTING HERE!\n");
+       /* Read the contents of the file.  */
+       file = _dl_sysdep_read_whole_file (preload_file, &file_size,
+ 					 PROT_READ | PROT_WRITE);
+@@ -2313,6 +2334,7 @@ ERROR: ld.so: object '%s' cannot be load
+ 
+   /* Once we return, _dl_sysdep_start will invoke
+      the DT_INIT functions and then *USER_ENTRY.  */
++//  _dl_printf("%s @ %u   LEAVE\n", __func__, __LINE__);
+ }
+ 
+ /* This is a little helper function for resolving symbols while
+Index: glibc-2.27/elf/dl-init.c
+===================================================================
+--- glibc-2.27.orig/elf/dl-init.c
++++ glibc-2.27/elf/dl-init.c
+@@ -19,6 +19,24 @@
+ #include <stddef.h>
+ #include <ldsodefs.h>
+ 
++#include <alloca.h>
++#include <stdlib.h>
++#include <unistd.h>
++#include <sys/param.h>
++#include <ldsodefs.h>
++#include <sysdep-cancel.h>
++#include "dynamic-link.h"
++#include <tls.h>
++#include <dl-irel.h>
++
++
++#if (!ELF_MACHINE_NO_RELA && !defined ELF_MACHINE_PLT_REL) \
++    || ELF_MACHINE_NO_REL
++# define PLTREL  ElfW(Rela)
++#else
++# define PLTREL  ElfW(Rel)
++#endif
++
+ 
+ /* Type of the initializer.  */
+ typedef void (*init_t) (int, char **, char **);
+@@ -27,6 +45,7 @@ typedef void (*init_t) (int, char **, ch
+ static void
+ call_init (struct link_map *l, int argc, char **argv, char **env)
+ {
++//  _dl_debug_printf("%s @ %u    link_map at 0x%lx   l->laddr: 0x%lx  l->l_name=%s\n",__func__, __LINE__, (unsigned long)l, (unsigned long)l->l_addr, l->l_name);
+   if (l->l_init_called)
+     /* This object is all done.  */
+     return;
+@@ -36,15 +55,18 @@ call_init (struct link_map *l, int argc,
+   l->l_init_called = 1;
+ 
+   /* Check for object which constructors we do not run here.  */
++//  _dl_debug_printf("%s @ %u\n",__func__, __LINE__);
+   if (__builtin_expect (l->l_name[0], 'a') == '\0'
+       && l->l_type == lt_executable)
+     return;
+ 
++//  _dl_debug_printf("%s @ %u\n",__func__, __LINE__);
+   /* Are there any constructors?  */
+   if (l->l_info[DT_INIT] == NULL
+       && __builtin_expect (l->l_info[DT_INIT_ARRAY] == NULL, 1))
+     return;
+ 
++//  _dl_debug_printf("%s @ %u\n",__func__, __LINE__);
+   /* Print a debug message if wanted.  */
+   if (__glibc_unlikely (GLRO(dl_debug_mask) & DL_DEBUG_IMPCALLS))
+     _dl_debug_printf ("\ncalling init: %s\n\n",
+@@ -54,10 +76,14 @@ call_init (struct link_map *l, int argc,
+      - the one named by DT_INIT
+      - the others in the DT_INIT_ARRAY.
+   */
+-  if (l->l_info[DT_INIT] != NULL)
++//  _dl_debug_printf("%s @ %u\n",__func__, __LINE__);
++  if (l->l_info[DT_INIT] != NULL) {
++//    _dl_debug_printf("%s @ %u   DT_INIT: addr: 0x%lx\n",__func__, __LINE__, (unsigned long)(l->l_addr + l->l_info[DT_INIT]->d_un.d_ptr));
+     DL_CALL_DT_INIT(l, l->l_addr + l->l_info[DT_INIT]->d_un.d_ptr, argc, argv, env);
++  }
+ 
+   /* Next see whether there is an array with initialization functions.  */
++//  _dl_debug_printf("%s @ %u\n",__func__, __LINE__);
+   ElfW(Dyn) *init_array = l->l_info[DT_INIT_ARRAY];
+   if (init_array != NULL)
+     {
+@@ -71,6 +97,20 @@ call_init (struct link_map *l, int argc,
+       for (j = 0; j < jm; ++j)
+ 	((init_t) addrs[j]) (argc, argv, env);
+     }
++
++#if 0
++  {
++    int i;
++    _dl_printf("-> sizeof(*reloc)=%u\n", (unsigned int)sizeof(PLTREL));
++    for (i = 0; i < 0x110; i++) {
++    const PLTREL *const reloc
++      = (const void *) (D_PTR (l, l_info[DT_JMPREL]) + i);
++    _dl_printf("reloc: 0x%lx  r_info: 0x%lx   reloc_offset: 0x%lx\n", (unsigned long)reloc, ELFW(R_TYPE)(reloc->r_info), (unsigned long)i);
++    }
++  }
++#endif
++
++//  _dl_debug_printf("%s @ %u  LEAVE\n",__func__, __LINE__);
+ }
+ 
+ 
+@@ -81,12 +121,15 @@ _dl_init (struct link_map *main_map, int
+   ElfW(Dyn) *preinit_array_size = main_map->l_info[DT_PREINIT_ARRAYSZ];
+   unsigned int i;
+ 
++//  _dl_debug_printf("%s @ %u\n",__func__, __LINE__);
++
+   if (__glibc_unlikely (GL(dl_initfirst) != NULL))
+     {
+       call_init (GL(dl_initfirst), argc, argv, env);
+       GL(dl_initfirst) = NULL;
+     }
+ 
++  //_dl_debug_printf("%s @ %u\n",__func__, __LINE__);
+   /* Don't do anything if there is no preinit array.  */
+   if (__builtin_expect (preinit_array != NULL, 0)
+       && preinit_array_size != NULL
+@@ -115,9 +158,13 @@ _dl_init (struct link_map *main_map, int
+      letting the user do it right.  Stupidity rules!  */
+ 
+   i = main_map->l_searchlist.r_nlist;
+-  while (i-- > 0)
++//  _dl_debug_printf("%s @ %u\n",__func__, __LINE__);
++  while (i-- > 0) {
++//    _dl_debug_printf("%s @ %u   i=%u\n",__func__, __LINE__,i);
+     call_init (main_map->l_initfini[i], argc, argv, env);
++  }
+ 
++//  _dl_debug_printf("%s @ %u  LEAVE\n",__func__, __LINE__);
+ #ifndef HAVE_INLINED_SYSCALLS
+   /* Finished starting up.  */
+   _dl_starting_up = 0;
+Index: glibc-2.27/elf/dl-open.c
+===================================================================
+--- glibc-2.27.orig/elf/dl-open.c
++++ glibc-2.27/elf/dl-open.c
+@@ -507,6 +507,7 @@ TLS generation counter wrapped!  Please
+   DL_STATIC_INIT (new);
+ #endif
+ 
++  //_dl_printf("%s @ %u: Calling _dl_init\n", __func__, __LINE__);
+   /* Run the initializer functions of new objects.  */
+   _dl_init (new, args->argc, args->argv, args->env);
+ 
+Index: glibc-2.27/nptl/pthread_create.c
+===================================================================
+--- glibc-2.27.orig/nptl/pthread_create.c
++++ glibc-2.27/nptl/pthread_create.c
+@@ -706,6 +706,10 @@ __pthread_create_2_1 (pthread_t *newthre
+   CHECK_THREAD_SYSINFO (pd);
+ #endif
+ 
++#ifdef THREAD_COPY_LIBOS_TCB
++  THREAD_COPY_LIBOS_TCB (pd);
++#endif
++
+   /* Inform start_thread (above) about cancellation state that might
+      translate into inherited signal state.  */
+   pd->parent_cancelhandling = THREAD_GETMEM (THREAD_SELF, cancelhandling);
+Index: glibc-2.27/sysdeps/powerpc/nptl/tls.h
+===================================================================
+--- glibc-2.27.orig/sysdeps/powerpc/nptl/tls.h
++++ glibc-2.27/sysdeps/powerpc/nptl/tls.h
+@@ -147,7 +147,7 @@ register void *__thread_register __asm__
+     void *libostcb = NULL;						      \
+     if (__thread_register) {						      \
+       libostcb = THREAD_GET_LIBOS_TCB();				      \
+-      _dl_printf("LibOS TCB at 0x%lx\n", (unsigned long)THREAD_GET_LIBOS_TCB());\
++      /*_dl_printf("LibOS TCB at 0x%lx\n", (unsigned long)THREAD_GET_LIBOS_TCB());*/\
+     }									      \
+     __thread_register = (void *) (tcbp) + TLS_TCB_OFFSET;		      \
+     THREAD_SET_TM_CAPABLE (__tcb_hwcap & PPC_FEATURE2_HAS_HTM ? 1 : 0);	      \
+@@ -247,6 +247,16 @@ register void *__thread_register __asm__
+ 		     - TLS_TCB_OFFSET))[-1].LibOS_TCB)
+ # define THREAD_SET_LIBOS_TCB(value) \
+     (THREAD_GET_LIBOS_TCB () = (value))
++#if 0
++# define THREAD_COPY_LIBOS_TCB(descr) \
++    (((tcbhead_t *) ((char *) (descr)					      \
++		     + TLS_PRE_TCB_SIZE))[-1].LibOS_TCB			      \
++     = THREAD_GET_LIBOS_TCB())
++# define THREAD_SET_LIBOS_TCB_DESCR(descr, VALUE) \
++    (((tcbhead_t *) ((char *) (descr)					      \
++		     + TLS_PRE_TCB_SIZE))[-1].LibOS_TCB			      \
++     = (VALUE))
++#endif
+ 
+ /* l_tls_offset == 0 is perfectly valid on PPC, so we have to use some
+    different value to mean unset l_tls_offset.  */
+Index: glibc-2.27/sysdeps/unix/sysv/linux/createthread.c
+===================================================================
+--- glibc-2.27.orig/sysdeps/unix/sysv/linux/createthread.c
++++ glibc-2.27/sysdeps/unix/sysv/linux/createthread.c
+@@ -96,6 +96,15 @@ create_thread (struct pthread *pd, const
+ 			   | 0);
+ 
+   TLS_DEFINE_INIT_TP (tp, pd);
++#if 0
++  printf("create_thread: tp at %p     pd at %p   &pd->tid at %p\n", tp, pd, &pd->tid);
++#ifdef THREAD_SET_LIBOS_TCB_DESCR
++  THREAD_SET_LIBOS_TCB_DESCR(pd, (void *)0xaffecafe);
++#endif
++//  void *addr = &(((tcbhead_t *) ((char *) (pd)
++//                     + TLS_PRE_TCB_SIZE))[-1].LibOS_TCB);
++//  printf(">>>>> LIBOS TCB PTR at %p\n", addr);
++#endif
+ 
+   if (__glibc_unlikely (ARCH_CLONE (&start_thread, STACK_VARIABLES_ARGS,
+ 				    clone_flags, pd, &pd->tid, tp, &pd->tid)
+

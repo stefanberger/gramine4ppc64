@@ -23,8 +23,9 @@
 
 #include <asm/posix_types.h>
 #include <asm/statfs.h>
-#include <asm/stat.h>
+#if defined(__i386__) || defined(__x86_64__)
 #include <asm/ldt.h>
+#endif
 #include <asm/signal.h>
 #include <asm/siginfo.h>
 #include <asm/poll.h>
@@ -49,6 +50,8 @@ typedef __kernel_clockid_t  clockid_t;
 typedef __kernel_key_t      key_t;
 typedef __kernel_timer_t    timer_t;
 typedef __kernel_fd_set     fd_set;
+
+#include <asm/stat.h>
 
 /* linux/time.h */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 18, 0)
@@ -218,12 +221,17 @@ __attribute__((packed));
 typedef long int greg_t;
 
 /* Number of general registers.  */
+#if defined(__i386__) || defined(__x86_64__)
 #define NGREG    23
+#elif defined(__powerpc64__)
+#define NGREG    48
+#endif
 
 /* Container for all general registers.  */
 typedef greg_t gregset_t[NGREG];
 
 /* Number of each register in the `gregset_t' array.  */
+#if defined(__i386__) || defined(__x86_64__)
 enum
 {
     REG_R8 = 0,
@@ -273,6 +281,100 @@ enum
     REG_CR2
 # define REG_CR2    REG_CR2
 };
+#elif defined(__powerpc64__)
+enum
+{
+    REG_R0 = 0,
+# define REG_R0     REG_R0
+    REG_R1,
+# define REG_R1     REG_R1
+    REG_R2,
+# define REG_R2     REG_R2
+    REG_R3,
+# define REG_R3     REG_R3
+    REG_R4,
+# define REG_R4     REG_R4
+    REG_R5,
+# define REG_R5     REG_R5
+    REG_R6,
+# define REG_R6     REG_R6
+    REG_R7,
+# define REG_R7     REG_R7
+    REG_R8,
+# define REG_R8     REG_R8
+    REG_R9,
+# define REG_R9     REG_R9
+    REG_R10,
+# define REG_R10    REG_R10
+    REG_R11,
+# define REG_R11    REG_R11
+    REG_R12,
+# define REG_R12    REG_R12
+    REG_R13,
+# define REG_R13    REG_R13
+    REG_R14,
+# define REG_R14    REG_R14
+    REG_R15,
+# define REG_R15    REG_R15
+    REG_R16,
+# define REG_R16    REG_R16
+    REG_R17,
+# define REG_R17    REG_R17
+    REG_R18,
+# define REG_R18    REG_R18
+    REG_R19,
+# define REG_R19    REG_R19
+    REG_R20,
+# define REG_R20    REG_R20
+    REG_R21,
+# define REG_R21    REG_R21
+    REG_R22,
+# define REG_R22    REG_R22
+    REG_R23,
+# define REG_R23    REG_R23
+    REG_R24,
+# define REG_R24    REG_R24
+    REG_R25,
+# define REG_R25    REG_R25
+    REG_R26,
+# define REG_R26    REG_R26
+    REG_R27,
+# define REG_R27    REG_R27
+    REG_R28,
+# define REG_R28    REG_R28
+    REG_R29,
+# define REG_R29    REG_R29
+    REG_R30,
+# define REG_R30    REG_R30
+    REG_R31,
+# define REG_R31    REG_R31
+    REG_NIP,
+# define REG_NIP    REG_NIP
+    REG_MSR,
+# define REG_MSR    REG_MSR
+    REG_ORIG_GPR3,
+# define REG_ORIG_GPR3    REG_ORIG_GPR3
+    REG_CTR,
+# define REG_CTR    REG_CTR
+    REG_LINK,
+# define REG_LINK   REG_LINK
+    REG_XER,
+# define REG_XER    REG_XER
+    REG_CCR,
+# define REG_CCR    REG_CCR
+    REG_SOFTE,
+# define REG_SOFTE  REG_SOFTE
+    REG_TRAP,
+# define REG_TRAP   REG_TRAP
+    REG_DAR,
+# define REG_DAR    REG_DAR
+    REG_DSISR,
+# define REG_DSISR  REG_DSISR
+    REG_RESULT,
+# define REG_RESULT REG_RESULT
+};
+
+#endif
 
 struct _libc_fpxreg {
     unsigned short int significand[4];
@@ -378,6 +480,22 @@ struct sockaddr {
     __SOCKADDR_COMMON (sa_);    /* Common data: address family and length.  */
     char sa_data[14];           /* Address data.  */
 };
+
+#define _SS_SIZE 128
+#define __SOCKADDR_COMMON_SIZE	(sizeof (unsigned short int))
+
+/* Structure large enough to hold any socket address (with the historical
+   exception of AF_UNIX).  */
+#define __ss_aligntype  unsigned long int
+#define _SS_PADSIZE \
+  (_SS_SIZE - __SOCKADDR_COMMON_SIZE - sizeof (__ss_aligntype))
+
+struct sockaddr_storage
+  {
+    __SOCKADDR_COMMON (ss_);    /* Address family, etc.  */
+    char __ss_padding[_SS_PADSIZE];
+    __ss_aligntype __ss_align;  /* Force desired alignment.  */
+  };
 
 /* linux/mqueue.h */
 struct __kernel_mq_attr {

@@ -17,6 +17,12 @@ script:
     && pushd Pal/regression &>/dev/null
     && make regression || ERROR=1
     && popd &>/dev/null
+    && pushd LibOS/shim/test/fs &>/dev/null
+    && make test || ERROR=1
+    && popd &>/dev/null
+    && pushd LibOS/shim/test/regression &>/dev/null
+    && make regression || ERROR=1
+    && popd &>/dev/null
     && [ $ERROR -eq 0 ] || false
 
 matrix:
