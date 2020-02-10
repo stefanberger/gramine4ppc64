@@ -30,15 +30,15 @@ CFLAGS += -Wall -std=c11
 CXXFLAGS += -Wall -std=c++14
 
 ifeq ($(DEBUG),1)
-CFLAGS += -gdwarf-2 -g3
-CXXFLAGS += -gdwarf-2 -g3
+CFLAGS += -g3 -ggdb
+CXXFLAGS += -g3 -ggdb
 CFLAGS += -DDEBUG
 ASFLAGS += -DDEBUG
 endif
 
 ifeq ($(DEBUG),)
-CFLAGS += -O2
-CXXFLAGS += -O2
+CFLAGS += -O0
+CXXFLAGS += -O0
 endif
 
 ifeq ($(WERROR),1)
