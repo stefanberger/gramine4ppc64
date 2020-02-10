@@ -24,6 +24,13 @@ SYS ?= $(shell $(CC) -dumpmachine)
 export SYS
 
 ARCH := $(word 1,$(subst -, -, $(SYS)))
+ARCH_EXP := $(ARCH)
+ifeq ($(ARCH),powerpc64le)
+    ARCH := ppc64
+endif
+ifeq ($(ARCH),ppc64le)
+    ARCH := ppc64
+endif
 
 # where libraries are found, e.g., /lib/x86_64-linux-gnu
 ARCH_LIBDIR := /lib/$(SYS)
@@ -41,15 +48,15 @@ CFLAGS += -Wall -std=c11
 CXXFLAGS += -Wall -std=c++14
 
 ifeq ($(DEBUG),1)
-CFLAGS += -gdwarf-2 -g3
-CXXFLAGS += -gdwarf-2 -g3
+CFLAGS += -g3 -ggdb
+CXXFLAGS += -g3 -ggdb
 CFLAGS += -DDEBUG
 ASFLAGS += -DDEBUG
 endif
 
 ifeq ($(DEBUG),)
-CFLAGS += -O2
-CXXFLAGS += -O2
+CFLAGS += -O0
+CXXFLAGS += -O0
 endif
 
 ifeq ($(WERROR),1)

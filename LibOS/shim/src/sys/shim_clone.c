@@ -35,7 +35,9 @@
 #include <sys/syscall.h>
 #include <sys/mman.h>
 #include <linux/sched.h>
+#if defined(__i386__) || defined(__x86_64__)
 #include <asm/prctl.h>
+#endif
 
 void __attribute__((weak)) syscall_wrapper_after_syscalldb(void)
 {
@@ -54,6 +56,7 @@ void __attribute__((weak)) syscall_wrapper_after_syscalldb(void)
  */
 static void fixup_child_context(struct shim_regs * regs)
 {
+#if defined(__i386__) || defined(__x86_64__)
     if (regs->rip == (unsigned long)&syscall_wrapper_after_syscalldb) {
         /*
          * we don't need to emulate stack pointer change because %rsp is
@@ -64,6 +67,9 @@ static void fixup_child_context(struct shim_regs * regs)
         regs->rflags = regs->r11;
         regs->rip = regs->rcx;
     }
+#else
+    __UNUSED(regs);
+#endif
 }
 
 /* from **sysdeps/unix/sysv/linux/x86_64/clone.S:
@@ -119,6 +125,13 @@ static int clone_implementation_wrapper(struct shim_clone_args * arg)
 
     shim_tcb_init();
     set_cur_thread(my_thread);
+#if defined(__powerpc64__)
+    // fs_base is the raw register content in this case; keep orginal value
+    // for later
+    uint64_t fs_base = arg->fs_base;
+    if (arg->fs_base)
+        arg->fs_base -= (TLS_TCB_OFFSET + sizeof(PAL_TCB));
+#endif
     update_fs_base(arg->fs_base);
     shim_tcb_t * tcb = my_thread->shim_tcb;
 
@@ -156,19 +169,34 @@ static int clone_implementation_wrapper(struct shim_clone_args * arg)
 
     /* Don't signal the initialize event until we are actually init-ed */
     DkEventSet(arg->initialize_event);
+    /* !!! arg is now useless */
 
     /***** From here down, we are switching to the user-provided stack ****/
 
     //user_stack_addr[0] ==> user provided function address
     //user_stack_addr[1] ==> arguments to user provided function.
 
+#if defined(__i386__) || defined(__x86_64__)
     debug("child swapping stack to %p return 0x%lx: %d\n",
           stack, regs.rip, my_thread->tid);
+#endif
 
     tcb->context.regs = &regs;
     fixup_child_context(tcb->context.regs);
-    tcb->context.regs->rsp = (unsigned long)stack;
+    shim_context_set_sp(&tcb->context, (unsigned long)stack);
 
+#if defined(__powerpc64__)
+    #include <stack.h>
+    struct stackframe *sf = stack - offsetof(struct stackframe, backchain);
+    // glibc's clone.S set parm_save and lr_save
+    tcb->context.regs->gpr[3] = sf->parm_save[0];
+    tcb->context.regs->gpr[12] = sf->lr_save;
+    tcb->context.regs->gpr[13] = fs_base;
+    tcb->context.regs->nip = sf->lr_save;
+
+    debug("child swapping stack to %p return 0x%lx: %d\n",
+          stack, regs.nip, my_thread->tid);
+#endif
     put_thread(my_thread);
 
     restore_context(&tcb->context);
@@ -183,8 +211,13 @@ int migrate_fork (struct shim_cp_store * cpstore,
  *  long int __arg1 - 16 bytes ( 2 words ) offset into the child stack allocated
  *                    by the parent     */
 
+#if defined(__i386__) || defined(__x86_64__)
 int shim_do_clone (int flags, void * user_stack_addr, int * parent_tidptr,
                    int * child_tidptr, void * tls)
+#elif defined(__powerpc64__)
+int shim_do_clone (int flags, void * user_stack_addr, int * parent_tidptr,
+                   int * tls, void * child_tidptr)
+#endif
 {
     //The Clone Implementation in glibc has setup the child's stack
     //with the function pointer and the argument to the funciton.
@@ -201,7 +234,7 @@ int shim_do_clone (int flags, void * user_stack_addr, int * parent_tidptr,
         void* old_stack_top = self->stack_top;
         void* old_stack_red = self->stack_red;
         void* old_stack     = self->stack;
-        unsigned long old_stack_rsp = self->shim_tcb->context.regs->rsp;
+        unsigned long old_stack_rsp = shim_context_get_sp(&self->shim_tcb->context);
 
         if (user_stack_addr) {
             struct shim_vma_info vma_info;
@@ -211,7 +244,7 @@ int shim_do_clone (int flags, void * user_stack_addr, int * parent_tidptr,
             self->stack_top = (char*)vma_info.addr + vma_info.length;
             self->stack_red = vma_info.addr;
             self->stack     = vma_info.addr;
-            self->shim_tcb->context.regs->rsp = (unsigned long)user_stack_addr;
+            shim_context_set_sp(&self->shim_tcb->context, (uint64_t)user_stack_addr);
 
             if (vma_info.file) {
                 put_handle(vma_info.file);
@@ -233,13 +266,14 @@ int shim_do_clone (int flags, void * user_stack_addr, int * parent_tidptr,
         }
 
         ret = shim_do_vfork();
+        debug("ret from shim_do_fork: %d\n", ret);
 
         /* parent process continues here, rewire stack values back to original ones */
         if (user_stack_addr) {
             self->stack_top = old_stack_top;
             self->stack_red = old_stack_red;
             self->stack     = old_stack;
-            self->shim_tcb->context.regs->rsp = old_stack_rsp;
+            shim_context_set_sp(&self->shim_tcb->context, old_stack_rsp);
         }
         return ret;
     }
@@ -364,6 +398,17 @@ int shim_do_clone (int flags, void * user_stack_addr, int * parent_tidptr,
         if (!fs_base) {
             fs_base = self->shim_tcb->context.fs_base;
         }
+#ifdef __powerpc64__
+        if (!fs_base) {
+            register unsigned long r13 __asm__("r13");
+            fs_base = r13 - TLS_TCB_OFFSET - sizeof(PAL_TCB);
+            PAL_TCB *r13_ptcb = (PAL_TCB*)fs_base;
+            PAL_TCB *ptcb = r13_ptcb->glibc_tcb.LibOS_TCB;
+	    debug("%s: r13_ptcb: %p   ptcb: %p\n", __func__, r13_ptcb, ptcb);
+        }
+#endif
+        debug("%s: Forking. fs_base=0x%lx\n", __func__, fs_base);
+
         /* associate cpu context to new forking thread for migration */
         shim_tcb_t shim_tcb;
         memcpy(&shim_tcb, self->shim_tcb, sizeof(shim_tcb_t));
@@ -378,8 +423,8 @@ int shim_do_clone (int flags, void * user_stack_addr, int * parent_tidptr,
             }
             thread->stack_top = (char*)vma_info.addr + vma_info.length;
             thread->stack_red = thread->stack = vma_info.addr;
-            parent_stack = (void *)self->shim_tcb->context.regs->rsp;
-            thread->shim_tcb->context.regs->rsp = (unsigned long)user_stack_addr;
+            parent_stack = (void *)shim_context_get_sp(&self->shim_tcb->context);
+            shim_context_set_sp(&thread->shim_tcb->context, (unsigned long)user_stack_addr);
 
             if (vma_info.file) {
                 put_handle(vma_info.file);
@@ -395,7 +440,8 @@ int shim_do_clone (int flags, void * user_stack_addr, int * parent_tidptr,
         thread->shim_tcb = NULL; /* cpu context of forked thread isn't
                                   * needed any more */
         if (parent_stack)
-            self->shim_tcb->context.regs->rsp = (unsigned long)parent_stack;
+            shim_context_set_sp(&self->shim_tcb->context, (unsigned long)parent_stack);
+
         if (ret < 0)
             goto failed;
 
@@ -439,6 +485,8 @@ int shim_do_clone (int flags, void * user_stack_addr, int * parent_tidptr,
     new_args.stack     = user_stack_addr;
     new_args.fs_base   = fs_base;
 
+//    debug("%s @ %u: Child has to use stack at %p   fs_base(TCB)=0x%lx\n", __func__, __LINE__, new_args.stack, fs_base);
+
     // Invoke DkThreadCreate to spawn off a child process using the actual
     // "clone" system call. DkThreadCreate allocates a stack for the child
     // and then runs the given function on that stack However, we want our
@@ -447,6 +495,7 @@ int shim_do_clone (int flags, void * user_stack_addr, int * parent_tidptr,
     // running the function we gave to DkThreadCreate.
     PAL_HANDLE pal_handle = thread_create(clone_implementation_wrapper,
                                           &new_args);
+//    debug("%s @ %u: after thread_create\n", __func__, __LINE__);
     if (!pal_handle) {
         ret = -PAL_ERRNO;
         put_thread(new_args.thread);

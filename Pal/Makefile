@@ -1,4 +1,3 @@
-include ../Scripts/Makefile.Arch
 include ../Scripts/Makefile.configs
 
 DIRS = src crt_init regression

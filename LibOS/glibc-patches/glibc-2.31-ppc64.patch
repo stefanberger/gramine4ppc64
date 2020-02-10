@@ -1,11 +1,11 @@
 ---
  sysdeps/powerpc/nptl/tls.h                                  |   17 ++++++
- sysdeps/powerpc/powerpc64/sysdep.h                          |    2 
+ sysdeps/powerpc/powerpc64/sysdep.h                          |    6 +-
  sysdeps/unix/sysv/linux/powerpc/powerpc64/____longjmp_chk.S |    2 
- sysdeps/unix/sysv/linux/powerpc/powerpc64/clone.S           |    8 ++
+ sysdeps/unix/sysv/linux/powerpc/powerpc64/clone.S           |   14 ++++
  sysdeps/unix/sysv/linux/powerpc/powerpc64/sysdep.h          |   34 +++++-------
  sysdeps/unix/sysv/linux/powerpc/syscall.S                   |   14 ++++
- 6 files changed, 55 insertions(+), 22 deletions(-)
+ 6 files changed, 64 insertions(+), 23 deletions(-)
 
 Index: glibc-2.31/sysdeps/unix/sysv/linux/powerpc/powerpc64/sysdep.h
 ===================================================================
@@ -108,12 +108,16 @@ Index: glibc-2.31/sysdeps/powerpc/powerpc64/sysdep.h
 ===================================================================
 --- glibc-2.31.orig/sysdeps/powerpc/powerpc64/sysdep.h
 +++ glibc-2.31/sysdeps/powerpc/powerpc64/sysdep.h
-@@ -265,7 +265,7 @@ LT_LABELSUFFIX(name,_name_end): ; \
+@@ -265,7 +265,11 @@ LT_LABELSUFFIX(name,_name_end): ; \
  
  #define DO_CALL(syscall) \
      li 0,syscall; \
 -    sc
 +    SYSCALLDB_R9(256)
++
++#define DO_CALL_STACKROOM(syscall, STACKROOM) \
++    li 0,syscall; \
++    SYSCALLDB_R9(STACKROOM)
  
  /* ppc64 is always PIC */
  #undef JUMPTARGET
@@ -138,7 +142,7 @@ Index: glibc-2.31/sysdeps/powerpc/nptl/tls.h
 +    void *libostcb = NULL;						      \
 +    if (__thread_register) {						      \
 +      libostcb = THREAD_GET_LIBOS_TCB();				      \
-+      _dl_printf("LibOS TCB at 0x%lx\n", (unsigned long)THREAD_GET_LIBOS_TCB());\
++      /*_dl_printf("LibOS TCB at 0x%lx\n", (unsigned long)THREAD_GET_LIBOS_TCB());*/\
 +    }									      \
      __thread_register = (void *) (tcbp) + TLS_TCB_OFFSET;		      \
      THREAD_SET_HWCAP (__tcb_hwcap);					      \
@@ -166,7 +170,17 @@ Index: glibc-2.31/sysdeps/unix/sysv/linux/powerpc/powerpc64/clone.S
 ===================================================================
 --- glibc-2.31.orig/sysdeps/unix/sysv/linux/powerpc/powerpc64/clone.S
 +++ glibc-2.31/sysdeps/unix/sysv/linux/powerpc/powerpc64/clone.S
-@@ -50,6 +50,14 @@ ENTRY (__clone)
+@@ -28,6 +28,9 @@
+                   int flags [r5], void *arg [r6], void *parent_tid [r7],
+                   void *tls [r8], void *child_tid [r9]); */
+ 
++#define CLONE_STACKROOM  256
++#define CLONE_VFORK   0x00004000
++
+ ENTRY (__clone)
+ 	CALL_MCOUNT 7
+ 
+@@ -50,6 +53,26 @@ ENTRY (__clone)
  	li	r0,0
  	stdu	r0,-FRAME_MIN_SIZE_PARM(r4)
  
@@ -177,7 +191,28 @@ Index: glibc-2.31/sysdeps/unix/sysv/linux/powerpc/powerpc64/clone.S
 +	 */
 +	std	r3,FRAME_LR_SAVE(r4)
 +	std	r6,FRAME_PARM_SAVE(r4)
++	/* When certain flags are set the child will come back up here
++	 * after the call to syscalldb. For this to work we need to
++	 * prepare the child's stack a bit.
++	 */
++	andi.	r30,r5,CLONE_VFORK
++	beq	L(skip_stack_setup)
++
++	/* compensate for what DO_CALL_STACKROOM does */
++	subi	r4,r4,CLONE_STACKROOM
++	std	r2,FRAME_TOC_SAVE(r4)
++
++L(skip_stack_setup):
 +
  	/* Save fn, args, stack across syscall.  */
  	mr	r30,r3			/* Function in r30.  */
  	mr	r29,r5			/* Flags in r29.  */
+@@ -68,7 +91,7 @@ ENTRY (__clone)
+ 	cfi_endproc
+ 
+ 	/* Do the call.  */
+-	DO_CALL(SYS_ify(clone))
++	DO_CALL_STACKROOM(SYS_ify(clone), CLONE_STACKROOM)
+ 
+ 	/* Check for child process.  */
+ 	cmpdi	cr1,r3,0

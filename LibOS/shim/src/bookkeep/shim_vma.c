@@ -307,7 +307,7 @@ static MEM_MGR vma_mgr = NULL;
  * the pointer (small optimization not to add more fields to TCB - can be removed if the max list
  * size needs to be increased or any supported architecture does not allow for it).
  */
-#ifndef __x86_64__
+#if !defined(__x86_64__) && !defined(__powerpc64__)
 /* If this optimization will work on the architecture you port Graphene to, add it to the check
  * above. */
 #error "This optimization requires specific representation of pointers."
@@ -939,6 +939,7 @@ int bkeep_mmap_any_in_range(void* _bottom_addr, void* _top_addr, size_t length, 
     int ret = 0;
     uintptr_t ret_val = 0;
 
+#ifdef MAP_32BIT
     if (flags & MAP_32BIT) {
         /* Only consider first 2 gigabytes. */
         top_addr = MIN(top_addr, 1ul << 31);
@@ -946,6 +947,7 @@ int bkeep_mmap_any_in_range(void* _bottom_addr, void* _top_addr, size_t length, 
             return -ENOMEM;
         }
     }
+#endif
 
     struct shim_vma* new_vma = alloc_vma();
     if (!new_vma) {
