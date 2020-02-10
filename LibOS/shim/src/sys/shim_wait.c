@@ -141,3 +141,7 @@ found:
     put_thread(thread);
     return ret;
 }
+
+pid_t shim_do_waitpid(pid_t pid, int* status, int option) {
+    return shim_do_wait4(pid, status, option, NULL);
+}
