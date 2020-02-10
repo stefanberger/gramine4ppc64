@@ -6,6 +6,7 @@ import subprocess
 
 from regression import (
     HAS_SGX,
+    ON_PPC,
     RegressionTestCase,
 )
 
@@ -128,6 +129,7 @@ class TC_01_Bootstrap(RegressionTestCase):
         with self.expect_returncode(113):
             self.run_binary(['exit'])
 
+    @unittest.skipIf(ON_PPC, "flaky test")
     def test_401_exit_group(self):
         try:
             self.run_binary(['exit_group'])
@@ -439,6 +441,7 @@ class TC_40_FileSystem(RegressionTestCase):
         stdout, _ = self.run_binary(['fdleak'], timeout=10)
         self.assertIn("Test succeeded.", stdout)
 
+    @unittest.skipIf(ON_PPC, "flaky test")
     def test_040_str_close_leak(self):
         stdout, _ = self.run_binary(['str_close_leak'], timeout=60)
         self.assertIn("Success", stdout)

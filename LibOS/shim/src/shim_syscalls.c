@@ -21,7 +21,9 @@
  * table in library OS.
  */
 
+#if defined(__i386__) || defined(__x86_64__)
 #include <asm/prctl.h>
+#endif
 #include <asm/unistd.h>
 #include <errno.h>
 #include <pal.h>
@@ -151,6 +153,13 @@ DEFINE_SHIM_SYSCALL(poll, 3, shim_do_poll, int, struct pollfd*, fds, nfds_t, nfd
 /* lseek: sys/shim_open.c */
 DEFINE_SHIM_SYSCALL(lseek, 3, shim_do_lseek, off_t, int, fd, off_t, offset, int, origin)
 
+#ifdef __NR__llseek
+/* llseek: sys/shim_open.c */
+DEFINE_SHIM_SYSCALL(_llseek, 5, shim_do__llseek, off_t, int, fd, unsigned long, offset_high,
+                                                 unsigned long, offset_low, unsigned long, resultaddr,
+                                                 int, origin)
+#endif
+
 /* mmap: sys/shim_mmap.c */
 DEFINE_SHIM_SYSCALL(mmap, 6, shim_do_mmap, void*, void*, addr, size_t, length, int, prot, int,
                     flags, int, fd, off_t, offset)
@@ -269,9 +278,19 @@ DEFINE_SHIM_SYSCALL(accept, 3, shim_do_accept, int, int, fd, struct sockaddr*, a
 DEFINE_SHIM_SYSCALL(sendto, 6, shim_do_sendto, ssize_t, int, fd, const void*, buf, size_t, len, int,
                     flags, const struct sockaddr*, dest_addr, socklen_t, addrlen)
 
+#if defined(__powerpc64__)
+DEFINE_SHIM_SYSCALL(send, 4, shim_do_send, ssize_t, int, fd, const void*, buf, size_t, len, int,
+                    flags)
+#endif
+
 /* recvfrom : sys/shim_socket.c */
 DEFINE_SHIM_SYSCALL(recvfrom, 6, shim_do_recvfrom, ssize_t, int, fd, void*, buf, size_t, len, int,
                     flags, struct sockaddr*, addr, socklen_t*, addrlen)
+
+#ifdef __NR_recv
+DEFINE_SHIM_SYSCALL(recv, 4, shim_do_recv, ssize_t, int, fd, void*, buf, size_t, len, int,
+                    flags)
+#endif
 
 /* bind: sys/shim_socket.c */
 DEFINE_SHIM_SYSCALL(bind, 3, shim_do_bind, int, int, sockfd, struct sockaddr*, addr, socklen_t,
@@ -330,6 +349,10 @@ DEFINE_SHIM_SYSCALL(exit, 1, shim_do_exit, int, int, error_code)
 DEFINE_SHIM_SYSCALL(wait4, 4, shim_do_wait4, pid_t, pid_t, pid, int*, stat_addr, int, option,
                     struct __kernel_rusage*, ru)
 
+#ifdef __NR_waitpid
+DEFINE_SHIM_SYSCALL(waitpid, 3, shim_do_waitpid, pid_t, pid_t, pid, int*, stat_addr, int, option);
+#endif
+
 /* kill: sys/shim_sigaction.c */
 DEFINE_SHIM_SYSCALL(kill, 2, shim_do_kill, int, pid_t, pid, int, sig)
 
@@ -340,8 +363,10 @@ DEFINE_SHIM_SYSCALL(uname, 1, shim_do_uname, int, struct old_utsname*, buf)
 DEFINE_SHIM_SYSCALL(semget, 3, shim_do_semget, int, key_t, key, int, nsems, int, semflg)
 
 /* semop: sys/shim_semget.c */
+#if defined(__i386__) || defined(__x86_64__)
 DEFINE_SHIM_SYSCALL(semop, 3, shim_do_semop, int, int, semid, struct sembuf*, sops, unsigned int,
                     nsops)
+#endif
 
 /* semctl: sys/shim_semctl.c */
 DEFINE_SHIM_SYSCALL(semctl, 4, shim_do_semctl, int, int, semid, int, semnum, int, cmd,
@@ -578,6 +603,7 @@ SHIM_SYSCALL_PASSTHROUGH(_sysctl, 1, int, struct __kernel_sysctl_args*, args)
 SHIM_SYSCALL_PASSTHROUGH(prctl, 5, int, int, option, unsigned long, arg2, unsigned long, arg3,
                          unsigned long, arg4, unsigned long, arg5)
 
+#if defined(__i386__) || defined(__x86_64__)
 DEFINE_SHIM_SYSCALL(arch_prctl, 2, shim_do_arch_prctl, void*, int, code, void*, addr)
 
 void* shim_do_arch_prctl(int code, void* addr) {
@@ -601,6 +627,7 @@ void* shim_do_arch_prctl(int code, void* addr) {
 
     return (void*)-ENOSYS;
 }
+#endif
 
 SHIM_SYSCALL_PASSTHROUGH(adjtimex, 1, int, struct ____kernel_timex*, txc_p)
 
@@ -632,9 +659,11 @@ SHIM_SYSCALL_PASSTHROUGH(sethostname, 2, int, char*, name, int, len)
 
 SHIM_SYSCALL_PASSTHROUGH(setdomainname, 2, int, char*, name, int, len)
 
+#if defined(__i386__) || defined(__x86_64__)
 SHIM_SYSCALL_PASSTHROUGH(iopl, 1, int, int, level)
 
 SHIM_SYSCALL_PASSTHROUGH(ioperm, 3, int, unsigned long, from, unsigned long, num, int, on)
+#endif
 
 SHIM_SYSCALL_PASSTHROUGH(create_module, 2, int, const char*, name, size_t, size)
 
@@ -724,7 +753,9 @@ DEFINE_SHIM_SYSCALL(sched_setaffinity, 3, shim_do_sched_setaffinity, int, pid_t,
 DEFINE_SHIM_SYSCALL(sched_getaffinity, 3, shim_do_sched_getaffinity, int, pid_t, pid, size_t, len,
                     __kernel_cpu_set_t*, user_mask_ptr)
 
+#if defined(__i386__) || defined(__x86_64__)
 SHIM_SYSCALL_PASSTHROUGH(set_thread_area, 1, int, struct user_desc*, u_info)
+#endif
 
 /* no glibc wrapper */
 
@@ -740,7 +771,9 @@ SHIM_SYSCALL_PASSTHROUGH(io_submit, 3, int, aio_context_t, ctx_id, long, nr, str
 SHIM_SYSCALL_PASSTHROUGH(io_cancel, 3, int, aio_context_t, ctx_id, struct iocb*, iocb,
                          struct io_event*, result)
 
+#if defined(__i386__) || defined(__x86_64__)
 SHIM_SYSCALL_PASSTHROUGH(get_thread_area, 1, int, struct user_desc*, u_info)
+#endif
 
 SHIM_SYSCALL_PASSTHROUGH(lookup_dcookie, 3, int, unsigned long, cookie64, char*, buf, size_t, len)
 
@@ -1037,6 +1070,10 @@ SHIM_SYSCALL_PASSTHROUGH(setns, 2, int, int, fd, int, nstype)
 
 SHIM_SYSCALL_PASSTHROUGH(getcpu, 3, int, unsigned*, cpu, unsigned*, node, struct getcpu_cache*,
                          cache)
+
+#if defined(__powerpc64__)
+SHIM_SYSCALL_PASSTHROUGH(getrandom, 3, int, char *, buf, size_t, count, unsigned int, flags)
+#endif
 
 /* libos calls */
 

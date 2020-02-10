@@ -41,6 +41,10 @@
 #include <shim_tcb.h>
 #include <shim_types.h>
 
+#if defined(__powerpc64__)
+#include <shim_sysdep.h>
+#endif
+
 noreturn void shim_clean_and_exit(int exit_code);
 
 /* important macros and static inline functions */
@@ -460,7 +464,9 @@ static inline PAL_HANDLE thread_create (void * func, void * arg)
 static inline int64_t __disable_preempt (shim_tcb_t * tcb)
 {
     //tcb->context.syscall_nr += SYSCALL_NR_PREEMPT_INC;
+//    debug(">>>>> %s: preempt value BEFORE inc: %ld\n", __func__, tcb->context.preempt.counter);
     int64_t preempt = atomic_inc_return(&tcb->context.preempt);
+//    debug(">>>>> %s: preempt value AFTER  inc: %ld\n", __func__, preempt);
     /* Assert if this counter overflows */
     assert(preempt != 0);
     //debug("disable preempt: %d\n", preempt);
@@ -809,6 +815,35 @@ static_always_inline void * current_stack(void)
 {
     void * _rsp;
     __asm__ volatile ("movq %%rsp, %0" : "=r"(_rsp) :: "memory");
+    return _rsp;
+}
+
+#elif defined(__powerpc64__)
+
+#define FRAME_MIN_SIZE_PARM	96
+
+#define __SWITCH_STACK(stack_top, func, arg)                    \
+    do {                                                        \
+        /* 16 Bytes align of stack */                           \
+        uintptr_t __stack_top = (uintptr_t)(stack_top);         \
+        __stack_top &= ~0xf;                                    \
+        __stack_top -= FRAME_MIN_SIZE_PARM;                     \
+        memset((void *)__stack_top, 0, FRAME_MIN_SIZE_PARM);    \
+        __asm__ volatile (                                      \
+            "mr %%r1, %0\n\t"                                   \
+            "mr %%r3, %2\n\t"                                   \
+            "mr %%r12, %1\n\t"                                  \
+            "mtctr %%r12\n\t"                                   \
+            "bctr\n\t"                                          \
+            :							\
+            : "r"(__stack_top), "r"(func), "r"(arg)		\
+            : "r3", "r12", "ctr", "memory");			\
+    } while (0)
+
+static_always_inline void * current_stack(void)
+{
+    void * _rsp;
+    __asm__ volatile ("mr %0, %%r1" : "=r"(_rsp) :: "memory");
     return _rsp;
 }
 
