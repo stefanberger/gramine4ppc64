@@ -35,7 +35,9 @@
 #include <errno.h>
 #include <sys/syscall.h>
 #include <sys/mman.h>
+#if defined(__i386__) || defined(__x86_64__)
 #include <asm/prctl.h>
+#endif
 #include <linux/futex.h>
 
 void release_robust_list (struct robust_list_head * head);
@@ -175,6 +177,7 @@ noreturn int shim_do_exit_group (int error_code)
      * out of this loop.*/
     static struct atomic_int first = ATOMIC_INIT(0);
     if (atomic_cmpxchg(&first, 0, 1) == 1) {
+        debug("Not first on exit_group. yielding forever\n");
         while (1)
             DkThreadYieldExecution();
     }
@@ -192,6 +195,7 @@ noreturn int shim_do_exit_group (int error_code)
 
     debug("now kill other threads in the process\n");
     do_kill_proc(cur_thread->tgid, cur_thread->tgid, SIGKILL, false);
+    debug("now entering loop\n");
     while (check_last_thread(cur_thread)) {
         DkThreadYieldExecution();
     }

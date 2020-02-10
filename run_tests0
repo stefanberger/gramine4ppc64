@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+ERROR=0 \
+    && pushd Pal/regression &>/dev/null \
+    &&  make regression || ERROR=1 \
+    && popd &>/dev/null \
+    && pushd LibOS/shim/test/fs &>/dev/null \
+    &&  echo ">>>>>> shim fs test <<<<<<" \
+    &&  make test || { ERROR=1; echo ">>>>> FAIL <<<<<"; } \
+    && popd &>/dev/null \
+    && pushd LibOS/shim/test/regression &>/dev/null \
+    &&  echo ">>>>>> shim regression <<<<<<" \
+    &&  make regression || { ERROR=1; echo ">>>>> FAIL <<<<<"; } \
+    && popd &>/dev/null \
+    && exit $ERROR
