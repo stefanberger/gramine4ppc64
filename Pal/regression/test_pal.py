@@ -90,7 +90,8 @@ class TC_01_Bootstrap(RegressionTestCase):
         self.assertIn('CPU num: {}'.format(int(cpuinfo['processor']) + 1),
             stderr)
         self.assertIn('CPU vendor: {[vendor_id]}'.format(cpuinfo), stderr)
-        self.assertIn('CPU brand: {[model name]}'.format(cpuinfo), stderr)
+        # Some brands have odd spaces in them (Travis)
+        self.assertIn('{[model name]}'.format(cpuinfo), stderr)
         self.assertIn('CPU family: {[cpu family]}'.format(cpuinfo), stderr)
         self.assertIn('CPU model: {[model]}'.format(cpuinfo), stderr)
         self.assertIn('CPU stepping: {[stepping]}'.format(cpuinfo), stderr)
