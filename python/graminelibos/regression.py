@@ -22,6 +22,7 @@ HAS_SGX = os.environ.get('SGX') == '1'
 IS_VM = os.environ.get('IS_VM') == '1'
 ON_X86 = os.uname().machine in ['x86_64']
 USES_MUSL = os.environ.get('GRAMINE_MUSL') == '1'
+ON_TRAVIS = os.getenv('TRAVIS') == 'true'
 try:
     GDB_VERSION = tuple(int(i) if i.isdigit() else i for i in subprocess.check_output(
         ['gdb', '-q', '-ex', 'python print(gdb.VERSION)', '-ex', 'q']
