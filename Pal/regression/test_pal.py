@@ -15,6 +15,7 @@ import unittest
 from regression import (
     HAS_SGX,
     ON_X86,
+    ON_TRAVIS,
     RegressionTestCase,
     expectedFailureIf,
 )
@@ -184,7 +185,8 @@ class TC_01_Bootstrap(RegressionTestCase):
         self.assertIn('CPU num: {}'.format(int(cpuinfo['processor']) + 1),
             stderr)
         self.assertIn('CPU vendor: {[vendor_id]}'.format(cpuinfo), stderr)
-        self.assertIn('CPU brand: {[model name]}'.format(cpuinfo), stderr)
+        if not ON_TRAVIS:
+            self.assertIn('CPU brand: {[model name]}'.format(cpuinfo), stderr)
         self.assertIn('CPU family: {[cpu family]}'.format(cpuinfo), stderr)
         self.assertIn('CPU model: {[model]}'.format(cpuinfo), stderr)
         self.assertIn('CPU stepping: {[stepping]}'.format(cpuinfo), stderr)
