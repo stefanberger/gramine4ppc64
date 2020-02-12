@@ -7,6 +7,7 @@ import unittest
 
 HAS_SGX = os.environ.get('SGX') == '1'
 ON_X86 = os.uname().machine in ['x86_64']
+ON_TRAVIS = os.getenv('TRAVIS') == 'true'
 
 def expectedFailureIf(predicate):
     if predicate:
