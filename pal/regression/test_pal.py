@@ -12,6 +12,7 @@ from graminelibos.regression import (
     HAS_EDMM,
     HAS_SGX,
     ON_X86,
+    ON_TRAVIS,
     RegressionTestCase,
 )
 
@@ -109,7 +110,8 @@ class TC_01_Bootstrap(RegressionTestCase):
         self.assertIn('CPU num: {}'.format(int(cpuinfo['processor']) + 1),
             stderr)
         self.assertIn('CPU vendor: {[vendor_id]}'.format(cpuinfo), stderr)
-        self.assertIn('CPU brand: {[model name]}'.format(cpuinfo), stderr)
+        if not ON_TRAVIS:
+            self.assertIn('CPU brand: {[model name]}'.format(cpuinfo), stderr)
         self.assertIn('CPU family: {[cpu family]}'.format(cpuinfo), stderr)
         self.assertIn('CPU model: {[model]}'.format(cpuinfo), stderr)
         self.assertIn('CPU stepping: {[stepping]}'.format(cpuinfo), stderr)
