@@ -274,6 +274,10 @@ void pal_linux_main (void * args)
     tcb->alt_stack = alt_stack; // Stack bottom
     tcb->callback  = NULL;
     tcb->param     = NULL;
+#ifdef __powerpc64__
+    tcb->common.glibc_tcb.LibOS_TCB = &tcb->common;
+#endif
+    //printf("Setting PAL_TCB_LINUX to %p\n", tcb);
     pal_thread_init(tcb);
 
     //printf("%s @ %d  BEFORE setup_pal_map\n", __func__, __LINE__);

@@ -189,6 +189,9 @@ int _DkThreadCreate (PAL_HANDLE * handle, int (*callback) (void *),
     tcb->alt_stack = child_stack; // Stack bottom
     tcb->callback  = callback;
     tcb->param     = (void *) param;
+#ifdef __powerpc64__
+    tcb->common.glibc_tcb.LibOS_TCB = &tcb->common;
+#endif
 
     /* align child_stack to 16 */
     child_stack = ALIGN_DOWN_PTR(child_stack, 16);
