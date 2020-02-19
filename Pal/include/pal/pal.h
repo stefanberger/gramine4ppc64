@@ -83,6 +83,9 @@ typedef union pal_handle
 typedef struct pal_tcb PAL_TCB;
 /* This is glib'c tcb structure; we have to know about it */
 typedef struct {
+    /* NEW: pointer to LibOS TCB */
+        PAL_TCB *LibOS_TCB;
+
     /* Reservation for HWCAP data. */
         unsigned int hwcap2;
         unsigned int hwcap; /* not used in LE ABI */
@@ -122,6 +125,7 @@ typedef struct pal_tcb {
     uint64_t libos_tcb[(PAL_LIBOS_TCB_SIZE + sizeof(uint64_t) - 1) / sizeof(uint64_t)];
     /* data private to PAL implementation follows this struct. */
 #ifdef __powerpc64__
+    /* we have to keep this last */
     tcbhead_t glibc_tcb;
 #endif
 } PAL_TCB;
@@ -133,12 +137,15 @@ static inline PAL_TCB * pal_get_tcb (void)
     __asm__ ("movq %%gs:%c1,%q0"
              : "=r" (tcb)
              : "i" (offsetof(struct pal_tcb, self)));
-#else
+    return tcb;
+#elif defined __powerpc64__
     __asm__ ("addi %0, %%r13, %1\n\r"
              : "=r" (tcb)
              : "i" (-0x7000 - sizeof(PAL_TCB)));
+    return tcb->glibc_tcb.LibOS_TCB;
+#else
+#error Unsupported architecture
 #endif
-    return tcb;
 }
 
 #ifdef __x86_64__
