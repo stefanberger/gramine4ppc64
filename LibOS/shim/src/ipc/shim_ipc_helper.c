@@ -669,6 +669,11 @@ noreturn static void shim_ipc_helper(void* dummy) {
     __UNUSED(dummy);
     struct shim_thread* self = get_cur_thread();
 
+#ifdef __powerpc64__
+    register void *r1 __asm__("r1");
+    debug("In %s after SWITCH_STACK! Yepeee!  stack at %p\n", __func__, r1);
+#endif
+
     /* Initialize two lists:
      * - `ports` collects IPC port objects and is the main list we process here
      * - `pals` collects PAL handles of IPC port objects; always contains install_new_event */
@@ -867,7 +872,7 @@ static void shim_ipc_helper_prepare(void* arg) {
     /* swap stack to be sure we don't drain the small stack PAL provides */
     self->stack_top = stack + IPC_HELPER_STACK_SIZE;
     self->stack     = stack;
-    debug("%s: DOING SWITCH_STACK   %p\n", __func__, self->stack_top);
+    debug("%s: DOING SWITCH_STACK   stack: %p  stack_top: %p\n", __func__, self->stack, self->stack_top);
     __SWITCH_STACK(self->stack_top, shim_ipc_helper, NULL);
 }
 

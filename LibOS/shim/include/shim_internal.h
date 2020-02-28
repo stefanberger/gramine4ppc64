@@ -472,7 +472,9 @@ static inline PAL_HANDLE thread_create (void * func, void * arg)
 static inline int64_t __disable_preempt (shim_tcb_t * tcb)
 {
     //tcb->context.syscall_nr += SYSCALL_NR_PREEMPT_INC;
+//    debug(">>>>> %s: preempt value BEFORE inc: %ld\n", __func__, tcb->context.preempt.counter);
     int64_t preempt = atomic_inc_return(&tcb->context.preempt);
+//    debug(">>>>> %s: preempt value AFTER  inc: %ld\n", __func__, preempt);
     /* Assert if this counter overflows */
     assert(preempt != 0);
     //debug("disable preempt: %d\n", preempt);

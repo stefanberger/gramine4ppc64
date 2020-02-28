@@ -524,6 +524,11 @@ int check_last_thread(struct shim_thread* self) {
     lock(&thread_list_lock);
     int alive_thread_tid = _check_last_thread(self);
     unlock(&thread_list_lock);
+
+    static int ctr = 0;
+    if (!(ctr++ % 250000)) {
+        debug("ALIVE thread: %d\n", alive_thread_tid);
+    }
     return alive_thread_tid;
 }
 

@@ -209,7 +209,7 @@ static int clone_implementation_wrapper(struct shim_clone_args * arg)
         uint64_t toc_save; // 24(r1)
         uint64_t parm_save;// 32(r1)
     } * fp = arg->stack - offsetof(struct frame_pointer, backchain);
-#if 0
+#if 1
     register void *tcbptr __asm__("r13");
     debug("%s @ %u: In child: child stack to use: %p\n", __func__, __LINE__, arg->stack);
     debug("%s @ %u: In child: child stack fp: %p\n", __func__, __LINE__, fp);
@@ -466,6 +466,11 @@ int shim_do_clone (int flags, void * user_stack_addr, int * parent_tidptr,
     new_args.fs_base   = fs_base;
 
     debug("%s @ %u: Child has to use stack at %p   fs_base(TCB)=0x%lx\n", __func__, __LINE__, new_args.stack, fs_base);
+#if 0
+    int rc;
+    rc = DkVirtualMemoryProtect((PAL_PTR)((uint64_t)new_args.stack & ~0xffff), 0x10000, PAL_PROT_READ | PAL_PROT_WRITE|PAL_PROT_EXEC);
+    debug("Protecting stack at %p  rc=%d\n", (void *)((uint64_t)new_args.stack & ~0xffff),rc);
+#endif
 
     // Invoke DkThreadCreate to spawn off a child process using the actual
     // "clone" system call. DkThreadCreate allocates a stack for the child

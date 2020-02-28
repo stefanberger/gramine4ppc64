@@ -305,6 +305,7 @@ static int __kill_proc(struct shim_thread* thread, void* arg, bool* unlocked) {
     if (!thread->in_vm) {
         unlock(&thread_list_lock);
         *unlocked = true;
+        debug("%s @ %u: kill_send\n", __func__, __LINE__);
         return (!ipc_pid_kill_send(warg->sender, warg->id, KILL_PROCESS, warg->sig)) ? 1 : 0;
     } else {
         lock(&thread->lock);
@@ -313,6 +314,7 @@ static int __kill_proc(struct shim_thread* thread, void* arg, bool* unlocked) {
             goto out_locked;
 
         if (thread->in_vm) {
+            debug("%s @ %u: appending signal\n", __func__, __LINE__);
             if (warg->sig > 0)
                 __append_signal(thread, warg->sig, warg->sender);
             srched = 1;
@@ -321,6 +323,7 @@ static int __kill_proc(struct shim_thread* thread, void* arg, bool* unlocked) {
             unlock(&thread->lock);
             unlock(&thread_list_lock);
             *unlocked = true;
+            debug("%s @ %u: kill_send\n", __func__, __LINE__);
             return (!ipc_pid_kill_send(warg->sender, warg->id, KILL_PROCESS, warg->sig)) ? 1 : 0;
         }
     }

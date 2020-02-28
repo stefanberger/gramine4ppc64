@@ -277,7 +277,7 @@ void pal_linux_main (void * args)
 #ifdef __powerpc64__
     tcb->common.glibc_tcb.LibOS_TCB = &tcb->common;
 #endif
-    //printf("Setting PAL_TCB_LINUX to %p\n", tcb);
+    printf(">>>>>>>> Setting PAL_TCB_LINUX to %p\n", tcb);
     pal_thread_init(tcb);
 
     //printf("%s @ %d  BEFORE setup_pal_map\n", __func__, __LINE__);
@@ -297,6 +297,7 @@ void pal_linux_main (void * args)
         pal_sec.process_id = INLINE_SYSCALL(getpid, 0);
     //printf("%s @ %d: after get pid\n",__func__, __LINE__);
     linux_state.pid = pal_sec.process_id;
+    printf("PID: %d\n", linux_state.pid);
 
     linux_state.uid = uid;
     linux_state.gid = gid;

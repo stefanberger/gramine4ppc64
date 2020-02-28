@@ -242,6 +242,8 @@ void * allocate_stack (size_t size, size_t protect_size, bool user)
     ADD_PROFILE_OCCURENCE(alloc_stack, size + protect_size);
     INC_PROFILE_OCCURENCE(alloc_stack_count);
 
+    debug("Got stack at %p - %p, starting to protect at %p\n", stack, stack+protect_size+size,stack+protect_size);
+
     stack += protect_size;
     // Ensure proper alignment for process' initial stack pointer value.
     stack = ALIGN_UP_PTR(stack, 16);
