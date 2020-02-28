@@ -204,6 +204,7 @@ static void _DkGenericEventTrigger(PAL_EVENT_HANDLER upcall,
 static bool _DkGenericSignalHandle (int event_num, siginfo_t * info,
                                     ucontext_t * uc)
 {
+    printf("GenericSighandler  !!!!!!!!!!!!!!!!!!!!!!!!!\n");
     PAL_EVENT_HANDLER upcall = _DkGetExceptionHandler(event_num);
 
     if (upcall) {
@@ -267,6 +268,8 @@ static void _DkTerminateSighandler (int signum, siginfo_t * info,
                                     struct ucontext * uc)
 {
     __UNUSED(info);
+
+    printf("TerminateSighandler  !!!!!!!!!!!!!!!!!!!!!!!!!\n");
 
     int event_num = get_event_num(signum);
     if (event_num == -1)

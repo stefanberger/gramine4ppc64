@@ -109,7 +109,7 @@ noreturn static void __shim_do_execve_rtld(struct execve_rtld_arg* __arg) {
 
     unsigned long fs_base = 0;
     update_fs_base(fs_base);
-    debug("set fs_base to 0x%lx\n", fs_base);
+    debug("%s: set fs_base to 0x%lx\n", __func__, fs_base);
 
     UPDATE_PROFILE_INTERVAL();
 

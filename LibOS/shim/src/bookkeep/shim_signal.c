@@ -836,6 +836,7 @@ void handle_signal (void)
         return;
 
     int64_t preempt = __disable_preempt(tcb);
+    debug(">>> handle_signal: preempt = %ld  (SHOULD BE 1)\n", preempt);
 
     if (preempt > 1)
         debug("signal delayed (%ld)\n", preempt);
@@ -851,6 +852,7 @@ void append_signal(struct shim_thread* thread, int sig, siginfo_t* info, bool ne
     assert(locked(&thread->lock));
 
     __rt_sighandler_t handler = __get_sighandler(thread, sig);
+    debug("%s @ %u: handler = %p\n", __func__, __LINE__, (void *)handler);
 
     if (!handler) {
         // SIGSTOP and SIGKILL cannot be ignored
