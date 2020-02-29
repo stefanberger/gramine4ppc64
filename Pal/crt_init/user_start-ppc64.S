@@ -58,7 +58,6 @@ _start:
  */
 	mflr	%r0
 	std	%r0, 16(%r1)
-	std	%r31, -8(%r1)
 
 	mr	%r6, %r3	// pointer to cookies
 	ld	%r3, 0(%r6)	// argc
@@ -70,13 +69,10 @@ _start:
 
 	stdu	%r1, -32(%r1)	// room on stack
 
-	mr	%r31, %r1	// save our stack pointer
- 
 	bl	main
 	nop
 
-	addi	%r1, %r31, 32	// restore original stack
-	ld	%r31, -8(%r1)
+	addi	%r1, %r1, 32	// restore original stack
 	ld	%r0, 16(%r1)
 	mtlr	%r0
 	blr
