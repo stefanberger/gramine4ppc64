@@ -3,7 +3,7 @@
 
 #define USER_ADDRESS_LOWEST 0x10000
 
-#define THREAD_STACK_SIZE (PRESET_PAGESIZE * 2)
+#define THREAD_STACK_SIZE (PRESET_PAGESIZE * 2 * 2) /* increasing this adds a lot to stability */
 #define ALT_STACK_SIZE    PRESET_PAGESIZE
 
 #ifdef __powerpc64__
