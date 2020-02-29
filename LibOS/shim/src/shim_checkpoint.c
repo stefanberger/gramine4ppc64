@@ -1094,11 +1094,15 @@ void restore_context (struct shim_context * context)
                      "jmp *-"XSTRINGIFY(RED_ZONE_SIZE)"-8(%%rsp)\r\n"
                      :: "g"(&regs) : "memory");
 #elif defined(__powerpc64__)
-    debug("restore context: SP = 0x%08lx, IP = 0x%08lx\n", regs.gpr[0], regs.nip);
+    debug("restore context: SP = 0x%08lx, IP = 0x%08lx\n", regs.gpr[1], regs.nip);
 
     /* Ready to resume execution, re-enable preemption. */
     shim_tcb_t * tcb = shim_get_tcb();
     __enable_preempt(tcb);
+
+    unsigned long fs_base = context->fs_base;
+    memset(context, 0, sizeof(struct shim_context));
+    context->fs_base = fs_base;
 
     // unfortunately we will always clobber lr or ctr registers used for jump!
     __asm__ __volatile__(

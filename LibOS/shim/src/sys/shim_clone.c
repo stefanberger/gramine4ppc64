@@ -155,7 +155,7 @@ static int clone_implementation_wrapper(struct shim_clone_args * arg)
     debug("%s @ %u: pctb %p (from glibc)\n", __func__, __LINE__, ptcb_glibc);
     void *libostcb = ptcb_glibc->glibc_tcb.LibOS_TCB;
     debug("%s @ %u: libostcb %p\n", __func__, __LINE__, libostcb);
-    debug("%s @ %u: libostcb ptr at %p\n", __func__, __LINE__, &ptcb_glibc->glibc_tcb.LibOS_TCB);
+    //debug("%s @ %u: libostcb ptr at %p\n", __func__, __LINE__, &ptcb_glibc->glibc_tcb.LibOS_TCB);
 #endif
 
     ptcb_glibc->glibc_tcb.LibOS_TCB = ptcb;
@@ -164,7 +164,7 @@ static int clone_implementation_wrapper(struct shim_clone_args * arg)
              : "r"(arg->fs_base)
              :);
     regs.gpr[13] = arg->fs_base;
-//    debug(">>>>>> Setting TCB to %p (r13)\n", (void *)arg->fs_base);
+    debug("%s @ %u: Setting TCB to %p (r13)\n", __func__, __LINE__, (void *)arg->fs_base);
 #endif
 
     if (my_thread->set_child_tid) {
@@ -185,6 +185,7 @@ static int clone_implementation_wrapper(struct shim_clone_args * arg)
 
     /* Don't signal the initialize event until we are actually init-ed */
     DkEventSet(arg->initialize_event);
+    /* arg is now useless */
 
     /***** From here down, we are switching to the user-provided stack ****/
 
@@ -199,23 +200,19 @@ static int clone_implementation_wrapper(struct shim_clone_args * arg)
     fixup_child_context(tcb->context.regs);
     tcb->context.regs->rsp = (unsigned long)stack;
 #elif defined(__powerpc64__)
-    debug("child swapping stack to %p return 0x%lx: %d\n",
-          stack, regs.nip, my_thread->tid);
-
     struct frame_pointer {
         void *backchain;   // arg->stack points here
         uint64_t cr_save;  // 8(r1)
         uint64_t lr_save;  // 16(r1)
         uint64_t toc_save; // 24(r1)
         uint64_t parm_save;// 32(r1)
-    } * fp = arg->stack - offsetof(struct frame_pointer, backchain);
+    } *fp = stack - offsetof(struct frame_pointer, backchain);
 #if 1
     register void *tcbptr __asm__("r13");
-    debug("%s @ %u: In child: child stack to use: %p\n", __func__, __LINE__, arg->stack);
-    debug("%s @ %u: In child: child stack fp: %p\n", __func__, __LINE__, fp);
-    debug("%s @ %u: In child: Function to call: %p\n", __func__, __LINE__, (void *)fp->lr_save);
+    //debug("%s @ %u: In child: child stack to use : %p\n", __func__, __LINE__, arg->stack);
+    //debug("%s @ %u: In child: Function to call   : %p\n", __func__, __LINE__, (void *)fp->lr_save);
     debug("%s @ %u: In child: Parameter to pass32: %p\n", __func__, __LINE__, (void *)fp->parm_save);
-    debug("%s @ %u: In child: tcbptr (r13): %p\n", __func__, __LINE__, (void *)tcbptr);
+    debug("%s @ %u: In child: tcbptr (r13)       : %p\n", __func__, __LINE__, (void *)tcbptr);
 #endif
 
     tcb->context.regs = &regs;
@@ -224,6 +221,9 @@ static int clone_implementation_wrapper(struct shim_clone_args * arg)
     tcb->context.regs->gpr[3] = fp->parm_save;
     tcb->context.regs->gpr[12] = fp->lr_save;
     tcb->context.regs->nip = fp->lr_save;
+
+    debug("child swapping stack to %p return 0x%lx: %d\n",
+          stack, regs.nip, my_thread->tid);
 #endif
     put_thread(my_thread);
 
