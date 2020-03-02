@@ -87,7 +87,7 @@ class TC_01_Bootstrap(RegressionTestCase):
         stdout, _ = self.run_binary(['exec_same'])
         self.assertIn('hello from execv process', stdout)
 
-    @unittest.skipIf(ON_PPC, "Does not run on PPC yet")
+    @unittest.skipIf(ON_PPC, "Does not run on PPC yet (fork)")
     def test_202_fork_and_exec(self):
         stdout, _ = self.run_binary(['fork_and_exec'])
 
@@ -95,7 +95,7 @@ class TC_01_Bootstrap(RegressionTestCase):
         self.assertIn('child exited with status: 0', stdout)
         self.assertIn('test completed successfully', stdout)
 
-    @unittest.skipIf(ON_PPC, "Does not run on PPC yet")
+    @unittest.skipIf(ON_PPC, "Does not run on PPC yet (fork)")
     def test_203_vfork_and_exec(self):
         stdout, _ = self.run_binary(['vfork_and_exec'])
 
@@ -281,20 +281,18 @@ class TC_30_Syscall(RegressionTestCase):
         self.assertIn('futex correctly timed out', stdout)
 
     # flaky
-    @unittest.skipIf(ON_PPC, "Does not run on PPC yet")
     def test_042_futex_requeue(self):
         stdout, _ = self.run_binary(['futex_requeue'])
 
         self.assertIn('Test successful!', stdout)
 
     # flaky
-    @unittest.skipIf(ON_PPC, "Does not run on PPC yet")
     def test_043_futex_wake_op(self):
         stdout, _ = self.run_binary(['futex_wake_op'])
 
         self.assertIn('Test successful!', stdout)
 
-    @unittest.skipIf(ON_PPC, "Does not run on PPC yet")
+    @unittest.skipIf(ON_PPC, "Does not run on PPC yet (fork)")
     def test_050_mmap(self):
         stdout, _ = self.run_binary(['mmap-file'], timeout=60)
 
@@ -329,7 +327,7 @@ class TC_30_Syscall(RegressionTestCase):
         self.assertIn('large-mmap: mmap 1 completed OK', stdout)
         self.assertIn('large-mmap: mmap 2 completed OK', stdout)
 
-    @unittest.skipIf(ON_PPC, "Does not run on PPC yet")
+    @unittest.skipIf(ON_PPC, "Does not run on PPC yet (fork)")
     def test_053_mprotect_file_fork(self):
         stdout, _ = self.run_binary(['mprotect_file_fork'])
 
@@ -354,7 +352,7 @@ class TC_30_Syscall(RegressionTestCase):
         self.assertIn('OK on sigaltstack in main thread', stdout)
         self.assertIn('done exiting', stdout)
 
-    @unittest.skipIf(ON_PPC, "Does not run on PPC yet")
+    @unittest.skipIf(ON_PPC, "Does not run on PPC yet (fork)")
     def test_070_eventfd(self):
         stdout, _ = self.run_binary(['eventfd'])
 
@@ -454,7 +452,7 @@ class TC_80_Socket(RegressionTestCase):
         self.assertIn('pselect() on write event returned 1 file descriptors', stdout)
         self.assertIn('pselect() on read event returned 1 file descriptors', stdout)
 
-    @unittest.skipIf(ON_PPC, "Does not run on PPC yet")
+    @unittest.skipIf(ON_PPC, "Does not run on PPC yet (fork)")
     def test_100_socket_unix(self):
         stdout, _ = self.run_binary(['unix'])
         self.assertIn('Data: This is packet 0', stdout)
@@ -468,7 +466,7 @@ class TC_80_Socket(RegressionTestCase):
         self.assertIn('Data: This is packet 8', stdout)
         self.assertIn('Data: This is packet 9', stdout)
 
-    @unittest.skipIf(ON_PPC, "Does not run on PPC yet")
+    @unittest.skipIf(ON_PPC, "Does not run on PPC yet (fork)")
     def test_200_socket_udp(self):
         stdout, _ = self.run_binary(['udp'], timeout=50)
         self.assertIn('Data: This is packet 0', stdout)
@@ -482,7 +480,7 @@ class TC_80_Socket(RegressionTestCase):
         self.assertIn('Data: This is packet 8', stdout)
         self.assertIn('Data: This is packet 9', stdout)
 
-    @unittest.skipIf(ON_PPC, "Does not run on PPC yet")
+    @unittest.skipIf(ON_PPC, "Does not run on PPC yet (fork)")
     def test_300_socket_tcp_msg_peek(self):
         stdout, _ = self.run_binary(['tcp_msg_peek'], timeout=50)
         self.assertIn('[client] receiving with MSG_PEEK: Hello from server!', stdout)
