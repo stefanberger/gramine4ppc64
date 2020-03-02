@@ -204,6 +204,10 @@ void update_fs_base (unsigned long fs_base)
     shim_tcb_t * shim_tcb = shim_get_tcb();
     shim_tcb->context.fs_base = fs_base;
     DkSegmentRegister(PAL_SEGMENT_FS, (PAL_PTR)fs_base);
+#ifdef __powerpc64__
+    if (fs_base == 0)
+        shim_tcb_clear();
+#endif
     assert(shim_tcb_check_canary());
 }
 

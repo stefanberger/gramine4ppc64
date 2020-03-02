@@ -222,4 +222,26 @@ static inline bool shim_tcb_check_canary(void) {
     return SHIM_TCB_GET(canary) == SHIM_TCB_CANARY;
 }
 
+#ifdef __powerpc64__
+// get rid of the TCB set by glibc, if there is one
+static inline void *shim_tcb_clear(void) {
+    PAL_TCB *r13_ptcb;
+    PAL_TCB *ptcb;
+    __asm__ ("addi %0, %%r13, %1\n\t"
+        : "=r" (r13_ptcb)
+        : "i" (-TLS_TCB_OFFSET - sizeof(PAL_TCB))
+    );
+
+    ptcb = r13_ptcb->glibc_tcb.LibOS_TCB;
+    if (ptcb != r13_ptcb) {
+        __asm__ ("addi %%r13, %0, %1\n\t"
+            :
+            : "r" (ptcb), "i" (sizeof(PAL_TCB) + TLS_TCB_OFFSET)
+            : "r13"
+        );
+    }
+    return r13_ptcb - TLS_TCB_OFFSET - sizeof(PAL_TCB);
+}
+#endif
+
 #endif /* _SHIM_H_ */
