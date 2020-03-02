@@ -309,9 +309,13 @@ static void _DkPipeSighandler (int signum, siginfo_t * info,
     __UNUSED(info);
     assert(signum == SIGPIPE);
 
+    printf("PipeSighandler  !!!!!!!!!!!!!!!!!!!!!!!!!\n");
+
+#if defined(__i386__) || defined(__x86_64__)
     uintptr_t rip = uc->uc_mcontext.gregs[REG_RIP];
     __UNUSED(rip);
     assert(ADDR_IN_PAL(rip)); // This signal can only happens inside PAL
+#endif
     return;
 }
 
