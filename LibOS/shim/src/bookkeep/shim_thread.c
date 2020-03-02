@@ -511,6 +511,10 @@ static int _check_last_thread(struct shim_thread* self) {
 
     struct shim_thread* thread;
     LISTP_FOR_EACH_ENTRY(thread, &thread_list, list) {
+        if (!thread) {
+            debug("No thread in list. How can this be?\nSTOP!\n");while(1);
+            return 0;
+        }
         if (thread->tid && thread->tid != self_tid && thread->in_vm && thread->is_alive) {
             return thread->tid;
         }

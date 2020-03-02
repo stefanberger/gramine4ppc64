@@ -11,7 +11,6 @@ from regression import (
 )
 
 class TC_00_Unittests(RegressionTestCase):
-    @unittest.skipIf(ON_PPC, "Does not run on PPC yet")
     def test_000_spinlock(self):
         stdout, _ = self.run_binary(['spinlock'])
 
@@ -54,7 +53,7 @@ class TC_01_Bootstrap(RegressionTestCase):
         self.assertIn('Local Address in Executable: 0x', stdout)
         self.assertIn('argv[0] = bootstrap_pie', stdout)
 
-    @unittest.skipIf(ON_PPC & os.uname()[1].startswith('ubuntu'), "Path issue on Ubuntu")
+    @unittest.skipIf(ON_PPC & os.uname()[1].find('ubuntu') >= 0, "Path issue on Ubuntu")
     def test_110_basic_bootstrapping_cxx(self):
         stdout, _ = self.run_binary(['bootstrap-c++'])
 
@@ -129,7 +128,6 @@ class TC_01_Bootstrap(RegressionTestCase):
         with self.expect_returncode(113):
             self.run_binary(['exit'])
 
-    @unittest.skipIf(ON_PPC, "Does not run on PPC yet")
     def test_401_exit_group(self):
         try:
             self.run_binary(['exit_group'])
