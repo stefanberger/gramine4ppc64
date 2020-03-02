@@ -383,6 +383,17 @@ int shim_do_clone (int flags, void * user_stack_addr, int * parent_tidptr,
         if (!fs_base) {
             fs_base = self->shim_tcb->context.fs_base;
         }
+#ifdef __powerpc64__
+        if (!fs_base) {
+            register unsigned long r13 __asm__("r13");
+            fs_base = r13 - TLS_TCB_OFFSET - sizeof(PAL_TCB);
+            PAL_TCB *r13_ptcb = (PAL_TCB*)fs_base;
+            PAL_TCB *ptcb = r13_ptcb->glibc_tcb.LibOS_TCB;
+	    debug("%s: r13_ptcb: %p   ptcb: %p\n", __func__, r13_ptcb, ptcb);
+        }
+#endif
+        debug("%s: Forking. fs_base=0x%lx\n", __func__, fs_base);
+
         /* associate cpu context to new forking thread for migration */
         shim_tcb_t shim_tcb;
         memcpy(&shim_tcb, self->shim_tcb, sizeof(shim_tcb_t));

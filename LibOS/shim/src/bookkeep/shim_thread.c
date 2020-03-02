@@ -826,7 +826,7 @@ static int resume_wrapper (void * param)
 #if defined(__i386__) || defined(__x86_64__)
     assert(saved_tcb->context.regs && saved_tcb->context.regs->rsp);
 #elif defined(__powerpc64__)
-    assert(saved_tcb->context.regs && saved_tcb->context.regs->gpr[1]);
+//    assert(saved_tcb->context.regs && saved_tcb->context.regs->gpr[1]);
 #endif
     set_cur_thread(thread);
     unsigned long fs_base = saved_tcb->context.fs_base;
@@ -880,6 +880,10 @@ BEGIN_RS_FUNC(running_thread)
         shim_tcb_t* saved_tcb = thread->shim_tcb;
         if (saved_tcb) {
             /* fork case */
+#ifdef __powerpc64__
+            register uint64_t r13 __asm__("r13");
+	    uint64_t orig_r13 = r13;
+#endif
             shim_tcb_t* tcb = shim_get_tcb();
             memcpy(tcb, saved_tcb, sizeof(*tcb));
             __shim_tcb_init(tcb);
@@ -888,13 +892,27 @@ BEGIN_RS_FUNC(running_thread)
 #if defined(__i386__) || defined(__x86_64__)
             assert(tcb->context.regs && tcb->context.regs->rsp);
 #elif defined(__powerpc64__)
-            assert(tcb->context.regs && tcb->context.regs->gpr[1]);
+            //assert(tcb->context.regs && tcb->context.regs->gpr[1]);
 #endif
             update_fs_base(tcb->context.fs_base);
+#ifdef __powerpc64__
+            __asm__(
+		"addi %%r13, %0, %1\n\r"
+		:
+		: "r" (tcb->context.fs_base), "i"(sizeof(PAL_TCB)+0x7000));
+            PAL_TCB *r13_ptcb = (PAL_TCB *)tcb->context.fs_base;
+            PAL_TCB *ptcb = (void*)tcb - offsetof(PAL_TCB, libos_tcb);
+            r13_ptcb->glibc_tcb.LibOS_TCB = ptcb;
+#endif
             /* Temporarily disable preemption until the thread resumes. */
             __disable_preempt(tcb);
             debug_setbuf(tcb, false);
-            debug("after resume, set tcb to 0x%lx\n", tcb->context.fs_base);
+#ifdef __powerpc64__
+            debug("AAAAA after resume, set tcb to 0x%lx\n", tcb->context.fs_base);
+	    debug("%s: r13_ptcb: %p   ptcb: %p\n", __func__, r13_ptcb, ptcb);
+            debug(">>>>>>>> tcb->context.regs: %p\n", tcb->context.regs);
+            debug(">>>>>>>> tcb: %p   r13: 0x%lx\n", tcb, orig_r13);
+#endif
         } else {
             /*
              * In execve case, the following holds:
