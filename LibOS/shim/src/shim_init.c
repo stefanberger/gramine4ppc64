@@ -808,6 +808,10 @@ noreturn void* shim_init (int argc, void * args)
         vdso_map_migrate();
         restore_context(&cur_tcb->context);
     }
+#elif defined(__powerpc64__)
+    if (cur_tcb->context.regs && cur_tcb->context.regs->gpr[1]) {
+        restore_context(&cur_tcb->context);
+    }
 #endif
 
     if (cur_thread->exec)
