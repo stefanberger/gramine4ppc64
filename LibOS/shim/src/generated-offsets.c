@@ -52,6 +52,7 @@ void dummy(void)
     OFFSET(SHIM_REGS_LINK , shim_regs, link);
     OFFSET(SHIM_REGS_XER  , shim_regs, xer);
     OFFSET(SHIM_REGS_CCR  , shim_regs, ccr);
+    DEFINE(SHIM_REGS_SIZE, sizeof(struct shim_regs));
 #endif
 
     /* definitions */
