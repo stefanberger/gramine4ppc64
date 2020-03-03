@@ -77,6 +77,7 @@
 #define SAVE_SPRS(OFFSET, FRAME)			\
 	mflr	%r0;					\
 	std	%r0, OFFSET+SHIM_REGS_LINK(FRAME);	\
+	std	%r0, OFFSET+SHIM_REGS_NIP(FRAME);	\
 	mfctr	%r0;					\
 	std	%r0, OFFSET+SHIM_REGS_CTR(FRAME);	\
 	mfxer	%r0;					\
@@ -113,76 +114,46 @@ syscalldb:
 	addi	%r2, %r2, (.TOC. - 0b)@l
 
 	mflr	%r0
-	std	%r0,16(%r1)		# save lr
+	std	%r0,16(%r1)			# save lr
 	mfcr	%r0
-	std	%r0,8(%r1)		# save cr
+	std	%r0,8(%r1)			# save cr
 
 	# make room on stack for pt_regs we stored above
-	stdu	%r1,-32-SHIM_REGS_SIZE(%r1)	# @1: make room on stack
-						# 32 for normal frame
+	stdu	%r1,-SHIM_REGS_SIZE-8-32(%r1)	# @1: make room on stack
 						# SHIM_REGS_SIZE: pt_regs
-	# pt_regs are now at %r1+32
+						#  8: r3 temp storage
+						# 32: for normal frame
+	# pt_regs are now at %r1+32+8
 	# call into c code to set the TCB's context.regs
-	addi	%r3, %r1, 32
+	addi	%r3, %r1, 32+8
 	bl	shim_set_context_regs
 	nop
 	# restore the registers the function may have clobbered
-	LOAD_GPRS_R0_AND_R3_TO_R12(32, %r1)
+	LOAD_GPRS_R0_AND_R3_TO_R12(32+8, %r1)
 
-	addi	%r10,%r1,32+SHIM_REGS_SIZE+8	# address of cr
+	addi	%r10,%r1,32+8+SHIM_REGS_SIZE+8	# address of cr
 
 	bl	shim_table_dispatch
 	nop
 
-	addi	%r1,%r1,32+SHIM_REGS_SIZE	# undo @1
+	# we can now reset the context.regs to NULL
+	# need to save %r3
+	std	%r3,32(%r1)
+	li	%r3, 0
+	bl	shim_set_context_regs
+	nop
 
-	ld	%r0,8(%r1)
+	ld	%r3,32(%r1)
+
+	addi	%r1,%r1,32+8+SHIM_REGS_SIZE	# undo @1
+
+	ld	%r0,8(%r1)			# get cr modified by
+						# shim_table_dispatch
 	mtcr	%r0
 
-	ld	%r0,16(%r1)	# restore lr
+	ld	%r0,16(%r1)			# restore lr
 	mtlr 	%r0
 	blr
 
 	.cfi_endproc
         .size syscalldb, .-syscalldb
-
-#if 0
-        /*
-         * syscall_wrapper: emulate syscall instruction
-         *   prohibited in e.g. Linux-SGX PAL which raises a SIGILL exception
-         * See illegal_upcall() @ shim_signal.c and
-         *     fixup_child_context() @ shim_clone.c
-         *
-         * input:
-         * %rcx: Instruction address to continue app execution after trapped
-         *       syscall instruction
-         * %r11: rflags on entering syscall
-         */
-syscall_wrapper:
-        .cfi_startproc
-        .cfi_def_cfa %rsp, 0
-        # %rcx is used as input for returning %rip
-        .cfi_register %rip, %rcx
-        # %r11 is used as input to keep %rflags
-        .cfi_register %rflags, %r11
-        subq $RED_ZONE_SIZE, %rsp
-        .cfi_adjust_cfa_offset RED_ZONE_SIZE
-        callq *syscalldb@GOTPCREL(%rip)
-syscall_wrapper_after_syscalldb:
-        addq $RED_ZONE_SIZE, %rsp
-        .cfi_adjust_cfa_offset -RED_ZONE_SIZE
-        # restore %rflags for syscall abi compatibility.
-        # This must be done after "addq $RED_ZONE_SIZE, %rsp" above
-        # which destroys %rflags
-        xchg %r11, (%rsp)
-        .cfi_offset %rflags, 0
-        popfq
-        .cfi_adjust_cfa_offset -8
-        .cfi_same_value %rflags
-        pushq %r11
-        .cfi_adjust_cfa_offset 8
-        jmp *%rcx
-
-        .cfi_endproc
-        .size syscall_wrapper, .-syscall_wrapper
-#endif
