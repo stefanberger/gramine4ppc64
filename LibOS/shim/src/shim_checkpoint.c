@@ -415,6 +415,8 @@ int restore_checkpoint (struct cp_header * cphdr, struct mem_header * memhdr,
     long rebase = base - (ptr_t) cphdr->addr;
     int ret = 0;
 
+    debug("%s @ %u\n", __func__, __LINE__);
+
     if (type)
         debug("restore checkpoint at 0x%08lx rebased from %p (%s only)\n",
               base, cphdr->addr, CP_FUNC_NAME(type));
@@ -465,7 +467,9 @@ int restore_checkpoint (struct cp_header * cphdr, struct mem_header * memhdr,
             goto next;
 
         rs_func rs = (&__rs_func) [cpent->cp_type - CP_FUNC_BASE];
+        debug("%s @ %u   calling %p\n", __func__, __LINE__, rs);
         ret = (*rs) (cpent, base, offset, rebase);
+        debug("%s @ %u   done calling %p\n", __func__, __LINE__, rs);
         if (ret < 0) {
             SYS_PRINTF("restore_checkpoint() at %s (%d)\n",
                        CP_FUNC_NAME(cpent->cp_type), ret);
@@ -1055,6 +1059,7 @@ int do_migration (struct newproc_cp_header * hdr, void ** cpptr)
 
 void restore_context (struct shim_context * context)
 {
+    debug("%s @ %u\n", __func__, __LINE__);
     assert(context->regs);
     struct shim_regs regs = *context->regs;
 #if defined(__i386__) || defined(__x86_64__)
@@ -1094,6 +1099,7 @@ void restore_context (struct shim_context * context)
                      "jmp *-"XSTRINGIFY(RED_ZONE_SIZE)"-8(%%rsp)\r\n"
                      :: "g"(&regs) : "memory");
 #elif defined(__powerpc64__)
+    debug("%s\n",__func__);
     debug("restore context: SP = 0x%08lx, IP = 0x%08lx\n", regs.gpr[1], regs.nip);
 
     /* Ready to resume execution, re-enable preemption. */
@@ -1137,17 +1143,17 @@ void restore_context (struct shim_context * context)
         "ld 28," XSTRINGIFY(SHIM_REGS_GPR28) "(31)\n\t"
         "ld 29," XSTRINGIFY(SHIM_REGS_GPR29) "(31)\n\t"
         "ld 30," XSTRINGIFY(SHIM_REGS_GPR30) "(31)\n\t"
-        "ld  0," XSTRINGIFY(SHIM_REGS_LINK)  "(31)\n\t"
-	"mtlr 0\n\t"
+        "ld  0," XSTRINGIFY(SHIM_REGS_CTR )  "(31)\n\t"
+	"mtctr 0\n\t"
         "ld  0," XSTRINGIFY(SHIM_REGS_XER)   "(31)\n\t"
 	"mtxer 0\n\t"
         "ld  0," XSTRINGIFY(SHIM_REGS_CCR)   "(31)\n\t"
 	"mtcr 0\n\t"
         "ld  0," XSTRINGIFY(SHIM_REGS_NIP)   "(31)\n\t"
-	"mtctr 0\n\t"
+	"mtlr 0\n\t"
         "ld  0," XSTRINGIFY(SHIM_REGS_GPR0)  "(31)\n\t"
         "ld 31," XSTRINGIFY(SHIM_REGS_GPR31) "(31)\n\t"
-        "bctrl\n\t"
+        "blrl\n\t"
         :
         : "r"(&regs)
         :
