@@ -423,6 +423,9 @@ int64_t shim_table_dispatch(uint64_t param1, uint64_t param2, uint64_t param3,
     syscallfn_t *sfn = (syscallfn_t *)shim_table[syscallnr];
 
     int64_t res = sfn(param1, param2, param3, param4, param5, param6);
+    if (syscallnr == 120) {
+        debug("shim_table_dispatch: RETURN FROM CLONE: %ld\n", res);
+    }
 
     if (res < 0) {
         res = -res;
@@ -436,4 +439,15 @@ int64_t shim_table_dispatch(uint64_t param1, uint64_t param2, uint64_t param3,
 void shim_set_context_regs(struct shim_regs *shim_regs)
 {
     SHIM_TCB_SET(context.regs, shim_regs);
+    if (shim_regs) {
+
+        uint64_t syscallnr = shim_regs->gpr[9];
+        if (syscallnr == 120) {
+            // we do this for the child to return properly from a fork/vfork/clone
+            // set r3 to 0 for the child and make sure cr is cleared properly
+            shim_regs->gpr[3] = 0;
+            shim_regs->ccr &= ~CR0_SO;
+            debug("SYSCALLNR: %ld   SP:0x%lx  NIP: 0x%lx\n", syscallnr, shim_regs->gpr[1], shim_regs->nip);
+        }
+    }
 }
