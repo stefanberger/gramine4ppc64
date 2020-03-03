@@ -905,6 +905,8 @@ int do_migrate_process (int (*migrate) (struct shim_cp_store *,
         goto out;
     }
 
+#if !defined(__powerpc64__)
+    // FIXME: see shim_init.c for similar code
     /* Downgrade communication with child to non-secure (only checkpoint send is secure).
      * Currently only relevant to SGX PAL, other PALs ignore this. */
     PAL_STREAM_ATTR attr;
@@ -917,6 +919,7 @@ int do_migrate_process (int (*migrate) (struct shim_cp_store *,
         ret = -PAL_ERRNO;
         goto out;
     }
+#endif
 
     SAVE_PROFILE_INTERVAL(migrate_wait_response);
 

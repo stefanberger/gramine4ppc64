@@ -763,12 +763,15 @@ noreturn void* shim_init (int argc, void * args)
 
         /* Downgrade communication with parent to non-secure (only checkpoint recv is secure).
          * Currently only relevant to SGX PAL, other PALs ignore this. */
+#if !defined(__powerpc64__)
+	// FIXME: See similar code in shim_checkpoint.c
         PAL_STREAM_ATTR attr;
         if (!DkStreamAttributesQueryByHandle(PAL_CB(parent_process), &attr))
             shim_do_exit(-PAL_ERRNO);
         attr.secure = PAL_FALSE;
         if (!DkStreamAttributesSetByHandle(PAL_CB(parent_process), &attr))
             shim_do_exit(-PAL_ERRNO);
+#endif
     }
 
     debug("shim process initialized\n");
