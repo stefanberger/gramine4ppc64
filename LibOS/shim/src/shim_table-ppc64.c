@@ -431,3 +431,9 @@ int64_t shim_table_dispatch(uint64_t param1, uint64_t param2, uint64_t param3,
 
     return res;
 }
+
+
+void shim_set_context_regs(struct shim_regs *shim_regs)
+{
+    SHIM_TCB_SET(context.regs, shim_regs);
+}

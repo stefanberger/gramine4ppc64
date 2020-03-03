@@ -124,7 +124,7 @@ syscalldb:
 	# pt_regs are now at %r1+32
 	# call into c code to set the TCB's context.regs
 	addi	%r3, %r1, 32
-#	bl	shim_set_context_regs
+	bl	shim_set_context_regs
 	nop
 	# restore the registers the function may have clobbered
 	LOAD_GPRS_R0_AND_R3_TO_R12(32, %r1)

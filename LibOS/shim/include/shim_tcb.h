@@ -182,7 +182,7 @@ struct shim_tcb {
     })
 
 #define SHIM_TCB_SET(member, value)                                     \
-    ({                                                                  \
+    do {                                                                  \
         shim_tcb_t* tcb;                                                \
         PAL_TCB *ptcb;							\
         static_assert(sizeof(tcb->member) == 8 ||                       \
