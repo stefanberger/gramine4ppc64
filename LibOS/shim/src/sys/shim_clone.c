@@ -140,7 +140,7 @@ static int clone_implementation_wrapper(struct shim_clone_args * arg)
     struct shim_regs regs = *arg->parent->shim_tcb->context.regs;
 #elif defined(__powerpc64__)
     struct shim_regs regs;
-    debug("<<<<< %s @ %u: arg->parent->shim_tcb: %p\n", __func__, __LINE__, arg->parent->shim_tcb);
+    //debug("<<<<< %s @ %u: arg->parent->shim_tcb: %p\n", __func__, __LINE__, arg->parent->shim_tcb);
     //debug("<<<<< %s @ %u: arg->parent->shim_tcb->context: %p\n", __func__, __LINE__, arg->parent->shim_tcb->context);
 
     /* leave this block up here otherwise `exit_group` testcase doesn't work properly anymore */
@@ -150,7 +150,7 @@ static int clone_implementation_wrapper(struct shim_clone_args * arg)
              : "i" (-0x7000 - sizeof(PAL_TCB))
     );
     PAL_TCB *ptcb_glibc = (PAL_TCB *)(arg->fs_base - 0x7000 - sizeof(PAL_TCB));
-#if 1
+#if 0
     debug("%s @ %u: pctb %p (from shim)\n", __func__, __LINE__, ptcb);
     debug("%s @ %u: pctb %p (from glibc)\n", __func__, __LINE__, ptcb_glibc);
     void *libostcb = ptcb_glibc->glibc_tcb.LibOS_TCB;
@@ -164,7 +164,7 @@ static int clone_implementation_wrapper(struct shim_clone_args * arg)
              : "r"(arg->fs_base)
              :);
     regs.gpr[13] = arg->fs_base;
-    debug("%s @ %u: Setting TCB to %p (r13)\n", __func__, __LINE__, (void *)arg->fs_base);
+    //debug("%s @ %u: Setting TCB to %p (r13)\n", __func__, __LINE__, (void *)arg->fs_base);
 #endif
 
     if (my_thread->set_child_tid) {
@@ -207,7 +207,7 @@ static int clone_implementation_wrapper(struct shim_clone_args * arg)
         uint64_t toc_save; // 24(r1)
         uint64_t parm_save;// 32(r1)
     } *fp = stack - offsetof(struct frame_pointer, backchain);
-#if 1
+#if 0
     register void *tcbptr __asm__("r13");
     //debug("%s @ %u: In child: child stack to use : %p\n", __func__, __LINE__, arg->stack);
     //debug("%s @ %u: In child: Function to call   : %p\n", __func__, __LINE__, (void *)fp->lr_save);
@@ -421,7 +421,7 @@ int shim_do_clone (int flags, void * user_stack_addr, int * parent_tidptr,
         add_thread(thread);
         set_as_child(self, thread);
 
-        debug("Yeek! Calling do_migrate_process!\n");
+        //debug("Yeek! Calling do_migrate_process!\n");
         ret = do_migrate_process(&migrate_fork, NULL, NULL, thread);
         thread->shim_tcb = NULL; /* cpu context of forked thread isn't
                                   * needed any more */
@@ -476,12 +476,7 @@ int shim_do_clone (int flags, void * user_stack_addr, int * parent_tidptr,
     new_args.stack     = user_stack_addr;
     new_args.fs_base   = fs_base;
 
-    debug("%s @ %u: Child has to use stack at %p   fs_base(TCB)=0x%lx\n", __func__, __LINE__, new_args.stack, fs_base);
-#if 0
-    int rc;
-    rc = DkVirtualMemoryProtect((PAL_PTR)((uint64_t)new_args.stack & ~0xffff), 0x10000, PAL_PROT_READ | PAL_PROT_WRITE|PAL_PROT_EXEC);
-    debug("Protecting stack at %p  rc=%d\n", (void *)((uint64_t)new_args.stack & ~0xffff),rc);
-#endif
+//    debug("%s @ %u: Child has to use stack at %p   fs_base(TCB)=0x%lx\n", __func__, __LINE__, new_args.stack, fs_base);
 
     // Invoke DkThreadCreate to spawn off a child process using the actual
     // "clone" system call. DkThreadCreate allocates a stack for the child
@@ -491,7 +486,7 @@ int shim_do_clone (int flags, void * user_stack_addr, int * parent_tidptr,
     // running the function we gave to DkThreadCreate.
     PAL_HANDLE pal_handle = thread_create(clone_implementation_wrapper,
                                           &new_args);
-    debug("%s @ %u: after thread_create\n", __func__, __LINE__);
+//    debug("%s @ %u: after thread_create\n", __func__, __LINE__);
     if (!pal_handle) {
         ret = -PAL_ERRNO;
         put_thread(new_args.thread);
