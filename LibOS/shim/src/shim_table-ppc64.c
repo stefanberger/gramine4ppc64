@@ -15,7 +15,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 /*
- * shim_table.c
+ * shim_table-ppc64.c
  *
  * This file contains the system call table used by application libraries.
  */
@@ -409,7 +409,7 @@ int64_t shim_table_dispatch(uint64_t param1, uint64_t param2, uint64_t param3,
 {
     typedef uint64_t(syscallfn_t)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
 
-    debug("Calling Syscall %lu.  r3=0x%lx r4=0x%lx r5=0x%lx r6=0x%lx r7=0x%lx\n", syscallnr, param1, param2, param3, param4, param5);
+    //debug("Calling Syscall %lu.  r3=0x%lx r4=0x%lx r5=0x%lx r6=0x%lx r7=0x%lx\n", syscallnr, param1, param2, param3, param4, param5);
 
     if (syscallnr >= LIBOS_SYSCALL_BOUND || shim_table[syscallnr] == NULL) {
         *cr |= CR0_SO;
@@ -424,7 +424,7 @@ int64_t shim_table_dispatch(uint64_t param1, uint64_t param2, uint64_t param3,
 
     int64_t res = sfn(param1, param2, param3, param4, param5, param6);
     if (syscallnr == 120) {
-        debug("shim_table_dispatch: RETURN FROM CLONE: %ld\n", res);
+        //debug("shim_table_dispatch: RETURN FROM CLONE: %ld\n", res);
     }
 
     if (res < 0) {
