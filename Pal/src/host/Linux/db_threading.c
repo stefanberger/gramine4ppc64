@@ -113,8 +113,8 @@ int pal_thread_init (void * tcbptr)
         return -ERRNO(ret);
 #elif defined(__powerpc64__)
     register void *r13 __asm__("r13");
-    printf(">>>>>>> %s: Current tcb (r13): %p\n", __func__, r13);
-    printf(">>>>>>> %s: Setting TCB at %p  (r13=%p)\n", __func__, tcbptr, tcbptr + sizeof(PAL_TCB) + 0x7000);
+    //printf(">>>>>>> %s: Current tcb (r13): %p\n", __func__, r13);
+    //printf(">>>>>>> %s: Setting TCB at %p  (r13=%p)\n", __func__, tcbptr, tcbptr + sizeof(PAL_TCB) + 0x7000);
     __asm__ __volatile__(
         "addi 13, %0, %1\n\t"
         :
@@ -196,18 +196,19 @@ int _DkThreadCreate (PAL_HANDLE * handle, int (*callback) (void *),
     /* align child_stack to 16 */
     child_stack = ALIGN_DOWN_PTR(child_stack, 16);
 
-    printf("Calling clone now: fn: %p (pal_thread_init), stack: %p, arg: %p   TLS: (unmodified by clone call)\n", pal_thread_init, child_stack, tcb);
+    //printf("Calling clone now: fn: %p (pal_thread_init), stack: %p, arg: %p   TLS: (unmodified by clone call)\n", pal_thread_init, child_stack, tcb);
     ret = clone(pal_thread_init, child_stack,
                 CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SYSVSEM | CLONE_THREAD |
                 CLONE_SIGHAND | CLONE_PARENT_SETTID,
                 (void*)tcb, &hdl->thread.tid, NULL);
 
-    //printf("After low level clone: TID of child: %d\n", hdl->thread.tid);
+#if 0
+    printf("After low level clone: TID of child: %d\n", hdl->thread.tid);
     {
       register void *r13 __asm__("r13");
       printf("Father of clone: tcb: %p\n", r13);
     }
-
+#endif
 
     if (IS_ERR(ret)) {
         ret = -PAL_ERROR_DENIED;

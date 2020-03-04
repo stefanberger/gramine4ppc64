@@ -55,7 +55,7 @@ int _DkEventSet(PAL_HANDLE event, int wakeup) {
                 if (wakeup != -1 && nwaiters > wakeup)
                     nwaiters = wakeup;
 
-                printf("Waking %d waiters on FUTEX %p\n", nwaiters, &event->event.signaled);
+                //printf("Waking %d waiters on FUTEX %p\n", nwaiters, &event->event.signaled);
                 ret = INLINE_SYSCALL(futex, 6, &event->event.signaled, FUTEX_WAKE, nwaiters, NULL,
                                      NULL, 0);
                 if (IS_ERR(ret))
@@ -64,7 +64,7 @@ int _DkEventSet(PAL_HANDLE event, int wakeup) {
         }
     } else {
         // Only one thread wakes up, leave unsignaled
-        printf("Waking 1 waiter on FUTEX %p\n", &event->event.signaled);
+        //printf("Waking 1 waiter on FUTEX %p\n", &event->event.signaled);
         ret = INLINE_SYSCALL(futex, 6, &event->event.signaled, FUTEX_WAKE, 1, NULL, NULL, 0);
     }
 
@@ -113,9 +113,9 @@ int _DkEventWait(PAL_HANDLE event) {
         atomic_inc(&event->event.nwaiters);
 
         do {
-            printf("tid %ld: WAITING on futex %p\n", INLINE_SYSCALL(gettid,0),&event->event.signaled);
+            //printf("tid %ld: WAITING on futex %p\n", INLINE_SYSCALL(gettid,0),&event->event.signaled);
             ret = INLINE_SYSCALL(futex, 6, &event->event.signaled, FUTEX_WAIT, 0, NULL, NULL, 0);
-            printf("tid %ld: WOKE from futex %p\n", INLINE_SYSCALL(gettid,0),&event->event.signaled);
+            //printf("tid %ld: WOKE from futex %p\n", INLINE_SYSCALL(gettid,0),&event->event.signaled);
 
             if (IS_ERR(ret)) {
                 if (ERRNO(ret) == EWOULDBLOCK) {
