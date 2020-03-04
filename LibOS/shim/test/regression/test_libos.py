@@ -452,7 +452,6 @@ class TC_80_Socket(RegressionTestCase):
         self.assertIn('pselect() on write event returned 1 file descriptors', stdout)
         self.assertIn('pselect() on read event returned 1 file descriptors', stdout)
 
-    @unittest.skipIf(ON_PPC, "Does not run on PPC yet (fork)")
     def test_100_socket_unix(self):
         stdout, _ = self.run_binary(['unix'])
         self.assertIn('Data: This is packet 0', stdout)
@@ -466,7 +465,6 @@ class TC_80_Socket(RegressionTestCase):
         self.assertIn('Data: This is packet 8', stdout)
         self.assertIn('Data: This is packet 9', stdout)
 
-    @unittest.skipIf(ON_PPC, "Does not run on PPC yet (fork)")
     def test_200_socket_udp(self):
         stdout, _ = self.run_binary(['udp'], timeout=50)
         self.assertIn('Data: This is packet 0', stdout)
@@ -480,7 +478,6 @@ class TC_80_Socket(RegressionTestCase):
         self.assertIn('Data: This is packet 8', stdout)
         self.assertIn('Data: This is packet 9', stdout)
 
-    @unittest.skipIf(ON_PPC, "Does not run on PPC yet (fork)")
     def test_300_socket_tcp_msg_peek(self):
         stdout, _ = self.run_binary(['tcp_msg_peek'], timeout=50)
         self.assertIn('[client] receiving with MSG_PEEK: Hello from server!', stdout)
