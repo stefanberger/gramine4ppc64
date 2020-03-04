@@ -40,9 +40,8 @@
 	std	%r11, OFFSET+SHIM_REGS_GPR11(FRAME);	\
 	std	%r12, OFFSET+SHIM_REGS_GPR11(FRAME)
 
-#define LOAD_GPRS_R0_AND_R3_TO_R12(OFFSET, FRAME)	\
+#define LOAD_GPRS_R0_AND_R4_TO_R12(OFFSET, FRAME)	\
 	ld	%r0, OFFSET+SHIM_REGS_GPR0(FRAME);	\
-	ld	%r3, OFFSET+SHIM_REGS_GPR3(FRAME);	\
 	ld	%r4, OFFSET+SHIM_REGS_GPR4(FRAME);	\
 	ld	%r5, OFFSET+SHIM_REGS_GPR5(FRAME);	\
 	ld	%r6, OFFSET+SHIM_REGS_GPR6(FRAME);	\
@@ -123,13 +122,17 @@ syscalldb:
 						# SHIM_REGS_SIZE: pt_regs
 						#  8: r3 temp storage
 						# 32: for normal frame
+
+	std	%r3,32(%r1)			# save r3
 	# pt_regs are now at %r1+32+8
 	# call into c code to set the TCB's context.regs
-	addi	%r3, %r1, 32+8
+	# this may modify r3 and cr in the pt_regs above
+	addi	%r3,%r1,32+8
 	bl	shim_set_context_regs
 	nop
 	# restore the registers the function may have clobbered
-	LOAD_GPRS_R0_AND_R3_TO_R12(32+8, %r1)
+	LOAD_GPRS_R0_AND_R4_TO_R12(32+8, %r1)
+	ld	%r3,32(%r1)			# restore r3
 
 	addi	%r10,%r1,32+8+SHIM_REGS_SIZE+8	# address of cr
 
@@ -137,13 +140,13 @@ syscalldb:
 	nop
 
 	# we can now reset the context.regs to NULL
-	# need to save %r3
-	std	%r3,32(%r1)
-	li	%r3, 0
+	# need to save %r3; the rest may be clobbered
+	std	%r3,32(%r1)			# save r3
+	li	%r3,0
 	bl	shim_set_context_regs
 	nop
 
-	ld	%r3,32(%r1)
+	ld	%r3,32(%r1)			# restore r3
 
 	addi	%r1,%r1,32+8+SHIM_REGS_SIZE	# undo @1
 
