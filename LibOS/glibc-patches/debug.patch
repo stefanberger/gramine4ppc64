@@ -116,7 +116,7 @@ Index: glibc-2.27/elf/dl-sysdep.c
  
 +//  _dl_printf("%s @ %u: Calling dl_main with phdr: 0x%lx\n", __func__, __LINE__, (unsigned long)phdr);
    (*dl_main) (phdr, phnum, &user_entry, GLRO(dl_auxv));
-+  _dl_printf("%s @ %u: returning user_entry 0x%lx\n", __func__, __LINE__, (unsigned long)user_entry);
++//  _dl_printf("%s @ %u: returning user_entry 0x%lx\n", __func__, __LINE__, (unsigned long)user_entry);
    return user_entry;
  }
  
@@ -420,9 +420,9 @@ Index: glibc-2.27/sysdeps/unix/sysv/linux/createthread.c
 +#ifdef THREAD_SET_LIBOS_TCB_DESCR
 +  THREAD_SET_LIBOS_TCB_DESCR(pd, (void *)0xaffecafe);
 +#endif
-+  void *addr = &(((tcbhead_t *) ((char *) (pd)
-+                     + TLS_PRE_TCB_SIZE))[-1].LibOS_TCB);
-+  printf(">>>>> LIBOS TCB PTR at %p\n", addr);
++//  void *addr = &(((tcbhead_t *) ((char *) (pd)
++//                     + TLS_PRE_TCB_SIZE))[-1].LibOS_TCB);
++//  printf(">>>>> LIBOS TCB PTR at %p\n", addr);
 +#endif
  
    if (__glibc_unlikely (ARCH_CLONE (&start_thread, STACK_VARIABLES_ARGS,
