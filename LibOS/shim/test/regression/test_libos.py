@@ -87,7 +87,7 @@ class TC_01_Bootstrap(RegressionTestCase):
         stdout, _ = self.run_binary(['exec_same'])
         self.assertIn('hello from execv process', stdout)
 
-    # @unittest.skipIf(ON_PPC, "Does not run on PPC yet")
+    @unittest.skipIf(ON_PPC, "Does not run on PPC yet")
     def test_202_fork_and_exec(self):
         stdout, _ = self.run_binary(['fork_and_exec'])
 
@@ -421,7 +421,6 @@ class TC_80_Socket(RegressionTestCase):
         self.assertIn('getsockopt: Got socket type OK', stdout)
         self.assertIn('getsockopt: Got TCP_NODELAY flag OK', stdout)
 
-    @unittest.skipIf(ON_PPC, "Does not run on PPC yet (memory corruption when using IPv6)")
     def test_010_epoll_wait_timeout(self):
         stdout, _ = self.run_binary(['epoll_wait_timeout', '8000'],
             timeout=50)
