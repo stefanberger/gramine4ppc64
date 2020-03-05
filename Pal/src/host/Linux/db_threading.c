@@ -114,11 +114,11 @@ int pal_thread_init (void * tcbptr)
 #elif defined(__powerpc64__)
     register void *r13 __asm__("r13");
     //printf(">>>>>>> %s: Current tcb (r13): %p\n", __func__, r13);
-    //printf(">>>>>>> %s: Setting TCB at %p  (r13=%p)\n", __func__, tcbptr, tcbptr + sizeof(PAL_TCB) + 0x7000);
+    //printf(">>>>>>> %s: Setting TCB at %p  (r13=%p)\n", __func__, tcbptr, tcbptr + sizeof(PAL_TCB) + TLS_TCB_OFFSET);
     __asm__ __volatile__(
         "addi 13, %0, %1\n\t"
         :
-        : "r" (tcb), "i" (sizeof(PAL_TCB) + 0x7000)
+        : "r" (tcb), "i" (sizeof(PAL_TCB) + TLS_TCB_OFFSET)
     );
 #endif
 

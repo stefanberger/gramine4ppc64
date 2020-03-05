@@ -80,6 +80,9 @@ typedef union pal_handle
 #define PAL_LIBOS_TCB_SIZE  256
 
 #ifdef __powerpc64__
+
+#define TLS_TCB_OFFSET	0x7000
+
 typedef struct pal_tcb PAL_TCB;
 /* This is glib'c tcb structure; we have to know about it */
 typedef struct {
