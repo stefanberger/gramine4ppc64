@@ -87,7 +87,6 @@ class TC_01_Bootstrap(RegressionTestCase):
         stdout, _ = self.run_binary(['exec_same'])
         self.assertIn('hello from execv process', stdout)
 
-    @unittest.skipIf(ON_PPC, "Does not run on PPC yet (fork)")
     def test_202_fork_and_exec(self):
         stdout, _ = self.run_binary(['fork_and_exec'])
 
@@ -292,7 +291,6 @@ class TC_30_Syscall(RegressionTestCase):
 
         self.assertIn('Test successful!', stdout)
 
-    @unittest.skipIf(ON_PPC, "Does not run on PPC yet (fork)")
     def test_050_mmap(self):
         stdout, _ = self.run_binary(['mmap-file'], timeout=60)
 
