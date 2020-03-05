@@ -112,7 +112,7 @@ int pal_thread_init (void * tcbptr)
     if (IS_ERR(ret))
         return -ERRNO(ret);
 #elif defined(__powerpc64__)
-    register void *r13 __asm__("r13");
+    //register void *r13 __asm__("r13");
     //printf(">>>>>>> %s: Current tcb (r13): %p\n", __func__, r13);
     //printf(">>>>>>> %s: Setting TCB at %p  (r13=%p)\n", __func__, tcbptr, tcbptr + sizeof(PAL_TCB) + TLS_TCB_OFFSET);
     __asm__ __volatile__(
