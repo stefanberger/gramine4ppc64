@@ -297,7 +297,7 @@ void pal_linux_main (void * args)
         pal_sec.process_id = INLINE_SYSCALL(getpid, 0);
     //printf("%s @ %d: after get pid\n",__func__, __LINE__);
     linux_state.pid = pal_sec.process_id;
-    printf("PID: %d\n", linux_state.pid);
+//    printf("PID: %d\n", linux_state.pid);
 
     linux_state.uid = uid;
     linux_state.gid = gid;
