@@ -88,7 +88,7 @@ static int inet_parse_uri(char** uri, struct sockaddr* addr, size_t* addrlen) {
         struct sockaddr_in6* addr_in6 = (struct sockaddr_in6*)addr;
 
         slen = sizeof(struct sockaddr_in6);
-        assert(addrlen >= slen);
+        assert(*addrlen >= slen);
         memset(addr, 0, slen);
 
         end = strchr(tmp + 1, ']');
@@ -108,7 +108,7 @@ static int inet_parse_uri(char** uri, struct sockaddr* addr, size_t* addrlen) {
         struct sockaddr_in* addr_in = (struct sockaddr_in*)addr;
 
         slen = sizeof(struct sockaddr_in);
-        assert(addrlen >= slen);
+        assert(*addrlen >= slen);
         memset(addr, 0, slen);
 
         end = strchr(tmp, ':');
