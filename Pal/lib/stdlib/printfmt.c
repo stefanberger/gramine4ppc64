@@ -8,14 +8,7 @@
 #include <stdint.h>
 
 #include "api.h"
-
-#ifdef __powerpc64__
-# define VA_AP  *ap
-# define VA_AP_PARAM &ap
-#else
-# define VA_AP   ap
-# define VA_AP_PARAM ap
-#endif
+#include <varargs.h>
 
 // Print a number (base <= 16) in reverse order,
 // using specified fputch function and associated pointer putdat.

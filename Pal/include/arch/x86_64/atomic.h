@@ -1,10 +1,9 @@
-#ifndef _SHIM_ATOMIC_PPC64_H_
-#define _SHIM_ATOMIC_PPC64_H_
+#ifndef _SHIM_ATOMIC_H_
+#define _SHIM_ATOMIC_H_
 
 /* Copyright (C) 2014 Stony Brook University
  * Copyright (C) 2017 Fortanix Inc, and University of North Carolina
  * at Chapel Hill.
- * Copyright (C) 2020 IBM Corporation
  *
  * This file defines atomic operations (And barriers) for use in
  * Graphene.
@@ -43,17 +42,38 @@ Copyright (C) 2005-2014 Rich Felker, et al.
 */
 
 #include <stdint.h>
-#include <stddef.h>
 
 /* Optimization barrier */
 #define COMPILER_BARRIER() __asm__ __volatile__("": : :"memory")
-#define CPU_RELAX() __asm__ __volatile__("or 1,1,1; or 2,2,2" ::: "memory")
+#define CPU_RELAX() __asm__ __volatile__("rep; nop" ::: "memory")
 
-#define MB() __asm__ __volatile__("": : :"memory")
+#ifdef __i386__
+# define RMB()      __asm__ __volatile__("lock; addl $0,0(%%esp)" ::: "memory")
+
+struct atomic_int {
+    volatile int32_t counter;
+};
+#endif
+
+
+/* The return types below effectively assume we are dealing with a 64-bit
+ * signed value.
+ */
+#ifdef __x86_64__
+/*
+ * Some non-Intel clones support out of order store. WMB() ceases to be a
+ * nop for these.
+ */
+# define MB()    __asm__ __volatile__ ("mfence" ::: "memory")
+# define RMB()   __asm__ __volatile__ ("lfence" ::: "memory")
+# define WMB()   __asm__ __volatile__ ("sfence" ::: "memory")
 
 struct atomic_int {
     volatile int64_t counter;
 };
+#endif
+
+#define LOCK_PREFIX     "\n\tlock; "
 
 #define ATOMIC_INIT(i)      { (i) }
 
@@ -64,11 +84,9 @@ static inline int64_t atomic_read (const struct atomic_int * v)
     //      return v->counter;
     int64_t i;
     /* Use inline assembly to ensure this is one instruction */
-    __asm__ __volatile__("ld %0, %2(%1)"
-                         : "=r"(i)
-                         : "r"(v),
-                           "i"(offsetof(struct atomic_int, counter))
-    );
+    __asm__ __volatile__("mov %1, %0"
+                         : "=r"(i) :
+                           "m"(v->counter));
     return i;
 }
 
@@ -78,31 +96,20 @@ static inline void atomic_set (struct atomic_int * v, int64_t i)
     //  Effectively:
     //      v->counter = i;
     /* Use inline assembly to ensure this is one instruction */
-    __asm__ __volatile__("std %0, %2(%1)"
-                         :
-                         : "r"(i),
-                           "r"(v),
-                           "i"(offsetof(struct atomic_int, counter))
-   );
+    __asm__ __volatile__("mov %2, %0"
+                         : "=m"(v->counter) :
+                           "m"(v->counter), "r"(i));
 }
 
 /* Helper function that atomically adds a value to an atomic_int,
  * and returns the _new_ value. */
 static inline int64_t _atomic_add (int64_t i, struct atomic_int * v)
 {
-    int64_t result;
-
+    int64_t increment = i;
     __asm__ __volatile__(
-"0:      ldarx   %0,0,%2 \n\t"
-        "add     %0,%0,%3 \n\t"
-        "stdcx.	 %0,0,%2 \n\t"
-        "bne-    0b \n\t"
-        : "=&r" (result), "+m" (v->counter)
-        : "r" (&v->counter), "r" (i)
-        : "cc", "memory"
-    );
-
-    return result;
+        "lock ; xadd %0, %1"
+        : "=r"(i), "=m"(v->counter) : "0"(i) : "cc");
+    return i + increment;
 }
 
 /* Atomically adds i to v.  Does not return a value. */
@@ -120,13 +127,17 @@ static inline void atomic_sub (int64_t i, struct atomic_int * v)
 /* Atomically adds 1 to v.  Does not return a value. */
 static inline void atomic_inc (struct atomic_int * v)
 {
-    _atomic_add(1, v);
+    __asm__ __volatile__(
+        "lock ; incl %0"
+        : "=m"(v->counter) : "m"(v->counter) : "cc");
 }
 
 /* Atomically substracts 1 from v.  Does not return a value. */
 static inline void atomic_dec (struct atomic_int * v)
 {
-    _atomic_add(-1, v);
+    __asm__ __volatile__(
+        "lock ; decl %0"
+        : "=m"(v->counter) : "m"(v->counter) : "cc");
 }
 
 /* Atomically substracts 1 from v.  Returns 1 if this causes the
@@ -142,11 +153,10 @@ static inline int64_t atomic_dec_and_test (struct atomic_int * v)
  * the value originally in p. */
 static inline int64_t cmpxchg(volatile int64_t *p, int64_t t, int64_t s)
 {
-    // FIXME: Needs proper implementation
-    int64_t orig = *p;
-    if (orig == t)
-        *p = s;
-    return orig;
+    __asm__ __volatile__ (
+        "lock ; cmpxchg %3, %1"
+        : "=a"(t), "=m"(*p) : "a"(t), "r"(s) : "cc");
+    return t;
 }
 
 #define atomic_add_return(i, v)  _atomic_add(i, v)
@@ -160,4 +170,4 @@ static inline int64_t atomic_cmpxchg (struct atomic_int * v, int64_t old, int64_
     return cmpxchg(&v->counter, old, new);
 }
 
-#endif /* _ATOMIC_INT_H_ */
+#endif /* _SHIM_ATOMIC_H_ */

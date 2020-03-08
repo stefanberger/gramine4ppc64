@@ -3,7 +3,8 @@ include ../../Scripts/Makefile.configs
 include ../../Scripts/Makefile.rules
 
 CFLAGS	+= -fno-builtin -nostdlib \
-	  -I../include/pal -I../include/lib -I../src
+	  -I../include/pal -I../include/lib -I../src \
+	  -I../include/arch/$(ARCH)
 
 preloads = \
 	Preload1.so \

@@ -15,14 +15,9 @@
 #include "api.h"
 #include "pal.h"
 #include "pal_debug.h"
+#include <page.h>
 
 #define MAX_HANDLES 8
-
-#if defined(__i386__) || defined (__x86_64__)
-# define PAGE_SIZE 4096
-#elif defined(__powerpc64__)
-# define PAGE_SIZE 65536
-#endif
 
 int main(int argc, char** argv) {
     if (argc < 2) {
