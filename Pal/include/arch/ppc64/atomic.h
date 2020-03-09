@@ -64,10 +64,10 @@ static inline int64_t atomic_read (const struct atomic_int * v)
     //      return v->counter;
     int64_t i;
     /* Use inline assembly to ensure this is one instruction */
-    __asm__ __volatile__("ld %0, %2(%1)"
+    __asm__ __volatile__("ld %0, %1(%2)"
                          : "=r"(i)
-                         : "r"(v),
-                           "i"(offsetof(struct atomic_int, counter))
+                         : "i"(offsetof(struct atomic_int, counter)),
+                           "b"(v)
     );
     return i;
 }
@@ -78,11 +78,11 @@ static inline void atomic_set (struct atomic_int * v, int64_t i)
     //  Effectively:
     //      v->counter = i;
     /* Use inline assembly to ensure this is one instruction */
-    __asm__ __volatile__("std %0, %2(%1)"
+    __asm__ __volatile__("std %0, %1(%2)"
                          :
                          : "r"(i),
-                           "r"(v),
-                           "i"(offsetof(struct atomic_int, counter))
+                           "i"(offsetof(struct atomic_int, counter)),
+                           "b"(v)
    );
 }
 
@@ -98,7 +98,7 @@ static inline int64_t _atomic_add (int64_t i, struct atomic_int * v)
         "stdcx.	 %0,0,%2 \n\t"
         "bne-    0b \n\t"
         : "=&r" (result), "+m" (v->counter)
-        : "r" (&v->counter), "r" (i)
+        : "b" (&v->counter), "r" (i)
         : "cc", "memory"
     );
 
@@ -142,10 +142,18 @@ static inline int64_t atomic_dec_and_test (struct atomic_int * v)
  * the value originally in p. */
 static inline int64_t cmpxchg(volatile int64_t *p, int64_t t, int64_t s)
 {
-    // FIXME: Needs proper implementation
-    int64_t orig = *p;
-    if (orig == t)
-        *p = s;
+    uint64_t orig;
+
+    __asm__ __volatile__(
+"0:       ldarx %0,0,%1 \n\t"
+         "cmpd  %0,%2 \n\t"
+         "bne 1f \n\t"
+         "stdcx. %3,0,%1 \n\t"
+         "bne 0b \n\t"
+"1:\n\t"
+         : "=&r" (orig)
+         : "b" (p), "r" (t), "r" (s)
+    );
     return orig;
 }
 

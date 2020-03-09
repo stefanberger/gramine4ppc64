@@ -25,10 +25,11 @@
 
 #define TLS_TCB_OFFSET	0x7000
 
-#define PAL_LIBOS_TCB_SIZE  256
+#define PAL_LIBOS_TCB_SIZE  1024
 
 typedef struct pal_tcb PAL_TCB;
-/* This is glib'c tcb structure; we have to know about it */
+
+/* This is glib'c extended TCB structure; we have to know about it */
 typedef struct {
     /* NEW: pointer to LibOS TCB */
         PAL_TCB *LibOS_TCB;
@@ -74,13 +75,37 @@ typedef struct pal_tcb {
     tcbhead_t glibc_tcb;
 } PAL_TCB;
 
-static inline PAL_TCB * pal_get_tcb (void)
-{
-    PAL_TCB * tcb;
-    __asm__ ("addi %0, %%r13, %1\n\r"
-             : "=r" (tcb)
-             : "i" (-TLS_TCB_OFFSET - sizeof(PAL_TCB)));
-    return tcb->glibc_tcb.LibOS_TCB;
+static inline PAL_TCB * pal_get_tcb(void) {
+    void *r13;
+
+    __asm__ ("mr %0, %%r13\n\t"
+             : "=r" (r13)
+    );
+    if (r13) {
+        PAL_TCB *tcb = r13 - TLS_TCB_OFFSET - sizeof(PAL_TCB);
+        return tcb->glibc_tcb.LibOS_TCB;
+    }
+    return NULL;
+}
+
+static inline PAL_TCB *pal_set_r13(PAL_TCB *ptcb) {
+    PAL_TCB *orig_tcb = pal_get_tcb();
+
+    if (ptcb) {
+        __asm__("addi %%r13, %0, %1\n\t"
+                :
+                : "r" (ptcb),
+                  "i" (sizeof(PAL_TCB) + TLS_TCB_OFFSET)
+                : "r13"
+        );
+    } else {
+        __asm__("li %%r13, 0\n\t"
+                :
+                :
+                : "r13"
+        );
+    }
+    return orig_tcb;
 }
 
 /* PAL_CPUSTATE needs the same layout as pt_regs */
