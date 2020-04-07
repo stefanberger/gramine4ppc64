@@ -89,7 +89,12 @@ int set_sighandler (int * sigs, int nsig, void * handler)
 
     if (handler) {
         action.sa_handler = (void (*)(int)) handler;
+#if defined(__powerpc64__)
+        // FIXME: For some reason we cannot use the sigaltstack without some test cases failing
+        action.sa_flags = SA_SIGINFO /*| SA_ONSTACK*/;
+#else
         action.sa_flags = SA_SIGINFO | SA_ONSTACK;
+#endif
 #if defined(__x86_64__)
         action.sa_flags |= SA_RESTORER;
         action.sa_restorer = __restore_rt;

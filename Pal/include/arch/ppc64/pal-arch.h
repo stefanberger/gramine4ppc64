@@ -25,7 +25,7 @@
 
 #define TLS_TCB_OFFSET	0x7000
 
-#define PAL_LIBOS_TCB_SIZE  1024
+#define PAL_LIBOS_TCB_SIZE  2048 /* generous space for GPRs, SPRs, FPRs, VECRs etc. */
 
 typedef struct pal_tcb PAL_TCB;
 

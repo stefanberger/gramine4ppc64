@@ -3,8 +3,13 @@
 
 #define USER_ADDRESS_LOWEST 0x10000
 
-#define THREAD_STACK_SIZE (PRESET_PAGESIZE * 2 * 2)   /* 8KB initial stack (grows automatically); increasing this adds a lot to stability */
+#if defined(i386) || defined(__x86_64__)
+#define THREAD_STACK_SIZE (PRESET_PAGESIZE * 2)   /* 8KB initial stack (grows automatically) */
 #define ALT_STACK_SIZE    (PRESET_PAGESIZE * 16)  /* 64KB signal stack */
+#else
+#define THREAD_STACK_SIZE (PRESET_PAGESIZE)
+#define ALT_STACK_SIZE    (PRESET_PAGESIZE)
+#endif
 
 #ifdef __powerpc64__
 #define USE_VSYSCALL_GETTIME 1
