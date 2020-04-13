@@ -336,8 +336,9 @@ static int64_t pipe_write(PAL_HANDLE handle, uint64_t offset, size_t len, const 
     int fd = IS_HANDLE_TYPE(handle, pipeprv) ? handle->pipeprv.fds[1] : handle->pipe.fd;
 
     ssize_t bytes = INLINE_SYSCALL(write, 3, fd, buffer, len);
-    if (IS_ERR(bytes))
+    if (IS_ERR(bytes)) {
         return unix_to_pal_error(ERRNO(bytes));
+    }
 
     return bytes;
 }
