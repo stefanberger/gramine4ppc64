@@ -218,7 +218,7 @@ class TC_01_Bootstrap(RegressionTestCase):
     def test_106_manifest_with_shebang(self):
         manifest = self.get_manifest('Bootstrap4')
         _, stderr = self.run_binary(['./' + manifest])
-        self.assertIn('Loaded Manifest: file:' + manifest, stderr)
+        self.assertIn('Loaded Manifest: file:./' + manifest, stderr)
         self.assertIn('Loaded Executable: file:Bootstrap', stderr)
         self.assertIn('argv[0] = Bootstrap', stderr)
 

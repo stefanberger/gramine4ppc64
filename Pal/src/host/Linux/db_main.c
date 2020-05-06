@@ -288,6 +288,9 @@ void pal_linux_main(void* initial_rsp, void* fini_callback) {
         setup_vdso_map(sysinfo_ehdr);
 #endif
 
+#if defined(__powerpc64__)
+    pal_state.start_time = start_time;
+#endif
     PAL_HANDLE parent = NULL, exec = NULL, manifest = NULL;
     if (!first_process) {
         // Children receive their argv and config via IPC.

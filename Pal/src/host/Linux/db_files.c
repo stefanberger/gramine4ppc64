@@ -69,9 +69,13 @@ static int file_open(PAL_HANDLE* handle, const char* type, const char* uri, int 
     hdl->file.fd = ret;
     hdl->file.map_start = NULL;
     char* path = (void*)hdl + HANDLE_SIZE(file);
+#if 0
     ret = get_norm_path(uri, path, &uri_size);
     if (ret < 0)
         return ret;
+#else
+    memcpy(path, uri, uri_size);
+#endif
     hdl->file.realpath = (PAL_STR)path;
     *handle = hdl;
     return 0;
