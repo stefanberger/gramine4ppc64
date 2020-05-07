@@ -53,7 +53,7 @@ x86_64|not-travis)
 esac
 
 case "$(uname -p)" in
-x86_64)
+x86_64|ppc64le)
 	pushd Examples/nginx &>/dev/null
 	echo ">>>>>> nginx <<<<<<"
 	if [ -n "${INSTALL_DEPS}" ]; then sudo apt-get -y install apache2-utils &>/dev/null; fi
