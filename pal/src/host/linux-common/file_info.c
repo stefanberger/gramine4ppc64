@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: LGPL-3.0-or-later */
 /* Copyright (C) 2022 Intel Corporation */
 
+#if defined(__powerpc64__)
+# include "stat_types.h"
+#endif
 #include <asm/stat.h>
 
 #include "linux_utils.h"
