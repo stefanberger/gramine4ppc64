@@ -16,7 +16,9 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include <errno.h>
+#if defined(__i386__) || defined(__x86_64__)
 #include <immintrin.h>
+#endif
 #include <limits.h>
 #include <stdint.h>
 
@@ -335,8 +337,10 @@ int mbedtls_hardware_poll(void* data, unsigned char* output, size_t len, size_t*
 #if defined(__i386__) || defined(__x86_64__)
         while (__builtin_ia32_rdrand64_step(&rand64) == 0)
             /*nop*/;
-#else
-# error Unsupported architecture
+#elif defined (__powerpc64__)
+        do {
+            __asm__ ("darn %0,2" : "=r"(rand64));
+        } while (rand64 == (unsigned long long)~0);
 #endif
         size_t over = i + sizeof(rand64) < len ? 0 : i + sizeof(rand64) - len;
         memcpy(output + i, &rand64, sizeof(rand64) - over);
