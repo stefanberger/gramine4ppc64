@@ -26,6 +26,10 @@ typedef struct pal_tcb {
     /* data private to PAL implementation follows this struct. */
 } PAL_TCB;
 
+static inline void pal_tcb_arch_init(PAL_TCB* tcb __attribute__((unused))) {
+    /* nothing to do */
+}
+
 #include "pal_host-arch.h"
 
 static inline PAL_TCB * pal_get_tcb (void)

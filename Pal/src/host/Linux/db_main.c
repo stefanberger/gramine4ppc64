@@ -171,7 +171,9 @@ void pal_linux_main(void* initial_rsp, void* fini_callback) {
     __UNUSED(fini_callback);  // TODO: We should call `fini_callback` at the end.
 
     unsigned long start_time = _DkSystemTimeQueryEarly();
+#if !defined(__powerpc64__)
     pal_state.start_time = start_time;
+#endif
 
     int argc;
     const char** argv;
@@ -194,6 +196,9 @@ void pal_linux_main(void* initial_rsp, void* fini_callback) {
 
     ELF_DYNAMIC_RELOCATE(&pal_map);
 
+#if defined(__powerpc64__)
+    pal_state.start_time = start_time;
+#endif
     linux_state.environ = envp;
 
     init_slab_mgr(g_page_size);
@@ -216,8 +221,13 @@ void pal_linux_main(void* initial_rsp, void* fini_callback) {
     tcb->alt_stack   = alt_stack; // Stack bottom
     tcb->callback    = NULL;
     tcb->param       = NULL;
+    pal_tcb_arch_init(&tcb->common);
+#ifdef DEBUG
+    printf(">>>>>>>> Setting PAL_TCB_LINUX to %p\n", tcb);
+#endif
     pal_thread_init(tcb);
 
+    //printf("%s @ %d  BEFORE setup_pal_map\n", __func__, __LINE__);
     setup_pal_map(&pal_map);
 
 #if USE_VDSO_GETTIME == 1
@@ -229,12 +239,16 @@ void pal_linux_main(void* initial_rsp, void* fini_callback) {
     if (!first_process) {
         // Children receive their argv and config via IPC.
         int parent_pipe_fd = atoi(argv[2]);
+        //printf("%s @ %d  BEFORE init_child_process\n", __func__, __LINE__);
         init_child_process(parent_pipe_fd, &parent, &exec, &manifest);
+       //printf("%s @ %d  AFTER init_child_process\n", __func__, __LINE__);
     }
 
     if (!pal_sec.process_id)
         pal_sec.process_id = INLINE_SYSCALL(getpid, 0);
+    //printf("%s @ %d: after get pid\n",__func__, __LINE__);
     linux_state.pid = pal_sec.process_id;
+//    printf("PID: %d\n", linux_state.pid);
 
     linux_state.uid = uid;
     linux_state.gid = gid;
@@ -271,6 +285,7 @@ void pal_linux_main(void* initial_rsp, void* fini_callback) {
              first_process ? argv + 2 : argv + 3, envp);
 }
 
+#if defined(__i386__) || defined (__x86_64__)
 /* the following code is borrowed from CPUID */
 void cpuid (unsigned int leaf, unsigned int subleaf,
             unsigned int words[])
@@ -283,6 +298,7 @@ void cpuid (unsigned int leaf, unsigned int subleaf,
       : "a" (leaf),
         "c" (subleaf));
 }
+#endif
 
 #define FOUR_CHARS_VALUE(s, w)      \
     (s)[0] = (w) & 0xff;            \
@@ -299,6 +315,7 @@ void cpuid (unsigned int leaf, unsigned int subleaf,
 #define BIT_EXTRACT_LE(value, start, after) \
    (((unsigned long)(value) & RIGHTMASK(after)) >> start)
 
+#if defined(__i386__) || defined (__x86_64__)
 static char * cpu_flags[]
       = { "fpu",    // "x87 FPU on chip"
           "vme",    // "virtual-8086 mode enhancement"
@@ -333,6 +350,7 @@ static char * cpu_flags[]
           "ia64",   // "IA64"
           "pbe",    // "pending break event"
         };
+#endif
 
 /*
  * Returns the number of online CPUs read from /sys/devices/system/cpu/online, -errno on failure.
@@ -394,6 +412,7 @@ static ssize_t read_file_buffer(const char* filename, char* buf, size_t buf_size
     return n;
 }
 
+#if defined(__i386__) || defined (__x86_64__)
 static double get_bogomips(void) {
     char buf[2048];
     ssize_t len;
@@ -405,11 +424,27 @@ static double get_bogomips(void) {
 
     return sanitize_bogomips_value(get_bogomips_from_cpuinfo_buf(buf));
 }
+#endif
+
+#if defined(__powerpc64__)
+static char* get_cpuinfo_entry(const char *entry) {
+    char buf[1024*100];
+    ssize_t len;
+
+    len = read_file_buffer("/proc/cpuinfo", buf, sizeof(buf) - 1);
+    if (len < 0)
+        return NULL;
+    buf[len] = 0;
+
+    return get_string_from_cpuinfo_buf(entry, buf);
+}
+#endif
 
 int _DkGetCPUInfo (PAL_CPU_INFO * ci)
 {
-    unsigned int words[PAL_CPUID_WORD_NUM];
     int rv = 0;
+#if defined(__i386__) || defined (__x86_64__)
+    unsigned int words[PAL_CPUID_WORD_NUM];
 
     const size_t VENDOR_ID_SIZE = 13;
     char* vendor_id = malloc(VENDOR_ID_SIZE);
@@ -483,5 +518,21 @@ int _DkGetCPUInfo (PAL_CPU_INFO * ci)
         printf("Warning: bogomips could not be retrieved, passing 0.0 to the application\n");
     }
 
+#elif defined(__powerpc64__)
+    int cores = get_cpu_count();
+    if (cores < 0) {
+        return cores;
+    }
+    ci->cpu_num = cores;
+    ci->cpu = get_cpuinfo_entry("cpu");
+    ci->clock = get_cpuinfo_entry("clock");
+    ci->revision = get_cpuinfo_entry("revision");
+    ci->timebase = get_cpuinfo_entry("timebase");
+    ci->platform = get_cpuinfo_entry("platform");
+    ci->model = get_cpuinfo_entry("model");
+    ci->machine = get_cpuinfo_entry("machine");
+    ci->firmware = get_cpuinfo_entry("firmware");
+    ci->mmu = get_cpuinfo_entry("MMU");
+#endif
     return rv;
 }
