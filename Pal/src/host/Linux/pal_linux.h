@@ -5,7 +5,9 @@
 #define PAL_LINUX_H
 
 #include <asm/fcntl.h>
+#if !defined(__powerpc64__)
 #include <asm/stat.h>
+#endif
 #include <linux/mman.h>
 #include <sigset.h>
 #include <sys/syscall.h>
@@ -160,6 +162,7 @@ static inline void pal_tcb_linux_init(PAL_TCB_LINUX* tcb, PAL_HANDLE handle, voi
     tcb->alt_stack   = alt_stack; // Stack bottom
     tcb->callback    = callback;
     tcb->param       = param;
+    pal_tcb_arch_init(&tcb->common);
 }
 
 static inline PAL_TCB_LINUX* get_tcb_linux(void) {

@@ -26,6 +26,7 @@ ASFLAGS += \
 	-Iinclude \
 	-I../.. \
 	-I../../../include \
+	-I../../../include/arch/$(ARCH) \
 	-I../../../include/arch/$(ARCH)/Linux
 
 host_files = libpal-Linux.a pal.map

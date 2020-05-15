@@ -35,6 +35,9 @@ ifeq ($(ARCH),x86_64)
 CFLAGS += $(call cc-option, -fstack-protector-strong -mstack-protector-guard=tls \
 	                        -mstack-protector-guard-reg=%gs -mstack-protector-guard-offset=8)
 endif
+ifeq ($(ARCH),ppc64)
+CFLAGS += $(call cc-option, -fstack-protector-strong)
+endif
 
 PAL_HOST_MACRO = $(shell echo $(PAL_HOST) | tr '[:lower:]' '[:upper:]' | tr '-' '_')
 
