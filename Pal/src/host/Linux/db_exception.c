@@ -37,7 +37,7 @@
 #include <ucontext.h>
 #include <asm/errno.h>
 
-#if !defined(__i386__)
+#if defined(__x86_64__)
 /* In x86_64 kernels, sigaction is required to have a user-defined
  * restorer. Also, they not yet support SA_INFO. The reference:
  * http://lxr.linux.no/linux+v2.6.35/arch/x86/kernel/signal.c#L448
@@ -74,6 +74,38 @@ __attribute__((visibility("hidden"))) void __restore_rt(void);
 
 #endif
 
+#ifdef __powerpc64__
+/* We need to return from the signal handler by us calling rt_sigreturn.
+ * The function needs to be in assembly for the stack adjustment to work properly. */
+#define SIGHANDLER_WRAPPER(FNAME)			\
+void FNAME (int, siginfo_t *, struct ucontext *);	\
+__asm__(						\
+    "\t.section\t\".text\"\n\t"				\
+    ".align 2\n\t"					\
+    ".globl\t"#FNAME"\n\t"				\
+    ".type\t"#FNAME", @function\n"			\
+    #FNAME":\n\t"					\
+    ".cfi_startproc\n"					\
+    "0:\taddis 2, 12, (.TOC.-0b)@ha\n\t"		\
+    "addi 2, 2, (.TOC.-0b)@l\n\t"			\
+    ".localentry     "#FNAME",.-"#FNAME"\n\t"		\
+    "bl _"#FNAME"\n\t"					\
+    "nop\n\t"						\
+    "addi 1,1,128\n\t"					\
+    "li 0,172\n\t"					\
+    "sc\n\t"						\
+    ".cfi_endproc\n\t"					\
+    ".size\t"#FNAME",.-"#FNAME"\n\t"			\
+);
+# define SIGHANDLER_FUNCTION(FUNCNAME)	\
+SIGHANDLER_WRAPPER(FUNCNAME)		\
+void _ ## FUNCNAME
+#else
+# define SIGHANDLER_FUNCTION(FUNCNAME)	\
+static void FUNCNAME
+
+#endif
+
 static const int async_signals[] =
 {
     SIGTERM,
@@ -85,12 +117,25 @@ static const int nasync_signals = ARRAY_SIZE(async_signals);
 
 int set_sighandler (int * sigs, int nsig, void * handler)
 {
+#if defined(__powerpc64__)
+    struct ppc64_sigaction {
+        __sighandler_t sa_handler;
+        unsigned long sa_flags;
+        __sigrestore_t sa_restorer;
+        __sigset_t sa_mask;
+    } action;
+    // __sigset_t must be 128 bytes large
+    assert(sizeof(__sigset_t) == 128);
+    assert(sizeof(sigset_t) == 8);
+    assert(sizeof(action) == 152);
+#else
     struct sigaction action;
+#endif
 
     if (handler) {
         action.sa_handler = (void (*)(int)) handler;
         action.sa_flags = SA_SIGINFO | SA_ONSTACK;
-#if !defined(__i386__)
+#if defined(__x86_64__)
         action.sa_flags |= SA_RESTORER;
         action.sa_restorer = __restore_rt;
 #endif
@@ -214,14 +259,20 @@ static bool _DkGenericSignalHandle (int event_num, siginfo_t * info,
     return false;
 }
 
-static void _DkGenericSighandler (int signum, siginfo_t * info,
-                                  struct ucontext * uc)
+SIGHANDLER_FUNCTION(_DkGenericSighandler)(int signum, siginfo_t* info,
+                                          struct ucontext* uc)
 {
     int event_num = get_event_num(signum);
     if (event_num == -1)
         return;
 
+#if defined(__i386__) || defined(__x86_64__)
     uintptr_t rip = uc->uc_mcontext.gregs[REG_RIP];
+#elif defined(__powerpc64__)
+    assert(sizeof(uc->uc_sigmask) == 128);
+    assert(offsetof(ucontext_t, uc_mcontext) == 168);
+    uintptr_t rip = uc->uc_mcontext.regs->nip;
+#endif
     if (ADDR_IN_PAL(rip)) {
         // We expect none of the memory faults, illegal instructions, or arithmetic exceptions
         // will happen in PAL. If these exceptions happen in PAL, exit the thread with loud warning.
@@ -241,10 +292,12 @@ static void _DkGenericSighandler (int signum, siginfo_t * info,
 #ifdef DEBUG
         // Hang for debugging
         while (true) {
+#ifndef __powerpc64__
             struct timespec sleeptime;
             sleeptime.tv_sec = 36000;
             sleeptime.tv_nsec = 0;
             INLINE_SYSCALL(nanosleep, 2, &sleeptime, NULL);
+#endif
         }
 #endif
         _DkThreadExit(/*clear_child_tid=*/NULL);
@@ -254,8 +307,8 @@ static void _DkGenericSighandler (int signum, siginfo_t * info,
     _DkGenericSignalHandle(event_num, info, uc);
 }
 
-static void _DkTerminateSighandler (int signum, siginfo_t * info,
-                                    struct ucontext * uc)
+SIGHANDLER_FUNCTION(_DkTerminateSighandler)(int signum, siginfo_t* info,
+                                            struct ucontext* uc)
 {
     __UNUSED(info);
 
@@ -263,7 +316,11 @@ static void _DkTerminateSighandler (int signum, siginfo_t * info,
     if (event_num == -1)
         return;
 
+#if defined(__i386__) || defined(__x86_64__)
     uintptr_t rip = uc->uc_mcontext.gregs[REG_RIP];
+#elif defined(__powerpc64__)
+    uintptr_t rip = uc->uc_mcontext.regs->nip;
+#endif
 
     // If the signal arrives in the middle of a PAL call, add the event
     // to pending in the current TCB.
@@ -293,8 +350,8 @@ static void _DkTerminateSighandler (int signum, siginfo_t * info,
         _DkThreadExit(/*clear_child_tid=*/NULL);
 }
 
-static void _DkPipeSighandler (int signum, siginfo_t * info,
-                               struct ucontext * uc)
+SIGHANDLER_FUNCTION(_DkPipeSighandler)(int signum, siginfo_t* info,
+                                       struct ucontext* uc)
 {
     __UNUSED(info);
 
