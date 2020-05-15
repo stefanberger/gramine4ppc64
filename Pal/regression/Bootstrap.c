@@ -37,12 +37,26 @@ int main(int argc, char** argv, char** envp) {
 
     const struct pal_cpu_info* ci = &pal_public_state->cpu_info;
     pal_printf("CPU num: %zu\n",      pal_public_state->topo_info.online_logical_cores_cnt);
+#if defined(__i386__) || defined(__x86_64__)
     pal_printf("CPU vendor: %s\n",    ci->cpu_vendor);
     pal_printf("CPU brand: %s\n",     ci->cpu_brand);
     pal_printf("CPU family: %ld\n",   ci->cpu_family);
     pal_printf("CPU model: %ld\n",    ci->cpu_model);
     pal_printf("CPU stepping: %ld\n", ci->cpu_stepping);
     pal_printf("CPU flags: %s\n",     ci->cpu_flags);
+#elif defined(__powerpc64__)
+    pal_printf("CPU cpu: %s\n", ci->cpu);
+    pal_printf("CPU clock: %s\n", ci->clock);
+    pal_printf("CPU revision: %s\n", ci->revision);
+    pal_printf("CPU timebase: %s\n", ci->timebase);
+    pal_printf("CPU platform: %s\n", ci->platform);
+    pal_printf("CPU model: %s\n", ci->model);
+    pal_printf("CPU machine: %s\n", ci->machine);
+    pal_printf("CPU firmware: %s\n", ci->firmware);
+    pal_printf("CPU MMU: %s\n", ci->mmu);
+#else
+#error Unsupported architecture
+#endif
 
     return 0;
 }
