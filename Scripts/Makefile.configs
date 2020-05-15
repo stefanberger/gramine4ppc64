@@ -24,7 +24,14 @@ SYS ?= $(shell $(CC) -dumpmachine)
 export SYS
 
 ARCH := $(word 1,$(subst -, -, $(SYS)))
-ifneq ($(ARCH),$(filter $(ARCH),x86_64))
+# normalize to ppc64
+ifeq ($(ARCH),powerpc64le)
+    ARCH := ppc64
+endif
+ifeq ($(ARCH),ppc64le)
+    ARCH := ppc64
+endif
+ifneq ($(ARCH),$(filter $(ARCH),x86_64 ppc64))
 $(error $(ARCH) is not supported)
 endif
 
