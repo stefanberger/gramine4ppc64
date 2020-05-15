@@ -104,7 +104,11 @@ struct proc_args {
 };
 
 static int child_process(struct proc_param* proc_param) {
+#if defined(__x86_64__)
     int ret = vfork();
+#elif defined(__powerpc64__)
+    int ret = DO_SYSCALL(clone, CLONE_VM | CLONE_VFORK, 0, NULL, NULL);
+#endif
     if (ret)
         return ret;
 

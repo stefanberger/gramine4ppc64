@@ -11,6 +11,9 @@ pal_linux_common_sources = [
 pal_linux_common_sources_arch = [
     'syscall.S',
 ]
+if host_machine.cpu_family() == 'ppc64le' or host_machine.cpu_family() == 'ppc64'
+    pal_linux_common_sources_arch += 'clone.S'
+endif
 foreach src : pal_linux_common_sources_arch
     pal_linux_common_sources += join_paths('arch', host_machine.cpu_family(), src)
 endforeach

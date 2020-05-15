@@ -22,7 +22,11 @@ int _DkSystemTimeQuery(uint64_t* out_usec) {
     struct timespec time;
     int ret;
 
+#if defined(__powerpc64__)
+    if (0) {
+#else
     if (g_linux_state.vdso_clock_gettime) {
+#endif
         ret = g_linux_state.vdso_clock_gettime(CLOCK_REALTIME, &time);
     } else {
         ret = DO_SYSCALL(clock_gettime, CLOCK_REALTIME, &time);
