@@ -427,7 +427,7 @@ int toml_sizestring_in(const toml_table_t* root, const char* key, uint64_t defau
 #define TIME_NS_IN_US 1000ul
 #define TIME_NS_IN_S (TIME_NS_IN_US * TIME_US_IN_S)
 
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__powerpc64__)
 static inline bool __range_not_ok(uintptr_t addr, size_t size) {
     addr += size;
     if (addr < size) {
@@ -451,7 +451,7 @@ static inline bool access_ok(const volatile void* addr, size_t size) {
 
 #else
 #error "Unsupported architecture"
-#endif /* __x86_64__ */
+#endif /* __x86_64__ || __powerpc64__ */
 
 #if !defined(USE_STDLIB) && __USE_FORTIFY_LEVEL > 0
 # include "api_fortified.h"
