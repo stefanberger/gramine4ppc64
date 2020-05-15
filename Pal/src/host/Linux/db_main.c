@@ -169,7 +169,9 @@ void pal_linux_main(void* initial_rsp, void* fini_callback) {
     __UNUSED(fini_callback);  // TODO: We should call `fini_callback` at the end.
 
     unsigned long start_time = _DkSystemTimeQueryEarly();
+#if !defined(__powerpc64__)
     g_pal_state.start_time = start_time;
+#endif
 
     int argc;
     const char** argv;
@@ -192,6 +194,9 @@ void pal_linux_main(void* initial_rsp, void* fini_callback) {
 
     ELF_DYNAMIC_RELOCATE(&g_pal_map);
 
+#if defined(__powerpc64__)
+    g_pal_state.start_time = start_time;
+#endif
     g_linux_state.environ = envp;
 
     init_slab_mgr(g_page_size);
@@ -214,6 +219,7 @@ void pal_linux_main(void* initial_rsp, void* fini_callback) {
     tcb->alt_stack   = alt_stack; // Stack bottom
     tcb->callback    = NULL;
     tcb->param       = NULL;
+    pal_tcb_arch_init(&tcb->common);
     pal_thread_init(tcb);
 
     setup_pal_map(&g_pal_map);
