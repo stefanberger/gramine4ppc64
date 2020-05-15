@@ -124,6 +124,7 @@ static void setup_asan(void) {
 #endif
 
 static int verify_hw_requirements(void) {
+#if defined(__x86_64__)
     unsigned int values[4];
     cpuid(FEATURE_FLAGS_LEAF, /*unused*/0, values);
     const char* missing = NULL;
@@ -139,6 +140,7 @@ static int verify_hw_requirements(void) {
                   "Please upgrade your hardware.", missing);
         return -EINVAL;
     }
+#endif
     return 0;
 }
 
