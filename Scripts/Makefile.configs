@@ -30,6 +30,12 @@ ARCH_LIBDIR := /lib/$(SYS)
 ifeq ($(wildcard $(ARCH_LIBDIR)/*),)
     ARCH_LIBDIR := /lib64
 endif
+ifeq ($(ARCH),powerpc64le)
+    ARCH := ppc64
+endif
+ifeq ($(ARCH),ppc64le)
+    ARCH := ppc64
+endif
 
 # part of filenames and dirs like /usr/lib/gcc/$(ARCH_LONG)
 ARCH_LONG := $(SYS)
