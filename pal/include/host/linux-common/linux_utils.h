@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sys/types.h>
 #include <asm/stat.h>
 #include <linux/time.h>
 #include <linux/un.h>
@@ -9,6 +10,8 @@
 #include <stdnoreturn.h>
 
 #include "pal.h"
+
+char* get_string_from_cpuinfo_buf(const char* cpuinfo, const char* entry);
 
 char* get_main_exec_path(void);
 
