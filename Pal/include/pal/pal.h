@@ -128,6 +128,7 @@ enum {
 typedef struct PAL_PTR_RANGE_ { PAL_PTR start, end; } PAL_PTR_RANGE;
 
 typedef struct PAL_CPU_INFO_ {
+#if defined(__i386__) || defined(__x86_64__)
     PAL_NUM cpu_num;
     PAL_STR cpu_vendor;
     PAL_STR cpu_brand;
@@ -136,6 +137,19 @@ typedef struct PAL_CPU_INFO_ {
     PAL_NUM cpu_stepping;
     double  cpu_bogomips;
     PAL_STR cpu_flags;
+#elif defined(__powerpc64__)
+    PAL_NUM cpu_num;
+    PAL_STR processor;
+    PAL_STR cpu;
+    PAL_STR clock;
+    PAL_STR revision;
+    PAL_STR timebase;
+    PAL_STR platform;
+    PAL_STR model;
+    PAL_STR machine;
+    PAL_STR firmware;
+    PAL_STR mmu;
+#endif
 } PAL_CPU_INFO;
 
 typedef struct PAL_MEM_INFO_ {
