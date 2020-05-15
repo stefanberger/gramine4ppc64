@@ -32,4 +32,6 @@ static inline int pal_set_tcb(PAL_TCB* tcb) {
     return DO_SYSCALL(arch_prctl, ARCH_SET_GS, tcb);
 }
 
+#define SIGHANDLER_FUNCTION(FUNCNAME) static void FUNCNAME
+
 #endif /* IN_PAL */
