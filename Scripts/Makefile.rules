@@ -50,6 +50,12 @@ CLEAN_FILES += generated-offsets.s
 #   in inline assembly
 # - recognize both tab and space [ \t] after ".ascii"
 
+ifeq ($(ARCH),ppc64)
+SUBSTR_OFFSET=0
+else
+SUBSTR_OFFSET=2
+endif
+
 quiet_cmd_asm_offsets_h = [ $@ ]
       cmd_asm_offsets_h = \
 	(set -e; \
@@ -57,7 +63,7 @@ quiet_cmd_asm_offsets_h = [ $@ ]
 	 echo "\#ifndef _ASM_OFFSETS_H_"; \
 	 echo "\#define _ASM_OFFSETS_H_"; \
 	 echo ""; \
-	 awk '/\.ascii[ \t]"GENERATED_INTEGER/{print "\#ifndef " $$3 "\n\#define " $$3 " " substr($$4,2) "\n\#endif"}' $^; \
+	 awk '/\.ascii[ \t]"GENERATED_INTEGER/{print "\#ifndef " $$3 "\n\#define " $$3 " " substr($$4,$(SUBSTR_OFFSET)) "\n\#endif"}' $^; \
 	 echo ""; \
 	 echo "\#endif") > $@
 
@@ -70,7 +76,7 @@ quiet_cmd_generated_offsets_py = [ $@ ]
 	(set -e; \
 	 echo "\# DO NOT MODIFY. THIS FILE WAS AUTO-GENERATED."; \
 	 echo ""; \
-	 awk '/\.ascii[ \t]"GENERATED_INTEGER/{print $$3 " = " substr($$4,2)}' $^) > $@
+	 awk '/\.ascii[ \t]"GENERATED_INTEGER/{print $$3 " = " substr($$4,$(SUBSTR_OFFSET))}' $^) > $@
 
 generated_offsets.py: generated-offsets.s
 	$(call cmd,generated_offsets_py)
