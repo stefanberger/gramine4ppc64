@@ -156,6 +156,7 @@ size_t _DkRandomBitsRead(void* buffer, size_t size) {
 #include <asm/ldt.h>
 #elif defined(__x86_64__)
 #include <asm/prctl.h>
+#else
 #endif
 
 int _DkSegmentRegisterSet(int reg, const void* addr) {
@@ -181,6 +182,9 @@ int _DkSegmentRegisterSet(int reg, const void* addr) {
     } else {
         return -PAL_ERROR_INVAL;
     }
+#elif defined(__powerpc64__)
+    (void)reg;
+    (void)addr;
 #else
 #error Unsupported architecture
 #endif
@@ -191,9 +195,8 @@ int _DkSegmentRegisterSet(int reg, const void* addr) {
 }
 
 int _DkSegmentRegisterGet(int reg, void** addr) {
-    int ret;
-
 #if defined(__i386__)
+    int ret;
     struct user_desc u_info;
 
     ret = INLINE_SYSCALL(get_thread_area, 1, &u_info);
@@ -203,6 +206,7 @@ int _DkSegmentRegisterGet(int reg, void** addr) {
 
     *addr = (void*)u_info->base_addr;
 #elif defined(__x86_64__)
+    int ret;
     unsigned long ret_addr;
 
     if (reg == PAL_SEGMENT_FS) {
@@ -219,7 +223,8 @@ int _DkSegmentRegisterGet(int reg, void** addr) {
 
     *addr = (void*)ret_addr;
 #else
-#error Unsupported architecture
+    (void)reg;
+    (void)addr;
 #endif
     return 0;
 }
@@ -231,10 +236,12 @@ int _DkInstructionCacheFlush(const void* addr, int size) {
     return -PAL_ERROR_NOTIMPLEMENTED;
 }
 
+#if defined(__x86_64__)
 int _DkCpuIdRetrieve(unsigned int leaf, unsigned int subleaf, unsigned int values[4]) {
     cpuid(leaf, subleaf, values);
     return 0;
 }
+#endif
 
 int _DkAttestationReport(PAL_PTR user_report_data, PAL_NUM* user_report_data_size,
                          PAL_PTR target_info, PAL_NUM* target_info_size,
