@@ -180,6 +180,7 @@ int pal_thread_init(void* tcbptr);
 
 static inline PAL_TCB_LINUX * get_tcb_linux (void)
 {
+    //printf("get_tcb_linux: PAL_TCB_LINUX at %p\n", pal_get_tcb());
     return (PAL_TCB_LINUX*)pal_get_tcb();
 }
 

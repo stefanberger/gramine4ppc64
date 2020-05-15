@@ -317,7 +317,11 @@ int _DkAttestationQuote(PAL_PTR user_report_data, PAL_NUM user_report_data_size,
     } while (0)
 
 /* Loading ELF binaries */
+#if defined(__i386__) || defined(__x86_64__)
 #define DEFAULT_OBJECT_EXEC_ADDR ((void*)0x555555554000) /* Linux base location for PIE binaries */
+#elif defined(__powerpc64__)
+#define DEFAULT_OBJECT_EXEC_ADDR ((void*)0x79d4bfbc0000)
+#endif
 enum object_type { OBJECT_RTLD, OBJECT_EXEC, OBJECT_PRELOAD, OBJECT_EXTERNAL };
 
 bool has_elf_magic(const void* header, size_t len);
