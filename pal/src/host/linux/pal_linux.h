@@ -3,6 +3,9 @@
 
 #pragma once
 
+#if defined(__powerpc64__)
+# include "stat_types.h"
+#endif
 #include <asm/fcntl.h>
 #include <asm/stat.h>
 #include <linux/mman.h>
@@ -92,6 +95,7 @@ static inline void pal_linux_tcb_init(PAL_LINUX_TCB* tcb, PAL_HANDLE handle, voi
     tcb->alt_stack   = alt_stack; // Stack bottom
     tcb->callback    = callback;
     tcb->param       = param;
+    pal_tcb_arch_init(&tcb->common);
 }
 
 static inline PAL_LINUX_TCB* pal_get_linux_tcb(void) {
