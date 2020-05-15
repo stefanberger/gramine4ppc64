@@ -13,6 +13,7 @@
 #include <linux/mman.h>
 #include <linux/sched.h>
 #include <linux/signal.h>
+#include <linux/time.h>
 #include <linux/types.h>
 #include <linux/wait.h>
 
@@ -165,6 +166,7 @@ int _DkThreadCreate(PAL_HANDLE* handle, int (*callback)(void*), const void* para
     tcb->alt_stack   = child_stack; // Stack bottom
     tcb->callback    = callback;
     tcb->param       = (void*)param;
+    pal_tcb_arch_init(&tcb->common);
 
     /* align child_stack to 16 */
     child_stack = ALIGN_DOWN_PTR(child_stack, 16);
@@ -261,6 +263,7 @@ noreturn void _DkThreadExit(int* clear_child_tid) {
                   "unexpected offset of lock in g_thread_stack_lock");
     static_assert(sizeof(*clear_child_tid) == 4, "unexpected clear_child_tid size");
 
+#if defined(__x86_64__)
     __asm__ volatile(
         "movl $0, (%[lock]) \n"             /* spinlock_unlock(&g_thread_stack_lock) */
         "cmpq $0, %[clear_child_tid] \n"    /* check if clear_child_tid != NULL */
@@ -277,6 +280,22 @@ noreturn void _DkThreadExit(int* clear_child_tid) {
           [lock] "r" (&g_thread_stack_lock.lock), [clear_child_tid] "r" (clear_child_tid)
         : "memory"
     );
+#elif defined(__powerpc64__)
+    __asm__ volatile(
+        "li 3,0 \n\t"
+        "stw 3,0(%1) \n\t"
+        "cmpdi cr7,%2,0 \n\t"
+        "beq cr7,1f \n\t"
+        "stw 3,0(%2) \n\t"
+        "1: \n\t"
+        "li 0, %0 \n\t"
+        "sc \n\t"
+        :
+        : "i"(__NR_exit),
+          "r"(&g_thread_stack_lock.lock), "r"(clear_child_tid)
+        : "r3", "cr7", "memory"
+    );
+#endif
     __builtin_unreachable();
 }
 
