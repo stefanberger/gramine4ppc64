@@ -183,4 +183,11 @@ typedef struct PAL_CONTEXT_ PAL_CONTEXT;
 
 #define DEFAULT_OBJECT_EXEC_ADDR ((void*)0x555555554000) /* Linux base location for PIE binaries */
 
+/*
+ * Vararg parameters: On x86_64 a va_list parameter can be passed to any function using
+ *                    'va_list ap'. Therefore VA_AP is 'ap'.
+ */
+#define VA_AP(AP)       (AP)
+#define VA_AP_PARAM(AP) (AP)
+
 #endif /* PAL_ARCH_H */
