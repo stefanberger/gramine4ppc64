@@ -1,6 +1,7 @@
 #include "api.h"
 #include "pal_internal.h"
 #include "topo_info.h"
+#include "linux_utils.h"
 
 /* This version is too dumb to be shared by the whole repository and should be removed once we get
  * a proper stdlib (like musl). */
@@ -68,4 +69,23 @@ double _DkGetBogomips(void) {
     buf[len] = 0;
 
     return sanitize_bogomips_value(get_bogomips_from_cpuinfo_buf(buf));
+}
+
+char* get_string_from_cpuinfo_buf(const char* cpuinfo, const char *entry) {
+    const char* line = find_entry_in_cpuinfo(entry, cpuinfo);
+    if (!line)
+        return NULL;
+
+    size_t len = 0;
+    while (line[len] != 0 && line[len] != '\n')
+        len++;
+
+    char* res = malloc(len + 1);
+    if (!res)
+        return NULL;
+
+    memcpy(res, line, len);
+    res[len] = 0;
+
+    return res;
 }
