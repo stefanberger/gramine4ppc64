@@ -14,6 +14,10 @@ pal_linux_common_sources_urts = files(
 pal_linux_common_sources_urts_arch = [
     'syscall.S',
 ]
+if host_machine.cpu_family() == 'ppc64le' or host_machine.cpu_family() == 'ppc64'
+    pal_linux_common_sources_urts_arch += 'clone.S'
+    pal_linux_common_sources_urts_arch += 'vfork.c'
+endif
 foreach src : pal_linux_common_sources_urts_arch
     pal_linux_common_sources_urts += files(join_paths('arch', host_machine.cpu_family(), src))
 endforeach
