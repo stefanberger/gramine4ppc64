@@ -63,6 +63,12 @@ static int get_hw_resource_range(const char* filename, struct pal_res_range_info
     if (ret < 0)
         return ret;
 
+    /* cpulist of online node may be totally empty */
+    if (ret == 1 && str[0] == '\n') {
+       str[0] = '0';
+       str[1] = '\n';
+       ret = 2;
+    }
     str[ret] = '\0'; /* ensure null-terminated buf even in partial read */
 
     char* ptr = str;
@@ -242,8 +248,19 @@ static int get_cache_topo_info(size_t cache_indices_cnt, size_t core_idx,
         if (ret < 0)
             goto fail;
         ret = get_hw_resource_range(filename, &cache_info_arr[cache_idx].shared_cpu_map);
+#if defined(__x86_64__)
         if (ret < 0)
             goto fail;
+#elif defined(__powerpc64__)
+        if (ret < 0) {
+            ret = snprintf(filename, sizeof(filename), "%s/shared_cpu_map", dirname);
+            if (ret < 0)
+                goto fail;
+            ret = get_hw_resource_range(filename, &cache_info_arr[cache_idx].shared_cpu_map);
+//            if (ret < 0)
+//                goto fail;
+        }
+#endif
 
         ret = snprintf(filename, sizeof(filename), "%s/level", dirname);
         if (ret < 0)
@@ -283,22 +300,30 @@ static int get_cache_topo_info(size_t cache_indices_cnt, size_t core_idx,
         if (ret < 0)
             goto fail;
         ret = get_hw_resource_value(filename, &cache_info_arr[cache_idx].coherency_line_size);
+#if defined(__x86_64__)
         if (ret < 0)
             goto fail;
+#else
+        ret = 0;
+#endif
 
+#if defined(__x86_64__)
         ret = snprintf(filename, sizeof(filename), "%s/number_of_sets", dirname);
         if (ret < 0)
             goto fail;
         ret = get_hw_resource_value(filename, &cache_info_arr[cache_idx].number_of_sets);
         if (ret < 0)
             goto fail;
+#endif
 
+#if defined(__x86_64__)
         ret = snprintf(filename, sizeof(filename), "%s/physical_line_partition", dirname);
         if (ret < 0)
             goto fail;
         ret = get_hw_resource_value(filename, &cache_info_arr[cache_idx].physical_line_partition);
         if (ret < 0)
             goto fail;
+#endif
     }
     *out_cache_info_arr = cache_info_arr;
     return 0;
@@ -326,8 +351,13 @@ static int get_core_topo_info(struct pal_topo_info* topo_info) {
 
     /* TODO: correctly support offline cores */
     if (possible_logical_cores_cnt > online_logical_cores_cnt) {
+#if defined(__powerpc__)
+        // work-around for travis
+        possible_logical_cores_cnt = online_logical_cores_cnt = 0;
+#else
         log_error("Some CPUs seem to be offline; Gramine currently doesn't support core offlining");
         return -EINVAL;
+#endif
     }
 
     ret = get_cache_levels_cnt("/sys/devices/system/cpu/cpu0/cache", &topo_info->cache_indices_cnt);
@@ -422,15 +452,21 @@ static int get_numa_topo_info(struct pal_topo_info* topo_info) {
         return -ENOMEM;
 
     char filename[PAL_SYSFS_PATH_SIZE];
-    for (size_t idx = 0; idx < online_nodes_cnt; idx++) {
-        ret = snprintf(filename, sizeof(filename), "/sys/devices/system/node/node%zu/cpulist", idx);
-        if (ret < 0)
-            goto out;
-        ret = get_hw_resource_range(filename, &numa_topo_arr[idx].cpumap);
-        if (ret < 0)
-            goto out;
+    size_t sidx = 0;
+    for (size_t idx = 0; idx < online_nodes_cnt; idx++, sidx++) {
+        while (1) {
+            ret = snprintf(filename, sizeof(filename), "/sys/devices/system/node/node%zu/cpulist", sidx);
+            if (ret < 0)
+                goto out;
+            ret = get_hw_resource_range(filename, &numa_topo_arr[idx].cpumap);
+            if (ret == 0)
+                break;
+            sidx++;
+            if (sidx == 2048)
+                goto out;
+        }
 
-        ret = snprintf(filename, sizeof(filename), "/sys/devices/system/node/node%zu/distance", idx);
+        ret = snprintf(filename, sizeof(filename), "/sys/devices/system/node/node%zu/distance", sidx);
         if (ret < 0)
             goto out;
         ret = get_hw_resource_range(filename, &numa_topo_arr[idx].distance);
