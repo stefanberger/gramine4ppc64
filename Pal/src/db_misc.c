@@ -36,6 +36,7 @@ PAL_NUM DkMemoryAvailableQuota(void) {
     return (PAL_NUM)quota;
 }
 
+#if defined(__x86_64__)
 int DkCpuIdRetrieve(PAL_IDX leaf, PAL_IDX subleaf, PAL_IDX values[4]) {
     unsigned int vals[4];
     int ret = _DkCpuIdRetrieve(leaf, subleaf, vals);
@@ -50,6 +51,7 @@ int DkCpuIdRetrieve(PAL_IDX leaf, PAL_IDX subleaf, PAL_IDX values[4]) {
 
     return 0;
 }
+#endif
 
 int DkAttestationReport(const void* user_report_data, PAL_NUM* user_report_data_size,
                         void* target_info, PAL_NUM* target_info_size, void* report,

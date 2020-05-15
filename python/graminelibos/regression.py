@@ -19,6 +19,7 @@ fspath = getattr(os, 'fspath', str) # pylint: disable=invalid-name
 HAS_SGX = os.environ.get('SGX') == '1'
 ON_X86 = os.uname().machine in ['x86_64']
 USES_MUSL = os.environ.get('GRAMINE_MUSL') == '1'
+ON_PPC = os.uname().machine in ['ppc64le']
 ON_TRAVIS = os.getenv('TRAVIS') == 'true'
 
 def expectedFailureIf(predicate):
