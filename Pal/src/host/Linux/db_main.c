@@ -170,7 +170,9 @@ void pal_linux_main(void* initial_rsp, void* fini_callback) {
     __UNUSED(fini_callback);  // TODO: We should call `fini_callback` at the end.
 
     unsigned long start_time = _DkSystemTimeQueryEarly();
+#if !defined(__powerpc64__)
     pal_state.start_time = start_time;
+#endif
 
     int argc;
     const char** argv;
@@ -193,6 +195,9 @@ void pal_linux_main(void* initial_rsp, void* fini_callback) {
 
     ELF_DYNAMIC_RELOCATE(&pal_map);
 
+#if defined(__powerpc64__)
+    pal_state.start_time = start_time;
+#endif
     linux_state.environ = envp;
 
     init_slab_mgr(g_page_size);
@@ -215,8 +220,13 @@ void pal_linux_main(void* initial_rsp, void* fini_callback) {
     tcb->alt_stack   = alt_stack; // Stack bottom
     tcb->callback    = NULL;
     tcb->param       = NULL;
+    pal_tcb_arch_init(&tcb->common);
+#ifdef DEBUG
+    printf(">>>>>>>> Setting PAL_TCB_LINUX to %p\n", tcb);
+#endif
     pal_thread_init(tcb);
 
+    //printf("%s @ %d  BEFORE setup_pal_map\n", __func__, __LINE__);
     setup_pal_map(&pal_map);
 
 #if USE_VDSO_GETTIME == 1
@@ -228,12 +238,16 @@ void pal_linux_main(void* initial_rsp, void* fini_callback) {
     if (!first_process) {
         // Children receive their argv and config via IPC.
         int parent_pipe_fd = atoi(argv[2]);
+        //printf("%s @ %d  BEFORE init_child_process\n", __func__, __LINE__);
         init_child_process(parent_pipe_fd, &parent, &exec, &manifest);
+       //printf("%s @ %d  AFTER init_child_process\n", __func__, __LINE__);
     }
 
     if (!pal_sec.process_id)
         pal_sec.process_id = INLINE_SYSCALL(getpid, 0);
+    //printf("%s @ %d: after get pid\n",__func__, __LINE__);
     linux_state.pid = pal_sec.process_id;
+//    printf("PID: %d\n", linux_state.pid);
 
     linux_state.uid = uid;
     linux_state.gid = gid;
