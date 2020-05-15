@@ -10,9 +10,17 @@ void handler(PAL_PTR event, PAL_NUM arg, PAL_CONTEXT* context) {
     count++;
     pal_printf("Memory Fault %d\n", count);
 
+#if defined(__i386__) || defined(__x86_64__)
     while (*(unsigned char*)context->rip != 0x90) {
         context->rip++;
     }
+#elif defined(__powerpc64__)
+    while (*(unsigned int*)context->gpregs.nip != 0x60000000) {
+        context->gpregs.nip +=4 ;
+    }
+#else
+# error Unsupported architecture
+#endif
 
     DkExceptionReturn(event);
 }
