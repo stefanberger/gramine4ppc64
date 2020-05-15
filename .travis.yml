@@ -10,11 +10,18 @@ script:
   - make -j$(nproc)
     && ERROR=0
     && pushd Pal/test &>/dev/null
-    && _VERBOSE=1 ./run_tests.sh || ERROR=1
+    &&  make test || ERROR=1
     && popd &>/dev/null
     && pushd Pal/regression &>/dev/null
-    && _VERBOSE=1 ./run_tests.sh || ERROR=1
-    && sudo apt-get -y update && sudo apt-get -y install python3-pip && sudo pip3 install --upgrade pytest && make pal-regression.xml || ERROR=1
+    &&  make regression || ERROR=1
     && popd &>/dev/null
     && [ $ERROR -eq 0 ] || false
 
+matrix:
+  include:
+    - name: Build and test on x86_64
+      os: linux
+      arch: amd64
+    - name: Build and test on ppc64
+      os: linux
+      arch: ppc64le

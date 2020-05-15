@@ -49,4 +49,27 @@
 #define S_IWOTH 00002
 #define S_IXOTH 00001
 
+#if defined(__powerpc64__)
+
+struct stat {
+    unsigned long	st_dev;
+    unsigned long	st_ino;
+    unsigned long	st_nlink;
+    unsigned int	st_mode;
+    unsigned int	st_uid;
+    unsigned int	st_gid;
+    unsigned long	st_rdev;
+    long		st_size;
+    long		st_blksize;
+    long		st_blocks;
+    long		st_atime;
+    long		st_mtime;
+    long                pad1;
+    long                pad2;
+    long		st_ctime;
+    long                _pad[4];
+};
+
+#endif /* powerpc64 */
+
 #endif /* STAT_H */
