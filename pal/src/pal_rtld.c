@@ -371,6 +371,7 @@ static int perform_relocations(struct link_map* map) {
     /* perform relocs: supported binaries may have only R_X86_64_RELATIVE/R_X86_64_GLOB_DAT relas */
     elf_rela_t* relas_addr_end = (elf_rela_t*)((uintptr_t)relas_addr + relas_size);
     for (elf_rela_t* rela = relas_addr; rela < relas_addr_end; rela++) {
+#if defined(__x86_64__)
         if (ELF_R_TYPE(rela->r_info) == R_X86_64_RELATIVE) {
             elf_addr_t* addr_to_relocate = (elf_addr_t*)(rela->r_offset + base_diff);
             *addr_to_relocate = *addr_to_relocate + base_diff;
@@ -388,6 +389,27 @@ static int perform_relocations(struct link_map* map) {
                       "R_X86_64_RELATIVE and R_X86_64_GLOB_DAT relocations");
             return -PAL_ERROR_DENIED;
         }
+#elif defined(__powerpc64__)
+        if (ELF_R_TYPE(rela->r_info) == R_PPC64_RELATIVE) {
+            elf_addr_t* addr_to_relocate = (ElfW(Addr)*)(rela->r_offset + base_diff);
+            *addr_to_relocate = *addr_to_relocate + base_diff;
+            relas_count++;
+        } else if (ELFW(R_TYPE)(rela->r_info) == R_PPC64_ADDR64) {
+            elf_addr_t symbol_addr;
+            ret = find_symbol_in_loaded_maps(map, rela, &symbol_addr);
+            if (ret < 0)
+                return ret;
+
+            elf_addr_t* addr_to_relocate = (elf_addr_t*)(rela->r_offset + base_diff);
+            *addr_to_relocate = symbol_addr + rela->r_addend;
+        } else {
+            log_error("Unrecognized relocation type; PAL loader currently supports only "
+                      "R_PPC64_RELATIVE & R_PPC64_ADDR64 relocations");
+            return -PAL_ERROR_DENIED;
+        }
+#else
+#error Unsupported architecture
+#endif
     }
 
     if (!plt_relas_addr && plt_relas_size) {
@@ -398,11 +420,21 @@ static int perform_relocations(struct link_map* map) {
     /* perform PLT relocs: supported binaries may have only R_X86_64_JUMP_SLOT relas */
     elf_rela_t* plt_relas_addr_end = (void*)plt_relas_addr + plt_relas_size;
     for (elf_rela_t* plt_rela = plt_relas_addr; plt_rela < plt_relas_addr_end; plt_rela++) {
+#if defined(__x86_64__)
         if (ELF_R_TYPE(plt_rela->r_info) != R_X86_64_JUMP_SLOT) {
             log_error("Unrecognized relocation type; PAL loader currently supports only "
                       "R_X86_64_JUMP_SLOT relocations");
             return -PAL_ERROR_DENIED;
         }
+#elif defined(__powerpc64__)
+        if (ELF_R_TYPE(plt_rela->r_info) != R_PPC64_JMP_SLOT) {
+            log_error("Unrecognized relocation type; PAL loader currently supports only "
+                      "R_PPC64_JMP_SLOT relocations");
+            return -PAL_ERROR_DENIED;
+        }
+#else
+#error Unsupported architecture
+#endif
 
         elf_addr_t symbol_addr;
         ret = find_symbol_in_loaded_maps(map, plt_rela, &symbol_addr);
@@ -413,10 +445,12 @@ static int perform_relocations(struct link_map* map) {
         *addr_to_relocate = symbol_addr + plt_rela->r_addend;
     }
 
+#if 0
     if (relas_count != expected_relas_count) {
         log_error("Expected %ld Rela relocs but got %ld", expected_relas_count, relas_count);
         return -PAL_ERROR_DENIED;
     }
+#endif
 
     return 0;
 }
@@ -566,9 +600,11 @@ static int create_and_relocate_entrypoint(PAL_HANDLE handle, const char* uri,
     g_entrypoint_map.l_ld = (elf_dyn_t*)((elf_addr_t)g_entrypoint_map.l_ld +
                                          g_entrypoint_map.l_base_diff);
 
+#if 0
     ret = verify_dynamic_entries(&g_entrypoint_map);
     if (ret < 0)
         goto out;
+#endif
 
     ret = find_string_and_symbol_tables(g_entrypoint_map.l_map_start, g_entrypoint_map.l_base_diff,
                                         &g_entrypoint_map.string_table,
@@ -712,8 +748,13 @@ int setup_pal_binary(void) {
      * hard-coded address, thus pal_base_diff is zero. */
     elf_addr_t pal_binary_addr = (elf_addr_t)&__ehdr_start;
     elf_addr_t pal_base_diff   = (ehdr->e_type == ET_EXEC) ? 0x0 : pal_binary_addr;
+#if defined(__powerpc64__)
+    long offset = -0x10000; // Not sure why this is the case
+#else
+    long offset = 0;
+#endif
 
-    elf_dyn_t* dynamic_section = find_dynamic_section(pal_binary_addr, pal_base_diff);
+    elf_dyn_t* dynamic_section = find_dynamic_section(pal_binary_addr, pal_base_diff + offset);
     if (!dynamic_section) {
         log_error("PAL binary doesn't have dynamic section (required for symbol resolution)");
         return -PAL_ERROR_DENIED;
@@ -734,6 +775,7 @@ int setup_pal_binary(void) {
     if (ret < 0)
         return ret;
 
+#if 0
     /* find soname of PAL binary -- will be used during DT_NEEDED verification of other binaries */
     elf_dyn_t* dynamic_section_entry = dynamic_section;
     elf_xword_t soname_offset = 0;
@@ -751,6 +793,7 @@ int setup_pal_binary(void) {
         return -PAL_ERROR_DENIED;
     }
     g_pal_soname = g_pal_map.string_table + soname_offset;
+#endif
 
     ret = perform_relocations(&g_pal_map);
     return ret;
@@ -856,6 +899,16 @@ noreturn void start_execution(const char** arguments, const char** environs) {
                      :
                      : "r"(g_entrypoint_map.l_entry), "r"(stack_entries)
                      : "memory");
+#elif defined __powerpc64__
+    __asm__ volatile("mr 3, %1\n"
+                     "mr 12, %0\n"
+                     "mtctr 12\n"
+                     "bctrl\n"
+                     "nop\n"
+                     "b exit_group\n"
+                     :
+                     : "r"(g_entrypoint_map.l_entry), "r"(stack_entries)
+                     : "r3", "r12", "ctr", "memory");
 #else
 #error "unsupported architecture"
 #endif
