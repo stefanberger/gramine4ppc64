@@ -6,6 +6,7 @@ import subprocess
 import unittest
 
 HAS_SGX = os.environ.get('SGX') == '1'
+ON_PPC = os.uname()[4] in ['ppc64le']
 
 def expectedFailureIf(predicate):
     if predicate:
