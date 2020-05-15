@@ -279,7 +279,7 @@ endif
 
 subdir('common')
 subdir('pal')
-subdir('libos')
+# subdir('libos')
 subdir('python')
 subdir('tools')
 
