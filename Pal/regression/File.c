@@ -73,7 +73,12 @@ int main(int argc, char** argv, char** envp) {
 
         /* DEP 11/24/17: For SGX writecopy exercises a different path in the PAL */
         void* mem2 =
+#if PAGE_SIZE == 4096
             (void*)DkStreamMap(file1, NULL, PAL_PROT_READ | PAL_PROT_WRITECOPY, 4096, PAGE_SIZE);
+#else
+            (void*)DkStreamMap(file1, NULL, PAL_PROT_READ | PAL_PROT_WRITECOPY, 0, PAGE_SIZE);
+        mem2 = &((char *)mem2)[4096];
+#endif
         if (mem2) {
             memcpy(buffer3, mem2, 40);
             print_hex("Map Test 3 (4096th - 4136th): %s\n", buffer3, 40);
