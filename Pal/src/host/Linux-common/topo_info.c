@@ -161,17 +161,27 @@ static int get_cache_topo_info(int num_cache_lvl, int core_idx, PAL_CORE_CACHE_I
         snprintf(filename, sizeof(filename),
                  "/sys/devices/system/cpu/cpu%d/cache/index%d/coherency_line_size", core_idx, lvl);
         READ_FILE_BUFFER(filename, core_cache[lvl].coherency_line_size,
+#if defined(__x86_64__)
                          /*failure_label=*/out_cache);
+#elif defined(__powerpc64__)
+        /* FIXME: not always available */
+                         /*failure label=*/skip);
+skip:
+#endif
+
 
         snprintf(filename, sizeof(filename),
                  "/sys/devices/system/cpu/cpu%d/cache/index%d/number_of_sets", core_idx, lvl);
         READ_FILE_BUFFER(filename, core_cache[lvl].number_of_sets, /*failure_label=*/out_cache);
 
+#if defined(__x86_64__)
+        /* FIXME: Not available on ppc64 */
         snprintf(filename, sizeof(filename),
                  "/sys/devices/system/cpu/cpu%d/cache/index%d/physical_line_partition", core_idx,
                  lvl);
         READ_FILE_BUFFER(filename, core_cache[lvl].physical_line_partition,
                          /*failure_label=*/out_cache);
+#endif
     }
     *cache_info = core_cache;
     return 0;
@@ -204,8 +214,16 @@ static int get_core_topo_info(PAL_TOPO_INFO* topo_info) {
     if (!core_topology)
         return -ENOMEM;
 
+
+    int step = 1;
+#if defined(__powerpc64__)
+    // FIXME: too many processors; ltp tests are failing due to timeouts
+    step = 8;
+    memset(core_topology, 0, sizeof(PAL_CORE_TOPO_INFO));
+    memcpy(core_topology[0].is_logical_core_online, "1\n", 2);
+#endif
     char filename[128];
-    for (int idx = 0; idx < online_logical_cores; idx++) {
+    for (int idx = 0; idx < online_logical_cores; idx+=step) {
         /* cpu0 is always online and thus the "online" file is not present. */
         if (idx != 0) {
             snprintf(filename, sizeof(filename), "/sys/devices/system/cpu/cpu%d/online", idx);
@@ -229,6 +247,8 @@ static int get_core_topo_info(PAL_TOPO_INFO* topo_info) {
         ret = get_cache_topo_info(num_cache_lvl, idx, &core_topology[idx].cache);
         if (ret < 0)
             goto out_topology;
+        for (int j = idx + 1; j < idx + step; j++)
+            core_topology[j] = core_topology[idx];
     }
     topo_info->core_topology = core_topology;
     return 0;
@@ -256,11 +276,18 @@ static int get_numa_topo_info(PAL_TOPO_INFO* topo_info) {
         return -ENOMEM;
 
     char filename[128];
-    for (int idx = 0; idx < num_nodes; idx++) {
-        snprintf(filename, sizeof(filename), "/sys/devices/system/node/node%d/cpumap", idx);
-        READ_FILE_BUFFER(filename, numa_topology[idx].cpumap, /*failure_label=*/out_topology);
-
-        snprintf(filename, sizeof(filename), "/sys/devices/system/node/node%d/distance", idx);
+    int sidx = 0;
+    for (int idx = 0; idx < num_nodes; idx++, sidx++) {
+        while (1) {
+            snprintf(filename, sizeof(filename), "/sys/devices/system/node/node%d/cpumap", sidx);
+            READ_FILE_BUFFER(filename, numa_topology[idx].cpumap, /*failure_label=*/next_sidx);
+            break;
+next_sidx:
+            sidx++;
+            if (sidx == 2048)
+                goto out_topology;
+        }
+        snprintf(filename, sizeof(filename), "/sys/devices/system/node/node%d/distance", sidx);
         READ_FILE_BUFFER(filename, numa_topology[idx].distance, /*failure_label=*/out_topology);
 
         /* Since our /sys fs doesn't support writes, set persistent hugepages to their default value
