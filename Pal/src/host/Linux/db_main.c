@@ -105,6 +105,11 @@ void _DkGetAvailableUserAddressRange(PAL_PTR* start, PAL_PTR* end) {
     void* end_addr = (void*)ALLOC_ALIGN_DOWN_PTR(TEXT_START);
     void* start_addr = (void*)MMAP_MIN_ADDR;
 
+#if defined(__powerpc64__)
+    /* account for VDSO */
+    end_addr -= g_page_size;
+#endif
+
     assert(IS_ALLOC_ALIGNED_PTR(start_addr) && IS_ALLOC_ALIGNED_PTR(end_addr));
 
     while (1) {
@@ -167,9 +172,11 @@ noreturn void pal_linux_main(void* initial_rsp, void* fini_callback) {
     if (ret < 0)
         INIT_FAIL(-ret, "_DkSystemTimeQuery() failed");
 
+#if !defined(__powerpc64__)
     /* Initialize alloc_align as early as possible, a lot of PAL APIs depend on this being set. */
     g_pal_state.alloc_align = g_page_size;
     assert(IS_POWER_OF_2(g_pal_state.alloc_align));
+#endif
 
     int argc;
     const char** argv;
@@ -193,6 +200,11 @@ noreturn void pal_linux_main(void* initial_rsp, void* fini_callback) {
     ELF_DYNAMIC_RELOCATE(&g_pal_map);
 
     g_linux_state.host_environ = envp;
+#if defined(__powerpc64__)
+    /* Initialize alloc_align as early as possible, a lot of PAL APIs depend on this being set. */
+    g_pal_state.alloc_align = g_page_size;
+    assert(IS_POWER_OF_2(g_pal_state.alloc_align));
+#endif
 
     init_slab_mgr(g_page_size);
 
