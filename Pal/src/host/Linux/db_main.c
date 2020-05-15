@@ -158,11 +158,13 @@ noreturn void pal_linux_main(void* initial_rsp, void* fini_callback) {
     __UNUSED(fini_callback);  // TODO: We should call `fini_callback` at the end.
     int ret;
     uint64_t start_time = _DkSystemTimeQueryEarly();
+#if !defined(__powerpc64__)
     g_pal_state.start_time = start_time;
 
     /* Initialize alloc_align as early as possible, a lot of PAL APIs depend on this being set. */
     g_pal_state.alloc_align = _DkGetAllocationAlignment();
     assert(IS_POWER_OF_2(g_pal_state.alloc_align));
+#endif
 
     int argc;
     const char** argv;
@@ -186,6 +188,13 @@ noreturn void pal_linux_main(void* initial_rsp, void* fini_callback) {
     ELF_DYNAMIC_RELOCATE(&g_pal_map);
 
     g_linux_state.host_environ = envp;
+#if defined(__powerpc64__)
+    g_pal_state.start_time = start_time;
+
+    /* Initialize alloc_align as early as possible, a lot of PAL APIs depend on this being set. */
+    g_pal_state.alloc_align = _DkGetAllocationAlignment();
+    assert(IS_POWER_OF_2(g_pal_state.alloc_align));
+#endif
 
     init_slab_mgr(g_page_size);
 
@@ -213,7 +222,7 @@ noreturn void pal_linux_main(void* initial_rsp, void* fini_callback) {
     tcb->alt_stack   = alt_stack; // Stack bottom
     tcb->callback    = NULL;
     tcb->param       = NULL;
-
+    pal_tcb_arch_init(&tcb->common);
     ret = pal_thread_init(tcb);
     if (ret < 0)
         INIT_FAIL(unix_to_pal_error(-ret), "pal_thread_init() failed");
