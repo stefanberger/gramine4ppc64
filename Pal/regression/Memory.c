@@ -21,6 +21,10 @@ static void handler(bool is_in_pal, PAL_NUM arg, PAL_CONTEXT* context) {
     while (*(unsigned char*)context->rip != 0x90) {
         context->rip++;
     }
+#elif defined(__powerpc64__)
+    while (!INSN_IS_NOP(*(unsigned int *)context->gpregs.nip)) {
+        context->gpregs.nip += 4;
+    }
 #else
 #error Unsupported architecture
 #endif
