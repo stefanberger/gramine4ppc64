@@ -733,6 +733,10 @@ typedef struct {
 #define DT_EXTRATAGIDX(tag) (~(Elf32_Word)((Elf32_Word)(tag) & DT_FILTER))
 #define DT_EXTRANUM         3
 
+/* ppc64 specifics */
+#define DT_PPC64_GLINK      (DT_LOPROC + 0)
+#define DT_PPC64_OPT        (DT_LOPROC + 3)
+
 /* Values of `d_un.d_val' in the DT_FLAGS entry.  */
 #define DF_ORIGIN     0x00000001 /* Object may use DF_ORIGIN */
 #define DF_SYMBOLIC   0x00000002 /* Symbol resolutions starts here */
