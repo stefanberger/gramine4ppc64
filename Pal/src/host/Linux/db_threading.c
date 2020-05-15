@@ -35,6 +35,7 @@
 #include <linux/signal.h>
 #include <linux/types.h>
 #include <linux/wait.h>
+#include <linux/time.h>
 
 /* Linux PAL cannot use mmap/unmap to manage thread stacks because this may overlap with
  * pal_control.user_address. Linux PAL also cannot just use malloc/free because DkThreadExit
@@ -167,14 +168,24 @@ int _DkThreadCreate (PAL_HANDLE * handle, int (*callback) (void *),
     tcb->alt_stack = child_stack; // Stack bottom
     tcb->callback  = callback;
     tcb->param     = (void *) param;
+    pal_tcb_arch_init(&tcb->common);
 
     /* align child_stack to 16 */
     child_stack = ALIGN_DOWN_PTR(child_stack, 16);
 
+    //printf("Calling clone now: fn: %p (pal_thread_init), stack: %p, arg: %p   TLS: (unmodified by clone call)\n", pal_thread_init, child_stack, tcb);
     ret = clone(pal_thread_init, child_stack,
                 CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SYSVSEM | CLONE_THREAD |
                 CLONE_SIGHAND | CLONE_PARENT_SETTID,
                 (void*)tcb, &hdl->thread.tid, NULL);
+
+#if 0
+    printf("After low level clone: TID of child: %d\n", hdl->thread.tid);
+    {
+      register void *r13 __asm__("r13");
+      printf("Father of clone: tcb: %p\n", r13);
+    }
+#endif
 
     if (IS_ERR(ret)) {
         ret = -PAL_ERROR_DENIED;
@@ -263,6 +274,7 @@ noreturn void _DkThreadExit(int* clear_child_tid) {
     static_assert(offsetof(__typeof__(g_thread_stack_lock), lock) == 0, "unexpected offset of lock in g_thread_stack_lock");
     static_assert(sizeof(*clear_child_tid) == 4,  "unexpected clear_child_tid size");
 
+#if defined(__i386__) || defined (__x86_64__)
     __asm__ volatile("movl $0, (%%rdx) \n\t"   /* spinlock_unlock(&g_thread_stack_lock) */
                      "cmpq $0, %%rbx \n\t"     /* check if clear_child_tid != NULL */
                      "je 1f \n\t"
@@ -274,6 +286,21 @@ noreturn void _DkThreadExit(int* clear_child_tid) {
                        "d"(&g_thread_stack_lock.lock), "b"(clear_child_tid)
                      : "cc", "rcx", "r11", "memory"  /* syscall instr clobbers cc, rcx, and r11 */
     );
+#elif defined(__powerpc64__)
+    __asm__ volatile("li 3,0 \n\t"
+                     "stw 3,0(%1) \n\t"
+                     "cmpdi cr7,%2,0 \n\t"
+                     "beq cr7,1f \n\t"
+                     "stw 3,0(%2) \n\t"
+                     "1: \n\t"
+                     "li 0, %0 \n\t"
+                     "sc \n\t"
+                     :
+                     : "i"(__NR_exit),
+                       "r"(&g_thread_stack_lock.lock), "r"(clear_child_tid)
+                     : "r3", "cr7", "memory"
+    );
+#endif
 
     while (true) {
         /* nothing */
