@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include <stdnoreturn.h>
 
+char* get_string_from_cpuinfo_buf(const char* cpuinfo, const char* entry);
+
 char* get_main_exec_path(void);
 
 /* Usable only for blocking FDs */
