@@ -12,6 +12,7 @@
 
 #include "api.h"
 #include "pal.h"
+#include "pal-arch.h"
 #include "pal_debug.h"
 #include "pal_defs.h"
 #include "pal_error.h"
@@ -20,6 +21,11 @@
 #include "pal_linux_defs.h"
 #include "pal_security.h"
 #include "ucontext.h"
+
+#ifndef SIGHANDLER_FUNCTION
+#define SIGHANDLER_FUNCTION(FUNCNAME)	\
+static void FUNCNAME
+#endif
 
 static const int ASYNC_SIGNALS[] = {SIGTERM, SIGCONT};
 
@@ -82,7 +88,7 @@ static void perform_signal_handling(int event, bool is_in_pal, PAL_NUM addr, uco
     pal_context_to_ucontext(uc, &context);
 }
 
-static void handle_sync_signal(int signum, siginfo_t* info, struct ucontext* uc) {
+SIGHANDLER_FUNCTION(handle_sync_signal)(int signum, siginfo_t* info, struct ucontext* uc) {
     int event = get_pal_event(signum);
     assert(event > 0);
 
@@ -115,7 +121,7 @@ static void handle_sync_signal(int signum, siginfo_t* info, struct ucontext* uc)
     _DkProcessExit(1);
 }
 
-static void handle_async_signal(int signum, siginfo_t* info, struct ucontext* uc) {
+SIGHANDLER_FUNCTION(handle_async_signal)(int signum, siginfo_t* info, struct ucontext* uc) {
     __UNUSED(info);
 
     int event = get_pal_event(signum);
