@@ -23,6 +23,11 @@
 #include "pal_linux_defs.h"
 #include "ucontext.h"
 
+#ifndef SIGHANDLER_FUNCTION
+#define SIGHANDLER_FUNCTION(FUNCNAME)	\
+static void FUNCNAME
+#endif
+
 static const int ASYNC_SIGNALS[] = {SIGTERM, SIGCONT};
 
 static int block_signal(int sig, bool block) {
@@ -85,7 +90,7 @@ static void perform_signal_handling(enum pal_event event, bool is_in_pal, PAL_NU
     pal_context_to_ucontext(uc, &context);
 }
 
-static void handle_sync_signal(int signum, siginfo_t* info, struct ucontext* uc) {
+SIGHANDLER_FUNCTION(handle_sync_signal)(int signum, siginfo_t* info, struct ucontext* uc) {
     if (info->si_signo == SIGSYS && info->si_code == SYS_SECCOMP) {
         ucontext_revert_syscall(uc, info->si_arch, info->si_syscall, info->si_call_addr);
         static int log_once = 1;
@@ -117,7 +122,7 @@ static void handle_sync_signal(int signum, siginfo_t* info, struct ucontext* uc)
     _DkProcessExit(1);
 }
 
-static void handle_async_signal(int signum, siginfo_t* info, struct ucontext* uc) {
+SIGHANDLER_FUNCTION(handle_async_signal)(int signum, siginfo_t* info, struct ucontext* uc) {
     __UNUSED(info);
 
     enum pal_event event = signal_to_pal_event(signum);
@@ -152,6 +157,9 @@ static void handle_async_signal(int signum, siginfo_t* info, struct ucontext* uc
     BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW)
 
 static int setup_seccomp(uintptr_t vdso_start, uintptr_t vdso_end) {
+#if defined(__powerpc64__)
+    return 0;
+#endif
     int ret = DO_SYSCALL(prctl, PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
     if (ret < 0) {
         log_error("prctl(PR_SET_NO_NEW_PRIVS, 1) failed: %d", ret);
