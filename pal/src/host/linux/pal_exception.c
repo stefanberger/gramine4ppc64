@@ -84,7 +84,7 @@ static void perform_signal_handling(enum pal_event event, bool is_in_pal, uintpt
     pal_context_to_ucontext(uc, &context);
 }
 
-static void handle_sync_signal(int signum, siginfo_t* info, struct ucontext* uc) {
+SIGHANDLER_FUNCTION(handle_sync_signal)(int signum, siginfo_t* info, struct ucontext* uc) {
     if (info->si_signo == SIGSYS && info->si_code == SYS_SECCOMP) {
         ucontext_revert_syscall(uc, info->si_arch, info->si_syscall, info->si_call_addr);
         if (FIRST_TIME()) {
@@ -115,7 +115,7 @@ static void handle_sync_signal(int signum, siginfo_t* info, struct ucontext* uc)
     _PalProcessExit(1);
 }
 
-static void handle_async_signal(int signum, siginfo_t* info, struct ucontext* uc) {
+SIGHANDLER_FUNCTION(handle_async_signal)(int signum, siginfo_t* info, struct ucontext* uc) {
     __UNUSED(info);
 
     enum pal_event event = signal_to_pal_event(signum);
