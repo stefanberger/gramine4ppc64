@@ -11,6 +11,7 @@
 
 #include "api.h"
 #include "pal.h"
+#include "pal-arch.h"
 #include "pal_debug.h"
 #include "pal_defs.h"
 #include "pal_error.h"
@@ -18,10 +19,16 @@
 #include "pal_linux.h"
 #include "pal_linux_defs.h"
 #include "pal_security.h"
+#include "sigcontext.h"
 
 #include <linux/signal.h>
 #include <sigset.h>
 #include <ucontext.h>
+
+#ifndef SIGHANDLER_FUNCTION
+#define SIGHANDLER_FUNCTION(FUNCNAME)	\
+static void FUNCNAME
+#endif
 
 #if defined(__x86_64__)
 /* in x86_64 kernels, sigaction is required to have a user-defined restorer */
@@ -51,22 +58,47 @@ static int block_signal(int sig, bool block) {
     __sigemptyset(&mask);
     __sigaddset(&mask, sig);
 
+#if defined(__i386__) || defined(__x86_64__)
     int ret = INLINE_SYSCALL(rt_sigprocmask, 4, how, &mask, NULL, sizeof(__sigset_t));
+#elif defined(__powerpc64__)
+    int ret = INLINE_SYSCALL(rt_sigprocmask, 4, how, &mask, NULL, sizeof(sigset_t));
+#endif
     return IS_ERR(ret) ? unix_to_pal_error(ERRNO(ret)) : 0;
 }
 
 static int set_signal_handler(int sig, void* handler) {
+#if defined(__i386__) || defined(__x86_64__)
     struct sigaction action = {0};
+#elif defined(__powerpc64__)
+    struct ppc64_sigaction {
+        __sighandler_t sa_handler;
+        unsigned long sa_flags;
+        __sigrestore_t sa_restorer;
+        __sigset_t sa_mask;
+    } action;
+    // __sigset_t must be 128 bytes large
+    assert(sizeof(__sigset_t) == 128);
+    assert(sizeof(sigset_t) == 8);
+    assert(sizeof(action) == 152);
+#endif
+
     action.sa_handler  = handler;
-    action.sa_flags    = SA_SIGINFO | SA_ONSTACK | SA_RESTORER;
+    action.sa_flags    = SA_SIGINFO | SA_ONSTACK;
+#if defined(__x86_64__)
+    action.sa_flags   |= SA_RESTORER;
     action.sa_restorer = __restore_rt;
+#endif
 
     /* disallow nested asynchronous signals during exception handling */
     __sigemptyset((__sigset_t*)&action.sa_mask);
     for (size_t i = 0; i < ARRAY_SIZE(async_signals); i++)
         __sigaddset((__sigset_t*)&action.sa_mask, async_signals[i]);
 
+#if defined(__i386__) || defined(__x86_64__)
     int ret = INLINE_SYSCALL(rt_sigaction, 4, sig, &action, NULL, sizeof(__sigset_t));
+#elif defined(__powerpc64__)
+    int ret = INLINE_SYSCALL(rt_sigaction, 4, sig, &action, NULL, sizeof(sigset_t));
+#endif
     if (IS_ERR(ret))
         return unix_to_pal_error(ERRNO(ret));
 
@@ -121,11 +153,12 @@ static void perform_signal_handling(int event, siginfo_t* info, ucontext_t* uc) 
 
     PAL_CONTEXT context;
     ucontext_to_pal_context(&context, uc);
+    siginfo_to_pal_context(&context, info);
     (*upcall)(/*event=*/NULL, arg, &context);
     pal_context_to_ucontext(uc, &context);
 }
 
-static void handle_sync_signal(int signum, siginfo_t* info, struct ucontext* uc) {
+SIGHANDLER_FUNCTION(handle_sync_signal)(int signum, siginfo_t* info, struct ucontext* uc) {
     int event = get_pal_event(signum);
     assert(event > 0);
 
@@ -158,7 +191,7 @@ static void handle_sync_signal(int signum, siginfo_t* info, struct ucontext* uc)
     return;
 }
 
-static void handle_async_signal(int signum, siginfo_t* info, struct ucontext* uc) {
+SIGHANDLER_FUNCTION(handle_async_signal)(int signum, siginfo_t* info, struct ucontext* uc) {
     int event = get_pal_event(signum);
     assert(event > 0);
 
