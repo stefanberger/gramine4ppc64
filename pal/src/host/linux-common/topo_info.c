@@ -191,9 +191,12 @@ static int read_cache_info(struct pal_cache_info* ci, size_t thread_idx, size_t 
     if (ret < 0)
         return ret;
     ret = get_hw_resource_value(path, &ci->coherency_line_size);
+#if defined(__x86_64__) // some ppc64 systems do not have this
     if (ret < 0)
         return ret;
+#endif
 
+#if defined(__x86_64__)
     ret = snprintf(path, sizeof(path),
                    "/sys/devices/system/cpu/cpu%zu/cache/index%zu/number_of_sets",
                    thread_idx, cache_idx);
@@ -202,7 +205,9 @@ static int read_cache_info(struct pal_cache_info* ci, size_t thread_idx, size_t 
     ret = get_hw_resource_value(path, &ci->number_of_sets);
     if (ret < 0)
         return ret;
+#endif
 
+#if defined(__x86_64__)
     ret = snprintf(path, sizeof(path),
                    "/sys/devices/system/cpu/cpu%zu/cache/index%zu/physical_line_partition",
                    thread_idx, cache_idx);
@@ -211,6 +216,7 @@ static int read_cache_info(struct pal_cache_info* ci, size_t thread_idx, size_t 
     ret = get_hw_resource_value(path, &ci->physical_line_partition);
     if (ret < 0)
         return ret;
+#endif
 
     return 0;
 }
