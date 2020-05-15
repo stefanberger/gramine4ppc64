@@ -392,7 +392,7 @@ int buf_flush(struct print_buf* buf);
 #define TIME_NS_IN_US 1000ul
 #define TIME_NS_IN_S (TIME_NS_IN_US * TIME_US_IN_S)
 
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__powerpc64__)
 static inline bool __range_not_ok(uintptr_t addr, size_t size) {
     addr += size;
     if (addr < size) {
@@ -418,13 +418,21 @@ static inline bool access_ok(const volatile void* addr, size_t size) {
  * NOTE: optimizer runs only on C code and intermediate representations while assembly is
  * copy-pasted literally into the final assembly source which gets compiled into the binary, so
  * we're safe against being optimized away. */
+#if defined(__x86_64__)
 static inline void erase_memory(void* buffer, size_t size) {
     __asm__ volatile("rep stosb" : "+D"(buffer), "+c"(size) : "a"(0) : "cc", "memory");
 }
+#else
+static inline void erase_memory(void* buffer, size_t size) {
+    volatile unsigned char* p = buffer;
+    while (size--)
+        *p++ = 0;
+}
+#endif
 
 #else
 #error "Unsupported architecture"
-#endif /* __x86_64__ */
+#endif /* __x86_64__ || __powerpc64__ */
 
 #if !defined(USE_STDLIB) && __USE_FORTIFY_LEVEL > 0
 # include "api_fortified.h"
