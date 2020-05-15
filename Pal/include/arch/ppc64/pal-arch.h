@@ -1,0 +1,270 @@
+/* SPDX-License-Identifier: LGPL-3.0-or-later */
+/* Copyright (C) 2020 IBM Corporation */
+
+/*
+ * pal-arch.h
+ *
+ * This file contains definition of PAL host ABI for PowerPC 64.
+ */
+
+#ifndef PAL_ARCH_H
+#define PAL_ARCH_H
+
+#include <assert.h>
+
+#include "cpu.h"
+#include "api.h"
+
+#define STACK_PROTECTOR_CANARY_DEFAULT  0xbadbadbadbadUL
+
+/* Used to represent plain integers (only numeric values) */
+#define PAL_SYSFS_INT_FILESZ 16
+/* Used to represent buffers having numeric values with text. E.g "1024576K" */
+#define PAL_SYSFS_BUF_FILESZ 64
+/* Used to represent cpumaps like "00000000,ffffffff,00000000,ffffffff" */
+#define PAL_SYSFS_MAP_FILESZ 256
+
+/* glibc's define for the offset of the END of the thread control block's
+ * address relative to the value of register r13. The register r13 contains
+ * a higher address, so we must subtract this value.
+ */
+#define TLS_TCB_OFFSET	0x7000
+
+typedef struct pal_tcb PAL_TCB;
+
+/* This is glib'c extended TCB structure; we have to know about it */
+typedef struct {
+    /* NEW: pointer to LibOS TCB */
+        PAL_TCB *LibOS_TCB; /* keep at offset (-14 * 8) from END! */
+
+    /* Reservation for HWCAP data. */
+        unsigned int hwcap2;
+        unsigned int hwcap; /* not used in LE ABI */
+ 
+    /* Indicate if HTM capable (ISA 2.07). */
+        int tm_capable;
+        int tm_pad;
+ 
+    /* Reservation for dynamic system optimizer ABI. */
+        uintptr_t dso_slot2;
+        uintptr_t dso_slot1;
+ 
+    /* Reservation for tar register (ISA 2.07). */
+        uintptr_t tar_save;
+ 
+    /* GCC split stack support. */
+        void *__private_ss;
+ 
+    /* Reservation for the event-based branching ABI. */
+        uintptr_t ebb_handler;
+        uintptr_t ebb_ctx_pointer;
+        uintptr_t ebb_reserved1;
+        uintptr_t ebb_reserved2;
+        uintptr_t pointer_guard;
+ 
+    /* Reservation for stack guard */
+        uintptr_t stack_guard;
+ 
+    /* DTV pointer */
+        void *dtv;
+} tcbhead_t;
+
+static inline tcbhead_t *r13_to_tcbhead_t(uint64_t r13) {
+    return (tcbhead_t*)(r13 - TLS_TCB_OFFSET - sizeof(tcbhead_t));
+}
+
+/* FIXME: be more precise about the size */
+#define PAL_LIBOS_TCB_SIZE  2048 /* generous space for GPRs, SPRs, FPRs, VECRs etc. */
+
+typedef struct pal_tcb {
+    struct pal_tcb* self;
+    /* currently unused 64bit field we need so that syscalldb in libos_tcb is at
+     * a specific offset.
+     */
+    uint64_t unused;
+    /* uint64_t for alignment */
+    uint8_t libos_tcb[PAL_LIBOS_TCB_SIZE];
+    /* data private to PAL implementation follows this struct. */
+    /* we have to keep this last */
+    tcbhead_t glibc_tcb;
+} PAL_TCB;
+
+__attribute__((__optimize__("-fno-stack-protector")))
+static inline void pal_tcb_arch_set_stack_canary(PAL_TCB* tcb, uint64_t canary) {
+    tcb->glibc_tcb.stack_guard = canary;
+}
+
+static_assert(offsetof(PAL_TCB, glibc_tcb.stack_guard) ==
+              sizeof(PAL_TCB) - sizeof(void*) /* dtv */ - sizeof(uintptr_t) /* stack_guard */,
+              "stack guard is at wrong offset in PAL_TCB");
+
+static inline void pal_tcb_arch_init(PAL_TCB* tcb) {
+    tcb->glibc_tcb.LibOS_TCB = tcb;
+}
+
+#include "pal_host-arch.h"
+
+/* PAL_CPUSTATE needs the same layout as pt_regs */
+typedef struct {
+    uint64_t gpr[32];
+    uint64_t nip;
+    uint64_t msr;
+    uint64_t orig_gpr3;
+    uint64_t ctr;
+    uint64_t link;
+    uint64_t xer;
+    uint64_t ccr;
+    uint64_t softe;
+    uint64_t trap;
+    uint64_t dar;
+    uint64_t dsisr;
+    uint64_t result;
+} PAL_CPUSTATE;
+
+/* Since we cannot access the MSR from user space to check which facilities are enabled,
+ * it is easiest to just store the 64 vsr registers.
+ */
+typedef struct {
+    uint64_t a;
+    uint64_t b;
+} __attribute__((aligned(16))) vsr_reg;
+
+typedef struct {
+    vsr_reg  vsr[64];
+    uint64_t vrsave;
+    uint64_t fpscr __attribute__((aligned(16))); /* needs to be 16 byte aligned */
+    vsr_reg  vscr;	/* stvx stores 16 bytes */
+} __attribute__((aligned(16))) PAL_XTSTATE;
+
+typedef struct PAL_CONTEXT {
+    PAL_CPUSTATE gpregs;
+    PAL_XTSTATE  xtregs;
+    uintptr_t stack_guard; /* we need the stack guard here to support fork()'s child side */
+} PAL_CONTEXT;
+
+static_assert((sizeof(PAL_CONTEXT) & 0xf) == 0,
+              "Size of PAL_CONTEXT should be multiple of 16 bytes");
+
+typedef int64_t arch_syscall_arg_t;
+
+#define ALL_SYSCALL_ARGS(context) \
+    (context)->gpregs.gpr[3], \
+    (context)->gpregs.gpr[4], \
+    (context)->gpregs.gpr[5], \
+    (context)->gpregs.gpr[6], \
+    (context)->gpregs.gpr[7], \
+    (context)->gpregs.gpr[8]
+
+static inline void pal_context_set_ip(PAL_CONTEXT* context, PAL_NUM insnptr) {
+    context->gpregs.nip = insnptr;
+}
+
+static inline PAL_NUM pal_context_get_ip(PAL_CONTEXT* context) {
+    return context->gpregs.nip;
+}
+
+static inline void pal_context_set_sp(PAL_CONTEXT* context, PAL_NUM sp) {
+    context->gpregs.gpr[1] = sp;
+}
+static inline PAL_NUM pal_context_get_sp(PAL_CONTEXT* context) {
+    return context->gpregs.gpr[1];
+}
+
+static inline void pal_context_set_retval(PAL_CONTEXT* context, uint64_t val) {
+    context->gpregs.gpr[3] = val;
+}
+static inline uint64_t pal_context_get_retval(PAL_CONTEXT* context) {
+    return context->gpregs.gpr[3];
+}
+
+/* r9 holds the syscall nr when call from modified glibc */
+#define GLIBC_SYSCALL_NR_REGISTER	9
+
+static inline uint64_t pal_context_get_syscall(PAL_CONTEXT* context) {
+    return context->gpregs.gpr[GLIBC_SYSCALL_NR_REGISTER];
+}
+
+static inline void pal_context_set_syscall(PAL_CONTEXT* context, uint64_t sysnr) {
+    context->gpregs.gpr[GLIBC_SYSCALL_NR_REGISTER] = sysnr;
+}
+
+static inline void pal_context_copy(PAL_CONTEXT* dst, PAL_CONTEXT* src) {
+    *dst = *src;
+}
+
+#include <linux/signal.h>
+
+enum {
+    HUGEPAGES_2M = 0,
+    HUGEPAGES_1G,
+    HUGEPAGES_MAX,
+};
+
+/* PAL_CPU_INFO holds /proc/cpuinfo data */
+typedef struct PAL_CPU_INFO_ {
+    /* Number of logical cores available in the host */
+    PAL_NUM online_logical_cores;
+    /* Max number of logical cores available in the host */
+    PAL_NUM possible_logical_cores;
+    /* Number of physical cores in a socket (physical package) */
+    PAL_NUM physical_cores_per_socket;
+    /* array of "logical core -> socket" mappings; has online_logical_cores elements */
+    int* cpu_socket;
+    const char* processor;
+    const char* cpu;
+    const char* clock;
+    const char* revision;
+    const char* timebase;
+    const char* platform;
+    const char* model;
+    const char* machine;
+    const char* firmware;
+    const char* mmu;
+} PAL_CPU_INFO;
+
+typedef struct PAL_CORE_CACHE_INFO_ {
+    char shared_cpu_map[PAL_SYSFS_MAP_FILESZ];
+    char level[PAL_SYSFS_INT_FILESZ];
+    char type[PAL_SYSFS_BUF_FILESZ];
+    char size[PAL_SYSFS_BUF_FILESZ];
+    char coherency_line_size[PAL_SYSFS_INT_FILESZ];
+    char number_of_sets[PAL_SYSFS_INT_FILESZ];
+#if 0
+    char physical_line_partition[PAL_SYSFS_INT_FILESZ]; // on x86_64
+#endif
+} PAL_CORE_CACHE_INFO;
+
+typedef struct PAL_CORE_TOPO_INFO_ {
+    /* [0] element is uninitialized because core 0 is always online */
+    char is_logical_core_online[PAL_SYSFS_INT_FILESZ];
+    char core_id[PAL_SYSFS_INT_FILESZ];
+    char core_siblings[PAL_SYSFS_MAP_FILESZ];
+    char thread_siblings[PAL_SYSFS_MAP_FILESZ];
+    PAL_CORE_CACHE_INFO* cache; /* Array of size cache_indices_cnt, owned by this struct */
+} PAL_CORE_TOPO_INFO;
+
+typedef struct PAL_NUMA_HUGEPAGE_INFO_ {
+    char nr_hugepages[PAL_SYSFS_INT_FILESZ];
+} PAL_NUMA_HUGEPAGE_INFO;
+
+typedef struct PAL_NUMA_TOPO_INFO_ {
+    char cpumap[PAL_SYSFS_MAP_FILESZ];
+    char distance[PAL_SYSFS_INT_FILESZ];
+    PAL_NUMA_HUGEPAGE_INFO hugepages[HUGEPAGES_MAX];
+} PAL_NUMA_TOPO_INFO;
+
+/* This struct takes ~1.6KB. On a single socket, 4 logical core system, with 3 cache levels
+ * it would take ~8KB in memory. */
+typedef struct PAL_TOPO_INFO_ {
+    char online_logical_cores[PAL_SYSFS_BUF_FILESZ];
+    char possible_logical_cores[PAL_SYSFS_BUF_FILESZ];
+    char online_nodes[PAL_SYSFS_BUF_FILESZ];
+    /* Number of nodes available in the host */
+    PAL_NUM online_nodes_cnt;
+    /* cache index corresponds to number of cache levels (such as L2 or L3) available on the host */
+    PAL_NUM cache_indices_cnt;
+    PAL_CORE_TOPO_INFO* core_topology; /* Array of logical core topology info, owned by this struct */
+    PAL_NUMA_TOPO_INFO* numa_topology; /* Array of numa topology info, owned by this struct */
+} PAL_TOPO_INFO;
+
+#endif /* PAL_ARCH_H */
