@@ -56,7 +56,11 @@ int setup_vdso(elf_addr_t base_addr) {
     /* iterate through the symbol table and find where clock_gettime vDSO func is located */
     for (uint32_t i = 0; i < symbol_table_cnt; i++) {
         const char* symbol_name = string_table + symbol_table[i].st_name;
+#if defined(__x86_64__)
         if (!strcmp("__vdso_clock_gettime", symbol_name)) {
+#elif defined(__powerpc64__)
+        if (!strcmp("__kernel_clock_gettime", symbol_name)) {
+#endif
             g_pal_linux_state.vdso_clock_gettime = (void*)(base_addr + symbol_table[i].st_value);
             break;
         }
