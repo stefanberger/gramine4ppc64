@@ -49,6 +49,10 @@ static_assert(offsetof(PAL_TCB, stack_protector_canary) == 0x8,
 
 #include "pal_host_arch.h"
 
+static inline void pal_tcb_arch_init(PAL_TCB* tcb __attribute__((unused))) {
+    /* nothing to do */
+}
+
 static inline PAL_TCB* pal_get_tcb(void) {
     PAL_TCB* tcb;
     __asm__("movq %%gs:%c1, %0" : "=r"(tcb) : "i"(offsetof(struct pal_tcb, self)) : "memory");
