@@ -321,7 +321,7 @@ int toml_sizestring_in(const toml_table_t* root, const char* key, uint64_t defau
 
 #define URI_PREFIX_FILE_LEN (static_strlen(URI_PREFIX_FILE))
 
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__powerpc64__)
 static inline bool __range_not_ok(uintptr_t addr, size_t size) {
     addr += size;
     if (addr < size) {
@@ -339,6 +339,6 @@ static inline bool access_ok(const volatile void* addr, size_t size) {
 
 #else
 #error "Unsupported architecture"
-#endif /* __x86_64__ */
+#endif /* __x86_64__ || __powerpc64__ */
 
 #endif /* API_H */
