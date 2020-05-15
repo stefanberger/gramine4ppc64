@@ -497,6 +497,7 @@ static int proc_attrquerybyhdl(PAL_HANDLE handle, PAL_STREAM_ATTR* attr) {
 
     /* get number of bytes available for reading */
     ret = INLINE_SYSCALL(ioctl, 3, handle->process.stream, FIONREAD, &val);
+    //printf("%s after ioctl: fd: %d ret=%d\n", __func__, handle->process.stream, ret);
     if (IS_ERR(ret))
         return unix_to_pal_error(ERRNO(ret));
 

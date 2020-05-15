@@ -1137,7 +1137,11 @@ static void parse_fcntlop(va_list* ap) {
 }
 
 static void parse_ioctlop(va_list* ap) {
+#if defined (__i386__) || defined(__x86_64__)
     int op = va_arg(*ap, int);
+#elif defined(__powerpc64__)
+    long unsigned int op = va_arg(*ap, long unsigned int);
+#endif
 
     if (op >= TCGETS && op <= TIOCVHANGUP) {
         const char* opnames[] = {
@@ -1190,7 +1194,13 @@ static void parse_ioctlop(va_list* ap) {
 #define TIOCMIWAIT  0x545C /* wait for a change on serial input line(s) */
 #define TIOCGICOUNT 0x545D /* read serial port __inline__ interrupt counts */
 
+#if defined(__i386__) || defined(__x86_64__)
     PRINTF("OP 0x%04x", op);
+#elif defined(__powerpc64__)
+    PRINTF("OP 0x%04lx", op);
+#else
+#error Unsupported architecture
+#endif
 }
 
 static void parse_seek(va_list* ap) {
