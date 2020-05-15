@@ -55,6 +55,10 @@ static inline void pal_tcb_arch_set_stack_canary(PAL_TCB* tcb, uint64_t canary) 
 static_assert(offsetof(PAL_TCB, stack_protector_canary) == 0x8,
               "unexpected offset of stack_protector_canary in PAL_TCB struct");
 
+static inline void pal_tcb_arch_init(PAL_TCB* tcb __attribute__((unused))) {
+    /* nothing to do */
+}
+
 #include "pal_host-arch.h"
 
 static inline PAL_TCB* pal_get_tcb(void) {
@@ -270,6 +274,12 @@ static inline void pal_context_copy(PAL_CONTEXT* dst, PAL_CONTEXT* src) {
         dst->mxcsr = src->fpregs->fpstate.mxcsr;
         dst->fpcw = src->fpregs->fpstate.cwd;
     }
+}
+
+typedef struct siginfo siginfo_t;
+static inline void siginfo_to_pal_context(PAL_CONTEXT* context, siginfo_t *info) {
+    (void)context;
+    (void)info;
 }
 
 enum {
