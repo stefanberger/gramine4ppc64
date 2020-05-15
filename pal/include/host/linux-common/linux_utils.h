@@ -1,5 +1,8 @@
 #pragma once
 
+#if defined(__powerpc64__)
+#include <sys/types.h>
+#endif
 #include <asm/stat.h>
 #include <linux/time.h>
 #include <linux/un.h>
@@ -9,6 +12,8 @@
 #include <stdnoreturn.h>
 
 #include "pal.h"
+
+char* get_string_from_cpuinfo_buf(const char* cpuinfo, const char* entry);
 
 char* get_main_exec_path(void);
 
