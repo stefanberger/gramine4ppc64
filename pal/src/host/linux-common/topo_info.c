@@ -76,6 +76,10 @@ static int read_numbers_from_file(const char* path, size_t* out_arr, size_t coun
         ret = str_to_ulong(buf_it, 10, &val, &end);
         if (ret < 0)
             return -EINVAL;
+#if defined(__powerpc64__)
+        if (*end == '\n')
+            break;
+#endif
         char expected_separator = (i != count - 1) ? ' ' : '\n';
         if (*end != expected_separator)
             return -EINVAL;
@@ -180,10 +184,12 @@ static int read_cache_info(struct pal_cache_info* ci, size_t thread_idx, size_t 
                    thread_idx, cache_idx);
     if (ret < 0)
         return ret;
+
     ret = get_hw_resource_value(path, &ci->coherency_line_size);
     if (ret < 0)
         return ret;
 
+#if defined(__x86_64__)
     ret = snprintf(path, sizeof(path),
                    "/sys/devices/system/cpu/cpu%zu/cache/index%zu/number_of_sets",
                    thread_idx, cache_idx);
@@ -192,7 +198,9 @@ static int read_cache_info(struct pal_cache_info* ci, size_t thread_idx, size_t 
     ret = get_hw_resource_value(path, &ci->number_of_sets);
     if (ret < 0)
         return ret;
+#endif
 
+#if defined(__x86_64__)
     ret = snprintf(path, sizeof(path),
                    "/sys/devices/system/cpu/cpu%zu/cache/index%zu/physical_line_partition",
                    thread_idx, cache_idx);
@@ -201,6 +209,7 @@ static int read_cache_info(struct pal_cache_info* ci, size_t thread_idx, size_t 
     ret = get_hw_resource_value(path, &ci->physical_line_partition);
     if (ret < 0)
         return ret;
+#endif
 
     return 0;
 }
@@ -357,22 +366,34 @@ int get_topology_info(struct pal_topo_info* topo_info) {
         }
     }
 
-    for (size_t i = 0; i < nodes_cnt; i++) {
-        snprintf(path, sizeof(path), "/sys/devices/system/node/node%zu/cpulist", i);
-        ret = iterate_ranges_from_file(path, set_node_id, &(struct set_node_id_args){
-            .threads = threads,
-            .cores = cores,
-            .id_to_set = i,
-        });
-        if (ret < 0)
-            goto fail;
+    size_t sidx = 0;
+    for (size_t i = 0; i < nodes_cnt; i++, sidx++) {
+        while (1) {
+            snprintf(path, sizeof(path), "/sys/devices/system/node/node%zu/cpulist", sidx);
+            ret = iterate_ranges_from_file(path, set_node_id, &(struct set_node_id_args){
+                .threads = threads,
+                .cores = cores,
+                .id_to_set = i,
+            });
+            if (ret == -ENOENT) {
+                sidx++;
+                if (sidx == 2048)
+                    goto next;
+                continue;
+            }
+            if (ret < 0)
+                goto fail;
 
-        ret = snprintf(path, sizeof(path), "/sys/devices/system/node/node%zu/distance", i);
-        if (ret < 0)
-            goto fail;
-        ret = read_numbers_from_file(path, distances + i * nodes_cnt, nodes_cnt);
-        if (ret < 0)
-            goto fail;
+            ret = snprintf(path, sizeof(path), "/sys/devices/system/node/node%zu/distance", sidx);
+            if (ret < 0)
+                goto fail;
+            ret = read_numbers_from_file(path, distances + i * nodes_cnt, nodes_cnt);
+            if (ret < 0)
+                 goto fail;
+            sidx++;
+            if (sidx == 2048)
+                goto next;
+        }
 
         /* Since our sysfs doesn't support writes, set persistent hugepages to their default value
          * of zero */
@@ -380,6 +401,7 @@ int get_topology_info(struct pal_topo_info* topo_info) {
         numa_nodes[i].nr_hugepages[HUGEPAGES_1G] = 0;
     }
 
+next:
     for (size_t i = 0; i < threads_cnt; i++) {
         if (!threads[i].is_online)
             continue;
