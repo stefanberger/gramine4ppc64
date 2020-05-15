@@ -63,12 +63,26 @@ int main(int argc, char** argv, char** envp) {
         pal_printf("Executable Range OK\n");
 
     pal_printf("CPU num: %ld\n", pal_control.cpu_info.cpu_num);
+#if defined(__i386__) || defined(__x86_64__)
     pal_printf("CPU vendor: %s\n", pal_control.cpu_info.cpu_vendor);
     pal_printf("CPU brand: %s\n", pal_control.cpu_info.cpu_brand);
     pal_printf("CPU family: %ld\n", pal_control.cpu_info.cpu_family);
     pal_printf("CPU model: %ld\n", pal_control.cpu_info.cpu_model);
     pal_printf("CPU stepping: %ld\n", pal_control.cpu_info.cpu_stepping);
     pal_printf("CPU flags: %s\n", pal_control.cpu_info.cpu_flags);
+#elif defined(__powerpc64__)
+    pal_printf("CPU cpu: %s\n", pal_control.cpu_info.cpu);
+    pal_printf("CPU clock: %s\n", pal_control.cpu_info.clock);
+    pal_printf("CPU revision: %s\n", pal_control.cpu_info.revision);
+    pal_printf("CPU timebase: %s\n", pal_control.cpu_info.timebase);
+    pal_printf("CPU platform: %s\n", pal_control.cpu_info.platform);
+    pal_printf("CPU model: %s\n", pal_control.cpu_info.model);
+    pal_printf("CPU machine: %s\n", pal_control.cpu_info.machine);
+    pal_printf("CPU firmware: %s\n", pal_control.cpu_info.firmware);
+    pal_printf("CPU MMU: %s\n", pal_control.cpu_info.mmu);
+#else
+#error Unsupported architecture
+#endif
 
     return 0;
 }
