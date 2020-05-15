@@ -19,7 +19,6 @@ CRYPTO_PROVIDER ?= mbedtls
 ifeq ($(CRYPTO_PROVIDER),mbedtls)
 crypto_mbedtls_library_objs = \
 	crypto/mbedtls/crypto/library/aes.o \
-	crypto/mbedtls/crypto/library/aesni.o \
 	crypto/mbedtls/crypto/library/base64.o \
 	crypto/mbedtls/crypto/library/bignum.o \
 	crypto/mbedtls/crypto/library/cipher.o \
@@ -40,7 +39,10 @@ crypto_mbedtls_library_objs = \
 	crypto/mbedtls/library/ssl_msg.o \
 	crypto/mbedtls/library/ssl_srv.o \
 	crypto/mbedtls/library/ssl_tls.o
-
+ifeq ($(ARCH),x86_64)
+crypto_mbedtls_library_objs += \
+	crypto/mbedtls/crypto/library/aesni.o
+endif
 objs += $(crypto_mbedtls_library_objs)
 endif
 
@@ -112,7 +114,10 @@ objs += \
 $(addprefix $(target),crypto/adapters/mbedtls_adapter.o crypto/adapters/mbedtls_dh.o crypto/adapters/mbedtls_encoding.o): crypto/mbedtls/crypto/library/aes.c
 
 ifeq ($(CRYPTO_PROVIDER),mbedtls)
-CFLAGS += -DCRYPTO_USE_MBEDTLS -mrdrnd
+CFLAGS += -DCRYPTO_USE_MBEDTLS
+ifeq ($(ARCH),x86_64)
+CFLAGS += -mrdrnd
+endif
 objs += crypto/adapters/mbedtls_adapter.o
 objs += crypto/adapters/mbedtls_dh.o
 objs += crypto/adapters/mbedtls_encoding.o

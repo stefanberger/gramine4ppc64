@@ -13,7 +13,6 @@ executables = \
 	..Bootstrap \
 	AtomicMath \
 	AttestationReport \
-	AvxDisable \
 	avl_tree_test \
 	Bootstrap \
 	Bootstrap2 \
@@ -22,8 +21,6 @@ executables = \
 	Directory \
 	Event \
 	Event2 \
-	Exception \
-	Exception2 \
 	Exit \
 	Failure \
 	File \
@@ -38,7 +35,6 @@ executables = \
 	Process2 \
 	Process3 \
 	Process4 \
-	Segment \
 	Select \
 	Semaphore \
 	SendHandle \
@@ -46,12 +42,20 @@ executables = \
 	Socket \
 	Symbols \
 	Tcp \
-	Thread \
 	Thread2 \
 	Udp \
 	Wait \
 	Yield \
 	normalize_path
+
+ifeq ($(ARCH),x86_64)
+executables += \
+	AvxDisable \
+	Exception \
+	Exception2 \
+	Segment \
+	Thread
+endif
 
 manifests = \
 	manifest \
@@ -79,7 +83,7 @@ pal_lib = ../../Runtime/libpal-$(PAL_HOST).so
 
 RUNTIME_DIR = $(CURDIR)/../../Runtime
 
-ifneq ($(findstring x86_64,$(SYS))$(findstring linux,$(SYS)),x86_64linux)
+ifneq ($(findstring linux,$(SYS)),linux)
 $(error unsupported platform. $(SYS))
 endif
 
