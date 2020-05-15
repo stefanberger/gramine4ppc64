@@ -55,3 +55,22 @@ double sanitize_bogomips_value(double v) {
     }
     return v;
 }
+
+char* get_string_from_cpuinfo_buf(const char* cpuinfo, const char *entry) {
+    const char* line = find_entry_in_cpuinfo(entry, cpuinfo);
+    if (!line)
+        return NULL;
+
+    size_t len = 0;
+    while (line[len] != 0 && line[len] != '\n')
+        len++;
+
+    char* res = malloc(len + 1);
+    if (!res)
+        return NULL;
+
+    memcpy(res, line, len);
+    res[len] = 0;
+
+    return res;
+}
