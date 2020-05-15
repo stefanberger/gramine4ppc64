@@ -668,6 +668,12 @@ void* rbp_before_call = NULL;
             : "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "memory", "cc"); \
         ret;                                                                         \
     })
+#elif defined(__powerpc64__)
+#define CALL_ENTRY(l, cookies)						\
+    {									\
+        typedef void (*func)(unsigned long int *);			\
+        ((func)l->l_entry)(cookies);					\
+    }
 #else
 #error "unsupported architecture"
 #endif
