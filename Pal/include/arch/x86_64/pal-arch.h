@@ -28,6 +28,10 @@ typedef struct pal_tcb {
     /* data private to PAL implementation follows this struct. */
 } PAL_TCB;
 
+static inline void pal_tcb_arch_init(PAL_TCB* tcb __attribute__((unused))) {
+    /* nothing to do */
+}
+
 #include "pal_host-arch.h"
 
 static inline PAL_TCB * pal_get_tcb (void)
@@ -178,6 +182,12 @@ static inline void pal_context_set_ip(PAL_CONTEXT* context, PAL_NUM insnptr) {
 
 static inline PAL_NUM pal_context_get_ip(PAL_CONTEXT* context) {
     return context->rip;
+}
+
+typedef struct siginfo siginfo_t;
+static inline void siginfo_to_pal_context(PAL_CONTEXT* context, siginfo_t *info) {
+    (void)context;
+    (void)info;
 }
 
 static inline bool pal_context_has_user_pagefault(PAL_CONTEXT* context) {
