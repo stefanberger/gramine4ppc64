@@ -16,4 +16,6 @@ ssize_t read_file_buffer(const char* filename, char* buf, size_t count);
 /* Fills topo_info with CPU and NUMA topology from the host */
 int get_topology_info(struct pal_topo_info* topo_info);
 
+int get_hw_resource_value(const char* filename, size_t* out_value);
+
 #endif // TOPO_INFO_H_

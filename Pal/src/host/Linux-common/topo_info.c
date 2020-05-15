@@ -18,7 +18,7 @@
 
 /* Opens a pseudo-file describing HW resources and simply reads the value stored in the file.
  * Returns UNIX error code on failure and 0 on success. */
-static int get_hw_resource_value(const char* filename, size_t* out_value) {
+int get_hw_resource_value(const char* filename, size_t* out_value) {
     assert(out_value);
 
     char str[PAL_SYSFS_BUF_FILESZ];
@@ -294,12 +294,14 @@ static int get_cache_topo_info(size_t cache_indices_cnt, size_t core_idx,
         if (ret < 0)
             goto fail;
 
+#if ! defined(__powerpc64__)
         ret = snprintf(filename, sizeof(filename), "%s/physical_line_partition", dirname);
         if (ret < 0)
             goto fail;
         ret = get_hw_resource_value(filename, &cache_info_arr[cache_idx].physical_line_partition);
         if (ret < 0)
             goto fail;
+#endif
     }
     *out_cache_info_arr = cache_info_arr;
     return 0;
@@ -423,7 +425,8 @@ static int get_numa_topo_info(struct pal_topo_info* topo_info) {
         return -ENOMEM;
 
     char filename[PAL_SYSFS_PATH_SIZE];
-    for (size_t idx = 0; idx < online_nodes_cnt; idx++) {
+    size_t sidx = 0;
+    for (size_t idx = 0; idx < online_nodes_cnt; idx++, sidx++) {
         ret = snprintf(filename, sizeof(filename), "/sys/devices/system/node/node%zu/cpulist", idx);
         if (ret < 0)
             goto out;
