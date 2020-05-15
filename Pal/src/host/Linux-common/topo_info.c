@@ -198,9 +198,11 @@ static int read_cache_info(struct pal_cache_info* ci, size_t thread_idx, size_t 
                    thread_idx, cache_idx);
     if (ret < 0)
         return ret;
+#if defined(__x86_64__)
     ret = get_hw_resource_value(path, &ci->physical_line_partition);
     if (ret < 0)
         return ret;
+#endif
 
     return 0;
 }
