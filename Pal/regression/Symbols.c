@@ -1,12 +1,16 @@
 #include "pal.h"
 #include "pal_debug.h"
 
+#if defined(__i386__) || defined(__x86_64__)
 #define SYMBOL_ADDR(sym)                                                    \
     ({                                                                      \
         void* _sym;                                                         \
         __asm__ volatile("movq " #sym "@GOTPCREL(%%rip), %0" : "=r"(_sym)); \
         _sym;                                                               \
     })
+#else
+#define SYMBOL_ADDR(sym) sym
+#endif
 
 #define PRINT_SYMBOL(sym) pal_printf(#sym " = %p\n", SYMBOL_ADDR(sym))
 
