@@ -130,7 +130,7 @@ static bool append_rt_signal(struct shim_rt_signal_queue* queue,
         if (put_idx - get_idx >= ARRAY_SIZE(queue->queue)) {
             return false;
         }
-    } while (!__atomic_compare_exchange_n(&queue->put_idx, &put_idx, put_idx + 1, /*weak=*/true,
+    } while (!__atomic_compare_exchange_n(&queue->put_idx, &put_idx, put_idx + 1, /*weak=*/false,
                                           __ATOMIC_RELEASE, __ATOMIC_ACQUIRE));
 
     queue->queue[put_idx % ARRAY_SIZE(queue->queue)] = signal;
@@ -179,7 +179,7 @@ static struct shim_signal* pop_rt_signal(struct shim_rt_signal_queue* queue) {
         if (put_idx == get_idx) {
             return NULL;
         }
-    } while (!__atomic_compare_exchange_n(&queue->get_idx, &get_idx, get_idx + 1, /*weak=*/true,
+    } while (!__atomic_compare_exchange_n(&queue->get_idx, &get_idx, get_idx + 1, /*weak=*/false,
                                           __ATOMIC_RELEASE, __ATOMIC_ACQUIRE));
 
     return queue->queue[get_idx % ARRAY_SIZE(queue->queue)];
@@ -584,6 +584,7 @@ static void illegal_upcall (PAL_PTR event, PAL_NUM arg, PAL_CONTEXT * context)
 
         assert(context);
 
+#if defined(__i386__) || defined(__x86_64__)
         uint8_t* rip = (uint8_t*)pal_context_get_ip(context);
         /*
          * Emulate syscall instruction (opcode 0x0f 0x05);
@@ -626,6 +627,8 @@ static void illegal_upcall (PAL_PTR event, PAL_NUM arg, PAL_CONTEXT * context)
             deliver_signal(ALLOC_SIGINFO(SIGILL, ILL_ILLOPC,
                                          si_addr, (void *) arg), context);
         }
+#elif defined(__powerpc64__)
+#endif
     } else {
         internal_fault("Illegal instruction during Graphene internal execution", arg, context);
     }
@@ -722,7 +725,7 @@ static __rt_sighandler_t get_sighandler(struct shim_thread* thread, int sig, boo
      * because 1-3 arguments are passed by register and
      * sa_handler simply ignores 2nd and 3rd argument.
      */
-#ifndef __x86_64__
+#if !defined(__x86_64__) && !defined(__powerpc64__)
 # error "get_sighandler: see the comment above"
 #endif
 
@@ -849,6 +852,7 @@ int append_signal(struct shim_thread* thread, siginfo_t* info) {
     /* save in signal */
     __store_info(info, signal);
     signal->context_stored = false;
+    signal->pal_context = NULL;
 
     if (thread) {
         if (append_thread_signal(thread, signal)) {
