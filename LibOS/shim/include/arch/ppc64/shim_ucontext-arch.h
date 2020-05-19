@@ -14,18 +14,17 @@
    You should have received a copy of the GNU Lesser General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-/*
- * shim_context.h
- *
- * This file contains definitions for CPU context.
- */
+#ifndef _SHIM_UCONTEXT_ARCH_H_
+#define _SHIM_UCONTEXT_ARCH_H_
 
-#ifndef _SHIM_CONTEXT_H_
-#define _SHIM_CONTEXT_H_
+#include "shim_types.h"
+#include "ucontext.h"
 
-#include <shim_tcb.h>
+static inline void shim_regs_to_ucontext(ucontext_t* context, struct shim_regs* regs) {
+    /* shim_regs being pt_regs, this is just a memcpy; ucontext's gp_regs is larger than pt_regs!*/
+    assert(sizeof(context->uc_mcontext.gp_regs) >= sizeof(regs));
+    memcpy(&context->uc_mcontext.gp_regs[0], &regs->gpr[0], sizeof(regs));
+}
 
-void restore_context(struct shim_context* context);
-void fixup_child_context(struct shim_regs* regs, void* stack, uint64_t fs_base);
+#endif /* _SHIM_UCONTEXT_ARCH_H_ */
 
-#endif /* _SHIM_CONTEXT_H_ */
