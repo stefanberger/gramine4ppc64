@@ -119,7 +119,7 @@ all_objs = \
 graphene_lib = .lib/graphene-lib.a
 pal_lib = $(RUNTIME_DIR)/libpal-$(PAL_HOST).so
 
-ifeq ($(findstring x86_64,$(SYS))$(findstring linux,$(SYS)),x86_64linux)
+ifeq ($(ARCH),$(filter $(ARCH),x86_64 ppc64))
 all: $(files_to_build) $(files_to_install)
 else
 all:
@@ -168,11 +168,20 @@ syscallas-$(ARCH).S shim_context-$(ARCH).c: asm-offsets.h
 
 include ../../../Scripts/Makefile.rules
 
+ifeq ($(ARCH),x86_64)
 LDFLAGS-vdso/vdso.so.dbg = -nostdlib -shared \
 	--hash-style=both --build-id -Bsymbolic \
 	-m elf_x86_64 --no-undefined \
 	-z max-page-size=4096 -z common-page-size=4096 \
 	-T vdso/vdso-$(ARCH).lds -soname linux-vdso.so.1
+endif
+ifeq ($(ARCH),ppc64)
+LDFLAGS-vdso/vdso.so.dbg = -nostdlib -shared \
+	--hash-style=both --build-id -Bsymbolic \
+	-m elf64ppc --no-undefined \
+	-z max-page-size=65536 -z common-page-size=65536 \
+	-T vdso/vdso-ppc64.lds -soname linux-vdso.so.1
+endif
 vdso/vdso.so.dbg: LDFLAGS =
 vdso/vdso.so.dbg: vdso/vdso-$(ARCH).lds vdso/vdso.o vdso/vdso-note.o | vdso/.vdso-no-reloc-checked
 	$(call cmd,ld)
