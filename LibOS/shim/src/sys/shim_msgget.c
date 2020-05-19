@@ -417,7 +417,8 @@ int shim_do_msgctl(int msqid, int cmd, struct msqid_ds* buf) {
     if ((ret = connect_msg_handle(msqid, &msgq)) < 0)
         return ret;
 
-    switch (cmd) {
+    /* cmd may have IPC_64 set */
+    switch (cmd & ~IPC_64) {
         case IPC_RMID:
             if (!msgq->owned) {
                 ret = ipc_sysv_delres_send(NULL, 0, msgq->msqid, SYSV_MSGQ);
