@@ -1,0 +1,169 @@
+---
+ syscallas.S |   78 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ syscalldb.h |   42 ++++++++++++++++++++++++++++++++
+ 2 files changed, 120 insertions(+)
+
+Index: glibc-2.31/syscallas.S
+===================================================================
+--- glibc-2.31.orig/syscallas.S
++++ glibc-2.31/syscallas.S
+@@ -3,9 +3,87 @@
+ .weak syscalldb
+ .type syscalldb,@function
+ 
++#if defined(__i386__) || defined(__x86_64__)
+ syscalldb:
+ 	.cfi_startproc
+ 	syscall
+ 	retq
+ 	.cfi_endproc
+ 	.size syscalldb,.-syscalldb
++#elif defined(__powerpc64__)
++syscalldb:
++	.cfi_startproc
++	std %r0, -8(%r1)
++	mflr %r0
++	std %r0, 16(%r1)
++	ld %r0, -8(%r1)
++	sc
++	ld %r0, 16(%r1)
++	mtlr %r0
++	blr
++	.cfi_endproc
++	.size syscalldb,.-syscalldb
++
++/*
++ * sc_syscalldb:
++ * This function is a replacement for the 'sc' instruction and expects
++ * the syscall number in r0 and syscall parameters in r3-r8.
++ * Like any other function, it also expects to get a minimum sized stack
++ * frame to save lr & cr on.
++ * Its register clobbering behavior is like that of a Linux syscall
++ * where the following registers are volatile: r0, r3-r8, cr0
++ * Since we are doing an API call here we may be clobbering the following
++ * registers: r0, r3-r12, lr, ctr, xer, cr0-cr1, cr5-cr7 (+some fp registers)
++ * So we have to store: r9 - r12, lr, ctr, xer, cr1, cr5-cr7
++ *
++ * We do an ABI compliant call to Graphene's syscalldb with r9 holding the
++ * syscall number (rather than r0) and registers r3-r8 holding parameters.
++ * This way we don't need to worry about the runtimer linker clobbering r0.
++ */
++.global sc_syscalldb
++.type sc_syscalldb,@function
++sc_syscalldb:
++	.cfi_startproc
++	std   %r0 ,  -8(%r1)	/* save syscall nr in red zone */
++
++	mflr  %r0
++	std   %r0 ,  16(%r1)	/* save lr */
++
++	mfcr  %r0
++	std   %r0 ,   8(%r1)    /* save cr */
++
++	std   %r9 , -16(%r1)
++	std   %r10, -24(%r1)
++	std   %r11, -32(%r1)
++	std   %r12, -40(%r1)
++	mfctr %r0
++	std   %r0,  -48(%r1)
++	mfxer %r0
++	std   %r0,  -56(%r1)
++
++	ld    %r9,   -8(%r1)    /* load syscall nr */
++
++	stdu  %r1, -56-32(%r1)
++
++	bl syscalldb
++	nop
++
++	addi  %r1, %r1, 56+32
++
++	ld    %r0,  -56(%r1)
++	mtxer %r0
++	ld    %r0,  -48(%r1)
++	mtctr %r0
++	ld    %r12, -40(%r1)
++	ld    %r11, -32(%r1)
++	ld    %r10, -24(%r1)
++	ld    %r9,  -16(%r1)
++
++	ld %r0, 16(%r1)         /* restore lr */
++	mtlr %r0
++				/* FIXME: merge saved cr1-cr7 with cr0 */
++	blr                     /* return to caller */
++	.cfi_endproc
++	.size sc_syscalldb,.-sc_syscalldb
++
++#endif
+Index: glibc-2.31/syscalldb.h
+===================================================================
+--- glibc-2.31.orig/syscalldb.h
++++ glibc-2.31/syscalldb.h
+@@ -5,6 +5,7 @@
+ .weak syscalldb
+ .type syscalldb, @function
+ 
++#if defined(__i386__) || defined(__x86_64__)
+ # if defined(PSEUDO) && defined(SYSCALL_NAME) && defined(SYSCALL_SYMBOL)
+ #  define SYSCALLDB                     \
+     subq $128, %rsp;                    \
+@@ -15,11 +16,44 @@
+     callq *syscalldb@GOTPCREL(%rip)
+ # endif
+ 
++#elif defined(__powerpc64__)
++
++/*
++ * SYSCALLDB_R9:
++ * This macro is a replacement for the 'sc' instruction.
++ * As such its register clobbering behavior is like that of a Linux syscall
++ * where the following registers are volatile: r0, r3-r8, cr0
++ * Since we are doing an API call here we may be clobbering the following
++ * registers: r0, r3-r12, lr, ctr, xer, cr0-cr1, cr5-cr7 (+some fp registers)
++ * So we have to store: r9 - r12, lr, ctr, xer, cr1, cr5-cr7
++ *
++ * We do an ABI compliant call to Graphene's syscalldb with r9 holding the
++ * syscall number (rather than r0) and registers r3-r8 holding parameters.
++ * This way we don't need to worry about the runtimer linker clobbering r0.
++ */
++/* FIXME: we may need to store more registers at a SAFE PLACE! */
++# define SYSCALLDB_R9(FRAMESIZE)                 \
++    std 0,-FRAMESIZE(1); /* save syscall nr */   \
++    mflr 0;                                      \
++    std 0,16(1);         /* save lr */           \
++    ld 9,-FRAMESIZE(1);  /* restore syscall nr */\
++    stdu 1,-FRAMESIZE(1);                        \
++    bl syscalldb;                                \
++    nop;                                         \
++    addi 1,1,FRAMESIZE;                          \
++    ld 0,16(1);         /* restore lr */         \
++    mtlr 0;
++
++//.type sc_syscalldb, @function
++
++#endif /* __powerpc64 */
++
+ #else /* !__ASSEMBLER__ */
+ asm (
+ ".weak syscalldb\r\n"
+ ".type syscalldb, @function\r\n");
+ 
++#if defined(__i386__) || defined(__x86_64__)
+ #define SYSCALLDB                           \
+     "subq $128, %%rsp\n\t"                  \
+     "callq *syscalldb@GOTPCREL(%%rip)\n\t"  \
+@@ -28,6 +62,14 @@ asm (
+ #define SYSCALLDB_ASM                       \
+     "callq *syscalldb@GOTPCREL(%rip)\n\t"
+ 
++#elif defined(__powerpc64__)
++
++asm (
++".global sc_syscalldb\r\n"
++".type sc_syscalldb, @function\r\n");
++
++#endif /* i386 || x86_64 */
++
+ #endif /* Assembler */
+ 
+ #endif /* _SYSCALLDB_H */
