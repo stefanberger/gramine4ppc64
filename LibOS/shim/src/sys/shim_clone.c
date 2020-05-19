@@ -87,7 +87,9 @@ static int clone_implementation_wrapper(struct shim_clone_args * arg)
 
     shim_tcb_init();
     set_cur_thread(my_thread);
-    update_fs_base(arg->fs_base);
+
+    uint64_t fs_base = arg->fs_base;
+    update_fs_base(fs_base);
     shim_tcb_t * tcb = my_thread->shim_tcb;
 
     /* only now we can call LibOS/PAL functions because they require a set-up TCB;
@@ -127,6 +129,7 @@ static int clone_implementation_wrapper(struct shim_clone_args * arg)
 
     /* Don't signal the initialize event until we are actually init-ed */
     DkEventSet(arg->initialize_event);
+    /* !!! arg is now useless */
 
     /***** From here down, we are switching to the user-provided stack ****/
 
@@ -137,7 +140,7 @@ static int clone_implementation_wrapper(struct shim_clone_args * arg)
           stack, shim_regs_get_ip(&regs), my_thread->tid);
 
     tcb->context.regs = &regs;
-    fixup_child_context(tcb->context.regs);
+    fixup_child_context(tcb->context.regs, stack, fs_base);
     shim_context_set_sp(&tcb->context, (unsigned long)stack);
 
     put_thread(my_thread);
@@ -150,8 +153,14 @@ static int clone_implementation_wrapper(struct shim_clone_args * arg)
  *  long int __arg1 - 16 bytes ( 2 words ) offset into the child stack allocated
  *                    by the parent     */
 
+#if defined(__i386__) || defined(__x86_64__)
 int shim_do_clone (int flags, void * user_stack_addr, int * parent_tidptr,
                    int * child_tidptr, void * tls)
+#elif defined(__powerpc64__)
+/* tls already contains the TLS_TCB_OFFSET */
+int shim_do_clone (int flags, void * user_stack_addr, int * parent_tidptr,
+                   int * tls, void * child_tidptr)
+#endif
 {
     //The Clone Implementation in glibc has setup the child's stack
     //with the function pointer and the argument to the funciton.
@@ -200,6 +209,7 @@ int shim_do_clone (int flags, void * user_stack_addr, int * parent_tidptr,
         }
 
         ret = shim_do_vfork();
+        debug("ret from shim_do_fork: %d\n", ret);
 
         /* parent process continues here, rewire stack values back to original ones */
         if (user_stack_addr) {
