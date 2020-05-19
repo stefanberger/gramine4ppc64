@@ -1,0 +1,154 @@
+/* SPDX-License-Identifier: LGPL-3.0-or-later */
+/* Copyright (C) 2020 IBM Corporation */
+
+/*
+ * syscallas-ppc64.S
+ *
+ * This file contains the entry point of system call table in library OS.
+ */
+
+#include <shim_defs.h>
+#include <shim_unistd_defs.h>
+#include "asm-offsets.h"
+
+#define SAVE_GPRS(OFFSET, FRAME, R1_FIXUP)		\
+	std	%r0, OFFSET+SHIM_REGS_GPR0(FRAME);	\
+	addi	%r0, %r1, R1_FIXUP;			\
+	std	%r0, OFFSET+SHIM_REGS_GPR1(FRAME);	\
+	std	%r2, OFFSET+SHIM_REGS_GPR2(FRAME);	\
+	std	%r3, OFFSET+SHIM_REGS_GPR3(FRAME);	\
+	std	%r4, OFFSET+SHIM_REGS_GPR4(FRAME);	\
+	std	%r5, OFFSET+SHIM_REGS_GPR5(FRAME);	\
+	std	%r6, OFFSET+SHIM_REGS_GPR6(FRAME);	\
+	std	%r7, OFFSET+SHIM_REGS_GPR7(FRAME);	\
+	std	%r8, OFFSET+SHIM_REGS_GPR8(FRAME);	\
+	std	%r9, OFFSET+SHIM_REGS_GPR9(FRAME);	\
+	std	%r10, OFFSET+SHIM_REGS_GPR10(FRAME);	\
+	std	%r11, OFFSET+SHIM_REGS_GPR11(FRAME);	\
+	std	%r12, OFFSET+SHIM_REGS_GPR11(FRAME)
+
+#define LOAD_GPRS_R0_AND_R4_TO_R12(OFFSET, FRAME)	\
+	ld	%r0, OFFSET+SHIM_REGS_GPR0(FRAME);	\
+	ld	%r4, OFFSET+SHIM_REGS_GPR4(FRAME);	\
+	ld	%r5, OFFSET+SHIM_REGS_GPR5(FRAME);	\
+	ld	%r6, OFFSET+SHIM_REGS_GPR6(FRAME);	\
+	ld	%r7, OFFSET+SHIM_REGS_GPR7(FRAME);	\
+	ld	%r8, OFFSET+SHIM_REGS_GPR8(FRAME);	\
+	ld	%r9, OFFSET+SHIM_REGS_GPR9(FRAME);	\
+	ld	%r10, OFFSET+SHIM_REGS_GPR10(FRAME);	\
+	ld	%r11, OFFSET+SHIM_REGS_GPR11(FRAME);	\
+	ld	%r12, OFFSET+SHIM_REGS_GPR11(FRAME)
+
+#define SAVE_NV_GPRS(OFFSET, FRAME)			\
+	std	%r13, OFFSET+SHIM_REGS_GPR13(FRAME);	\
+	std	%r14, OFFSET+SHIM_REGS_GPR14(FRAME);	\
+	std	%r15, OFFSET+SHIM_REGS_GPR15(FRAME);	\
+	std	%r16, OFFSET+SHIM_REGS_GPR16(FRAME);	\
+	std	%r17, OFFSET+SHIM_REGS_GPR17(FRAME);	\
+	std	%r18, OFFSET+SHIM_REGS_GPR18(FRAME);	\
+	std	%r19, OFFSET+SHIM_REGS_GPR19(FRAME);	\
+	std	%r20, OFFSET+SHIM_REGS_GPR20(FRAME);	\
+	std	%r21, OFFSET+SHIM_REGS_GPR21(FRAME);	\
+	std	%r22, OFFSET+SHIM_REGS_GPR22(FRAME);	\
+	std	%r23, OFFSET+SHIM_REGS_GPR23(FRAME);	\
+	std	%r24, OFFSET+SHIM_REGS_GPR24(FRAME);	\
+	std	%r25, OFFSET+SHIM_REGS_GPR25(FRAME);	\
+	std	%r26, OFFSET+SHIM_REGS_GPR26(FRAME);	\
+	std	%r27, OFFSET+SHIM_REGS_GPR27(FRAME);	\
+	std	%r28, OFFSET+SHIM_REGS_GPR28(FRAME);	\
+	std	%r29, OFFSET+SHIM_REGS_GPR29(FRAME);	\
+	std	%r30, OFFSET+SHIM_REGS_GPR30(FRAME);	\
+	std	%r31, OFFSET+SHIM_REGS_GPR31(FRAME);
+
+#define SAVE_SPRS(OFFSET, FRAME)			\
+	mflr	%r0;					\
+	std	%r0, OFFSET+SHIM_REGS_LINK(FRAME);	\
+	std	%r0, OFFSET+SHIM_REGS_NIP(FRAME);	\
+	mfctr	%r0;					\
+	std	%r0, OFFSET+SHIM_REGS_CTR(FRAME);	\
+	mfxer	%r0;					\
+	std	%r0, OFFSET+SHIM_REGS_XER(FRAME);	\
+	mfcr	%r0;					\
+	std	%r0, OFFSET+SHIM_REGS_CCR(FRAME);
+
+	.global syscalldb
+	.type syscalldb, @function
+
+	.global shim_table_dispatch
+	.type shim_table_dispatch, @function
+
+	.global shim_set_context_regs
+	.type shim_set_context_regs, @function
+
+# We are called with syscall number in r9, syscall parameters in r3-r8
+# We pass them straight through to shim_table_dispatch & pointer to cr in r10
+syscalldb:
+	.cfi_startproc
+0:
+	# we want to store our registers in the blue zone, so extend the
+	# stack, so make room on stack for the context (shim_regs) we store below
+	stdu	%r1,-SHIM_REGS_SIZE-16-32(%r1)	# @1: make room on stack
+						# SHIM_REGS_SIZE: pt_regs
+						# 16: r3+r31 temp storage
+						# 32: for normal frame
+
+	# before we clobber any more registers, we store them on the stack's
+	# now; this will clobber r0 due to r1 fixup and the SPRS, but it's
+	# saved on the stack before
+	SAVE_GPRS(32+16, %r1, 32+16+SHIM_REGS_SIZE)
+	SAVE_NV_GPRS(32+16, %r1)
+	SAVE_SPRS(32+16, %r1)
+
+	addis	%r2, %r12, (.TOC. - 0b)@ha
+	addi	%r2, %r2, (.TOC. - 0b)@l
+
+	mflr	%r0
+	std	%r0,32+16+SHIM_REGS_SIZE+16(%r1)	# save lr
+	mfcr	%r0
+	std	%r0,32+16+SHIM_REGS_SIZE+8(%r1)		# save cr
+
+	std	%r3,32(%r1)				# save r3
+	# shim_regs are now at %r1+32+8
+	# call into c code to set the TCB's context.regs
+	# this may modify r3 and cr in the pt_regs above
+	addi	%r3,%r1,32+16				# r3 points to shim_regs now
+	bl	shim_set_context_regs
+	nop
+	# restore the registers the function may have clobbered
+	LOAD_GPRS_R0_AND_R4_TO_R12(32+16, %r1)
+	ld	%r3,32(%r1)				# restore r3
+
+	std	%r31,32+8(%r1)				# save r31
+
+	addi	%r10,%r1,32+16+SHIM_REGS_SIZE+8		# address of cr
+
+	mr	%r31, %r1				# store stack ptr in %r31
+	rldicr	%r1, %r1, 0, 59				# ensure 16-byte aligned stack
+
+	bl	shim_table_dispatch
+	nop
+
+	mr	%r1, %r31				# restore stack ptr
+	ld	%r31, 32+8(%r1)				# restore r31
+
+	# we can now reset the context.regs to NULL
+	# need to save %r3; the rest may be clobbered
+	std	%r3,32(%r1)				# save r3
+	li	%r3,0
+	bl	shim_set_context_regs
+	nop
+
+	ld	%r3,32(%r1)				# restore r3
+
+	addi	%r1,%r1,32+16+SHIM_REGS_SIZE		# undo @1
+
+	ld	%r0,8(%r1)				# get cr modified by
+							# shim_table_dispatch
+	mtcr	%r0
+
+	ld	%r0,16(%r1)				# restore lr
+	mtlr 	%r0
+	blr
+
+	.cfi_endproc
+	.size syscalldb, .-syscalldb
