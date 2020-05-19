@@ -69,8 +69,9 @@ void* shim_do_mmap(void* addr, size_t length, int prot, int flags, int fd, off_t
      * According to the manpage, both addr and offset have to be page-aligned,
      * but not the length. mmap() will automatically round up the length.
      */
-    if (addr && !IS_ALLOC_ALIGNED_PTR(addr))
+    if (addr && !IS_ALLOC_ALIGNED_PTR(addr)) {
         return (void*)-EINVAL;
+    }
 
     if (fd >= 0 && !IS_ALLOC_ALIGNED(offset))
         return (void*)-EINVAL;
