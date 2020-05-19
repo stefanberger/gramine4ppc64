@@ -1366,16 +1366,20 @@ int remove_loaded_libraries(void) {
  * functions after migration.
  */
 static void* vdso_addr __attribute_migratable                       = NULL;
+#if defined(__i386__) || defined(__x86_64__)
 static ElfW(Addr)* __vdso_shim_clock_gettime __attribute_migratable = NULL;
 static ElfW(Addr)* __vdso_shim_gettimeofday __attribute_migratable  = NULL;
 static ElfW(Addr)* __vdso_shim_time __attribute_migratable          = NULL;
 static ElfW(Addr)* __vdso_shim_getcpu __attribute_migratable        = NULL;
+#endif
 
 static const struct {
     const char* name;
     ElfW(Addr) value;
     ElfW(Addr)** func;
-} vsyms[] = {{
+}
+#if defined(__i386__) || defined(__x86_64__)
+  vsyms[] = {{
                  .name  = "__vdso_shim_clock_gettime",
                  .value = (ElfW(Addr))&__shim_clock_gettime,
                  .func  = &__vdso_shim_clock_gettime,
@@ -1394,7 +1398,11 @@ static const struct {
                  .name  = "__vdso_shim_getcpu",
                  .value = (ElfW(Addr))&__shim_getcpu,
                  .func  = &__vdso_shim_getcpu,
-             }};
+             }}
+#else
+__attribute__((unused)) vsyms[];
+#endif
+;
 
 static int vdso_map_init(void) {
     /*
@@ -1406,7 +1414,13 @@ static int vdso_map_init(void) {
      */
     void* addr = NULL;
     int ret = bkeep_mmap_any_aslr(ALLOC_ALIGN_UP(vdso_so_size), PROT_READ | PROT_EXEC,
-                                  MAP_PRIVATE | MAP_ANONYMOUS, NULL, 0, "linux-vdso.so.1", &addr);
+                                  MAP_PRIVATE | MAP_ANONYMOUS, NULL, 0,
+#if defined(__i386__) || defined(__x86_64__)
+                                  "linux-vdso.so.1",
+#elif defined(__powerpc64__)
+                                  "linux-vdso64.so.1",
+#endif
+                                  &addr);
     if (ret < 0) {
         return ret;
     }
@@ -1422,6 +1436,7 @@ static int vdso_map_init(void) {
     __load_elf_object(NULL, addr, OBJECT_VDSO, NULL);
     vdso_map->l_name = "vDSO";
 
+#if defined(__i386__) || defined(__x86_64__)
     for (size_t i = 0; i < ARRAY_SIZE(vsyms); i++) {
         ElfW(Sym)* sym = __do_lookup(vsyms[i].name, NULL, vdso_map);
         if (sym == NULL) {
@@ -1431,11 +1446,13 @@ static int vdso_map_init(void) {
         *vsyms[i].func  = (ElfW(Addr)*)(vdso_map->l_addr + sym->st_value);
         **vsyms[i].func = vsyms[i].value;
     }
+#endif
 
     if (!DkVirtualMemoryProtect(addr, ALLOC_ALIGN_UP(vdso_so_size), PAL_PROT_READ | PAL_PROT_EXEC))
         return -PAL_ERRNO();
 
     vdso_addr = addr;
+    debug(">>>>>>> VDSO_ADDR: %p\n", vdso_addr);
     return 0;
 }
 
@@ -1448,9 +1465,12 @@ int vdso_map_migrate(void) {
         return -PAL_ERRNO();
 
     /* adjust funcs to loaded address for newly loaded libsysdb */
+
+#if defined(__i386__) || defined(__x86_64__)
     for (size_t i = 0; i < ARRAY_SIZE(vsyms); i++) {
         **vsyms[i].func = vsyms[i].value;
     }
+#endif
 
     if (!DkVirtualMemoryProtect(vdso_addr, ALLOC_ALIGN_UP(vdso_so_size),
                                 PAL_PROT_READ | PAL_PROT_EXEC))
@@ -1553,14 +1573,19 @@ noreturn void execute_elf_object(struct shim_handle* exec, int* argcp, const cha
     static_assert(REQUIRED_ELF_AUXV >= 8, "not enough space on stack for auxv");
     auxp[0].a_type     = AT_PHDR;
     auxp[0].a_un.a_val = (__typeof(auxp[0].a_un.a_val))exec_map->l_phdr;
+    debug("AT_PHDR: 0x%lx\n", auxp[0].a_un.a_val);
     auxp[1].a_type     = AT_PHNUM;
     auxp[1].a_un.a_val = exec_map->l_phnum;
+    debug("AT_PHNUM: 0x%lx\n", auxp[1].a_un.a_val);
     auxp[2].a_type     = AT_PAGESZ;
     auxp[2].a_un.a_val = g_pal_alloc_align;
+    debug("AT_PAGESZ: 0x%lx\n", auxp[2].a_un.a_val);
     auxp[3].a_type     = AT_ENTRY;
     auxp[3].a_un.a_val = exec_map->l_entry;
+    debug("AT_ENTRY: 0x%lx\n", auxp[3].a_un.a_val);
     auxp[4].a_type     = AT_BASE;
     auxp[4].a_un.a_val = interp_map ? interp_map->l_addr : 0;
+    debug("AT_BASE: 0x%lx\n", auxp[4].a_un.a_val);
     auxp[5].a_type     = AT_RANDOM;
     auxp[5].a_un.a_val = 0; /* filled later */
     if (vdso_addr) {
