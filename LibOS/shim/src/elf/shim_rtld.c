@@ -1367,16 +1367,20 @@ int remove_loaded_libraries(void) {
  * functions after migration.
  */
 static void* vdso_addr __attribute_migratable                       = NULL;
+#if defined(__i386__) || defined(__x86_64__)
 static ElfW(Addr)* __vdso_shim_clock_gettime __attribute_migratable = NULL;
 static ElfW(Addr)* __vdso_shim_gettimeofday __attribute_migratable  = NULL;
 static ElfW(Addr)* __vdso_shim_time __attribute_migratable          = NULL;
 static ElfW(Addr)* __vdso_shim_getcpu __attribute_migratable        = NULL;
+#endif
 
 static const struct {
     const char* name;
     ElfW(Addr) value;
     ElfW(Addr)** func;
-} vsyms[] = {{
+}
+#if defined(__i386__) || defined(__x86_64__)
+  vsyms[] = {{
                  .name  = "__vdso_shim_clock_gettime",
                  .value = (ElfW(Addr))&__shim_clock_gettime,
                  .func  = &__vdso_shim_clock_gettime,
@@ -1395,7 +1399,11 @@ static const struct {
                  .name  = "__vdso_shim_getcpu",
                  .value = (ElfW(Addr))&__shim_getcpu,
                  .func  = &__vdso_shim_getcpu,
-             }};
+             }}
+#else
+ vsyms[0]
+#endif
+;
 
 static int vdso_map_init(void) {
     /*
