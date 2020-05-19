@@ -42,7 +42,9 @@ static void set(int x) {
 
 static void wait_for(int x) {
     while (__atomic_load_n(&sync_var, __ATOMIC_SEQ_CST) != x) {
+#if defined(__x86_64__)
         __asm__ volatile("pause");
+#endif
     }
 }
 
