@@ -185,7 +185,6 @@ void __store_context (shim_tcb_t * tcb, PAL_CONTEXT * pal_context,
         signal->context_stored = true;
         return;
     }
-
     if (pal_context) {
         pal_context_to_ucontext(context, pal_context);
         signal->context_stored = true;
@@ -325,11 +324,13 @@ static void memfault_upcall (PAL_PTR event, PAL_NUM arg, PAL_CONTEXT * context)
             if (arg > eof_in_vma) {
                 signo = SIGBUS;
                 code = BUS_ADRERR;
+#if defined(__i386__) || defined(__x86_64__)
             } else if ((context->err & 4) && !(vma_info.flags & PROT_WRITE)) {
                 /* DEP 3/3/17: If the page fault gives a write error, and
                  * the VMA is read-only, return SIGSEGV+SEGV_ACCERR */
                 signo = SIGSEGV;
                 code = SEGV_ACCERR;
+#endif
             } else {
                 /* XXX: need more sophisticated judgement */
                 signo = SIGBUS;
@@ -539,6 +540,7 @@ static void illegal_upcall (PAL_PTR event, PAL_NUM arg, PAL_CONTEXT * context)
 
         assert(context);
 
+#if defined(__i386__) || defined(__x86_64__)
         uint8_t* rip = (uint8_t*)pal_context_get_ip(context);
         /*
          * Emulate syscall instruction (opcode 0x0f 0x05);
@@ -581,6 +583,8 @@ static void illegal_upcall (PAL_PTR event, PAL_NUM arg, PAL_CONTEXT * context)
             deliver_signal(ALLOC_SIGINFO(SIGILL, ILL_ILLOPC,
                                          si_addr, (void *) arg), context);
         }
+#elif defined(__powerpc64__)
+#endif
     } else {
         internal_fault("Illegal instruction during Graphene internal execution", arg, context);
     }
@@ -686,7 +690,7 @@ static __rt_sighandler_t get_sighandler(struct shim_thread* thread, int sig, boo
      * because 1-3 arguments are passed by register and
      * sa_handler simply ignores 2nd and 3rd argument.
      */
-#ifndef __x86_64__
+#if !defined(__x86_64__) && !defined(__powerpc64__)
 # error "get_sighandler: see the comment above"
 #endif
 
@@ -785,6 +789,7 @@ void handle_signal (void)
         return;
 
     int64_t preempt = __disable_preempt(tcb);
+    debug(">>> handle_signal: preempt = %ld  (SHOULD BE 1)\n", preempt);
 
     if (preempt > 1)
         debug("signal delayed (%ld)\n", preempt);
@@ -802,6 +807,7 @@ void append_signal(struct shim_thread* thread, int sig, siginfo_t* info, bool ne
     /* only want to check if sighandler exists without actual invocation, so don't
      * reset even if SA_RESETHAND */
     __rt_sighandler_t handler = get_sighandler(thread, sig, /*allow_reset=*/false);
+    debug("%s @ %u: handler = %p\n", __func__, __LINE__, (void *)handler);
 
     if (!handler) {
         // SIGSTOP and SIGKILL cannot be ignored
