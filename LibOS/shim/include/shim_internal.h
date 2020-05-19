@@ -41,6 +41,7 @@
 #include <shim_internal-arch.h>
 #include <shim_tcb.h>
 #include <shim_types.h>
+#include <shim_sysdep.h>
 
 void* shim_init(int argc, void* args);
 

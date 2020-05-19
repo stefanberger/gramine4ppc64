@@ -1,11 +1,9 @@
 c_executables = \
 	abort \
 	abort_multithread \
-	attestation \
 	bootstrap \
 	bootstrap_pie \
 	bootstrap_static \
-	cpuid \
 	dev \
 	epoll_wait_timeout \
 	eventfd \
@@ -65,6 +63,12 @@ c_executables = \
 	udp \
 	unix \
 	vfork_and_exec
+
+ifeq ($(ARCH),x86_64)
+c_executables += \
+	attestation \
+	cpuid
+endif
 
 cxx_executables = bootstrap_c++
 

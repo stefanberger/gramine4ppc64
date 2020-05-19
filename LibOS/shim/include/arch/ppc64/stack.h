@@ -1,4 +1,4 @@
-/*
+/* Copyright (C) 2020 IBM Corporation
    This file is part of Graphene Library OS.
 
    Graphene Library OS is free software: you can redistribute it and/or
@@ -13,19 +13,16 @@
 
    You should have received a copy of the GNU Lesser General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+#ifndef _PAL_STACK_H
+#define _PAL_STACK_H
 
-/*
- * shim_context.h
- *
- * This file contains definitions for CPU context.
- */
+struct stackframe {
+    void *backchain;		// stack pointer points here
+    uint64_t cr_save;		// 8(r1)
+    uint64_t lr_save;		// 16(r1)
+    uint64_t toc_save;		// 24(r1)
+    uint64_t parm_save[];	// 32(r1)
+};
 
-#ifndef _SHIM_CONTEXT_H_
-#define _SHIM_CONTEXT_H_
+#endif
 
-#include <shim_tcb.h>
-
-void restore_context(struct shim_context* context);
-void fixup_child_context(struct shim_regs* regs, void* stack, uint64_t fs_base);
-
-#endif /* _SHIM_CONTEXT_H_ */

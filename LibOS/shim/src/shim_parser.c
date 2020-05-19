@@ -24,6 +24,7 @@
 #include <asm/ioctls.h>
 #include <asm/mman.h>
 #include <asm/unistd.h>
+#include <asm/termbits.h>
 #include <errno.h>
 #include <linux/fcntl.h>
 #include <linux/futex.h>
@@ -70,7 +71,7 @@ struct parser_table {
     int slow;
     int stop;
     void (*parser[6])(va_list*);
-} syscall_parser_table[LIBOS_SYSCALL_BOUND] =
+} syscall_parser_table[/*LIBOS_SYSCALL_BOUND*/] =
     {
         [__NR_read]     = {.slow = 1, .parser = {NULL}},
         [__NR_write]    = {.slow = 1, .parser = {NULL}},
@@ -141,7 +142,9 @@ struct parser_table {
         [__NR_kill]     = {.slow = 0, .parser = {NULL, &parse_signum, }},
         [__NR_uname]    = {.slow = 0, .parser = {NULL}},
         [__NR_semget]   = {.slow = 0, .parser = {NULL}},
+#ifdef __NR_semop
         [__NR_semop]    = {.slow = 1, .parser = {NULL}},
+#endif
         [__NR_semctl]   = {.slow = 0, .parser = {NULL}},
         [__NR_shmdt]    = {.slow = 0, .parser = {NULL}},
         [__NR_msgget]   = {.slow = 1, .parser = {NULL}},
@@ -267,7 +270,9 @@ struct parser_table {
         [__NR_putpmsg]      = {.slow = 0, .parser = {NULL}},
         [__NR_afs_syscall]  = {.slow = 0, .parser = {NULL}},
         [__NR_tuxcall]      = {.slow = 0, .parser = {NULL}},
+#ifdef __NR_security
         [__NR_security]     = {.slow = 0, .parser = {NULL}},
+#endif
         [__NR_gettid]       = {.slow = 0, .parser = {NULL}},
         [__NR_readahead]    = {.slow = 0, .parser = {NULL}},
         [__NR_setxattr]     = {.slow = 0, .parser = {NULL}},
@@ -300,8 +305,12 @@ struct parser_table {
 #endif
         [__NR_lookup_dcookie]   = {.slow = 0, .parser = {NULL}},
         [__NR_epoll_create]     = {.slow = 0, .parser = {NULL}},
+#ifdef __NR_epoll_ctl_old
         [__NR_epoll_ctl_old]    = {.slow = 0, .parser = {NULL}},
+#endif
+#ifdef __NR_epoll_wait_old
         [__NR_epoll_wait_old]   = {.slow = 0, .parser = {NULL}},
+#endif
         [__NR_remap_file_pages] = {.slow = 0, .parser = {NULL}},
         [__NR_getdents64]       = {.slow = 0, .parser = {NULL}},
         [__NR_set_tid_address]  = {.slow = 0, .parser = {NULL}},
@@ -366,7 +375,9 @@ struct parser_table {
         [__NR_get_robust_list] = {.slow = 0, .parser = {NULL}},
         [__NR_splice]          = {.slow = 0, .parser = {NULL}},
         [__NR_tee]             = {.slow = 0, .parser = {NULL}},
+#ifdef __NR_sync_file_range
         [__NR_sync_file_range] = {.slow = 0, .parser = {NULL}},
+#endif
         [__NR_vmsplice]        = {.slow = 0, .parser = {NULL}},
         [__NR_move_pages]      = {.slow = 0, .parser = {NULL}},
         [__NR_utimensat]       = {.slow = 0, .parser = {NULL}},
@@ -390,12 +401,14 @@ struct parser_table {
         [__NR_perf_event_open]   = {.slow = 0, .parser = {NULL}},
         [__NR_recvmmsg]          = {.slow = 0, .parser = {NULL}},
 
+#ifndef __powerpc64__
         [LIBOS_SYSCALL_BASE] = {.slow = 0, .parser = {NULL}},
 
         [__NR_msgpersist]    = {.slow = 1, .parser = {NULL}},
         [__NR_benchmark_rpc] = {.slow = 1, .parser = {NULL}},
         [__NR_send_rpc]      = {.slow = 1, .parser = {NULL}},
         [__NR_recv_rpc]      = {.slow = 1, .parser = {NULL}},
+#endif
 };
 
 static inline int is_pointer(const char* type) {
