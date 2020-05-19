@@ -1,5 +1,7 @@
 #define _GNU_SOURCE
+#if defined(__i386__) || defined(__x86_64__)
 #include <asm/prctl.h>
+#endif
 #include <assert.h>
 #include <errno.h>
 #include <linux/futex.h>

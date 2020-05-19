@@ -462,6 +462,12 @@ static int _check_last_thread(struct shim_thread* self) {
 
     struct shim_thread* thread;
     LISTP_FOR_EACH_ENTRY(thread, &thread_list, list) {
+#if 0
+        if (!thread) {
+            debug("No thread in list. How can this be?\nSTOP!\n");while(1);
+            return 0;
+        }
+#endif
         if (thread->tid && thread->tid != self_tid && thread->in_vm && thread->is_alive) {
             return thread->tid;
         }
@@ -475,6 +481,13 @@ int check_last_thread(struct shim_thread* self) {
     lock(&thread_list_lock);
     int alive_thread_tid = _check_last_thread(self);
     unlock(&thread_list_lock);
+
+#if 0
+    static int ctr = 0;
+    if (!(ctr++ % 250000)) {
+        debug("ALIVE thread: %d\n", alive_thread_tid);
+    }
+#endif
     return alive_thread_tid;
 }
 
@@ -729,7 +742,7 @@ static int resume_wrapper (void * param)
        based on saved thread->shim_tcb */
     shim_tcb_init();
     shim_tcb_t* saved_tcb = thread->shim_tcb;
-    assert(saved_tcb->context.regs && saved_tcb->context.regs->rsp);
+    assert(saved_tcb->context.regs && shim_context_get_sp(&saved_tcb->context));
     set_cur_thread(thread);
     unsigned long fs_base = saved_tcb->context.fs_base;
     assert(fs_base);
@@ -742,6 +755,7 @@ static int resume_wrapper (void * param)
     tcb->context.preempt = saved_tcb->context.preempt;
     debug_setbuf(tcb, false);
     debug("set fs_base to 0x%lx\n", fs_base);
+    debug("FIXME: OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO\n");
 
     object_wait_with_retry(thread_start_event);
 
@@ -786,12 +800,11 @@ BEGIN_RS_FUNC(running_thread)
             __shim_tcb_init(tcb);
             set_cur_thread(thread);
 
-            assert(tcb->context.regs && tcb->context.regs->rsp);
+            assert(tcb->context.regs && shim_context_get_sp(&tcb->context));
             update_fs_base(tcb->context.fs_base);
             /* Temporarily disable preemption until the thread resumes. */
             __disable_preempt(tcb);
             debug_setbuf(tcb, false);
-            debug("after resume, set tcb to 0x%lx\n", tcb->context.fs_base);
         } else {
             /*
              * In execve case, the following holds:
