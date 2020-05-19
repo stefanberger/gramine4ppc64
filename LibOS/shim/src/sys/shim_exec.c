@@ -172,6 +172,7 @@ static int shim_do_execve_rtld(struct shim_handle* hdl, const char** argv, const
         .new_argcp     = new_argcp,
         .new_auxp      = new_auxp
     };
+    debug("%s: DOING SWITCH_STACK\n", __func__);
     __SWITCH_STACK(new_argcp, &__shim_do_execve_rtld, &arg);
     return 0;
 }
