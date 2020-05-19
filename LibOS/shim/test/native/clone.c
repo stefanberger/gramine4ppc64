@@ -22,8 +22,15 @@ static unsigned long gettls(void) {
     syscall(__NR_arch_prctl, ARCH_GET_FS, &tls);
     return tls;
 }
-#else
-#error Unsupported architecture
+#elif defined(__powerpc64__)
+static unsigned long gettls(void) {
+    unsigned long tls;
+    __asm__ __volatile__(
+        "mr %0, 13\n"
+        : "=r" (tls)
+    );
+    return tls;
+}
 #endif
 
 static int thread_function(void* argument) {
