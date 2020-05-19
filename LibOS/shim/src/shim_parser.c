@@ -11,6 +11,7 @@
 #include <asm/ioctls.h>
 #include <asm/mman.h>
 #include <asm/unistd.h>
+#include <asm/termbits.h>
 #include <errno.h>
 #include <linux/fcntl.h>
 #include <linux/futex.h>
@@ -20,6 +21,8 @@
 #include <linux/stat.h>
 #include <linux/un.h>
 #include <linux/wait.h>
+#include <linux/ipc.h>
+#include <linux/net.h>
 
 #include "api.h"
 #include "pal.h"
@@ -53,6 +56,8 @@ static void parse_fcntlop(va_list*);
 static void parse_seek(va_list*);
 static void parse_at_fdcwd(va_list*);
 static void parse_wait_option(va_list*);
+static void parse_ipccall(va_list*);
+static void parse_socketcall(va_list*);
 
 struct parser_table {
     int slow;
@@ -119,6 +124,9 @@ struct parser_table {
                               .parser = {&parse_domain, &parse_socktype, NULL, &parse_pipe_fds}},
         [__NR_setsockopt]  = {.slow = 0, .parser = {NULL}},
         [__NR_getsockopt]  = {.slow = 0, .parser = {NULL}},
+#ifdef __NR_socketcall
+        [__NR_socketcall]  = {.slow = 0, .parser = {&parse_socketcall}},
+#endif
         [__NR_clone]    = {.slow = 1, .parser = {&parse_clone_flags}},
         [__NR_fork]     = {.slow = 1, .parser = {NULL}},
         [__NR_vfork]    = {.slow = 1, .parser = {NULL}},
@@ -129,13 +137,18 @@ struct parser_table {
         [__NR_kill]     = {.slow = 0, .parser = {NULL, &parse_signum, }},
         [__NR_uname]    = {.slow = 0, .parser = {NULL}},
         [__NR_semget]   = {.slow = 0, .parser = {NULL}},
+#ifdef __NR_semop
         [__NR_semop]    = {.slow = 1, .parser = {NULL}},
+#endif
         [__NR_semctl]   = {.slow = 0, .parser = {NULL}},
         [__NR_shmdt]    = {.slow = 0, .parser = {NULL}},
         [__NR_msgget]   = {.slow = 1, .parser = {NULL}},
         [__NR_msgsnd]   = {.slow = 1, .parser = {NULL}},
         [__NR_msgrcv]   = {.slow = 1, .parser = {NULL}},
         [__NR_msgctl]   = {.slow = 1, .parser = {NULL}},
+#ifdef __NR_ipc
+        [__NR_ipc]      = {.slow = 0, .parser = {&parse_ipccall}},
+#endif
         [__NR_fcntl]    = {.slow = 0, .parser = {NULL, &parse_fcntlop}},
         [__NR_flock]    = {.slow = 0, .parser = {NULL}},
         [__NR_fsync]    = {.slow = 0, .parser = {NULL}},
@@ -255,7 +268,9 @@ struct parser_table {
         [__NR_putpmsg]      = {.slow = 0, .parser = {NULL}},
         [__NR_afs_syscall]  = {.slow = 0, .parser = {NULL}},
         [__NR_tuxcall]      = {.slow = 0, .parser = {NULL}},
+#ifdef __NR_security
         [__NR_security]     = {.slow = 0, .parser = {NULL}},
+#endif
         [__NR_gettid]       = {.slow = 0, .parser = {NULL}},
         [__NR_readahead]    = {.slow = 0, .parser = {NULL}},
         [__NR_setxattr]     = {.slow = 0, .parser = {NULL}},
@@ -288,8 +303,12 @@ struct parser_table {
 #endif
         [__NR_lookup_dcookie]   = {.slow = 0, .parser = {NULL}},
         [__NR_epoll_create]     = {.slow = 0, .parser = {NULL}},
+#ifdef __NR_epoll_ctl_old
         [__NR_epoll_ctl_old]    = {.slow = 0, .parser = {NULL}},
+#endif
+#ifdef __NR_epoll_wait_old
         [__NR_epoll_wait_old]   = {.slow = 0, .parser = {NULL}},
+#endif
         [__NR_remap_file_pages] = {.slow = 0, .parser = {NULL}},
         [__NR_getdents64]       = {.slow = 0, .parser = {NULL}},
         [__NR_set_tid_address]  = {.slow = 0, .parser = {NULL}},
@@ -354,7 +373,9 @@ struct parser_table {
         [__NR_get_robust_list] = {.slow = 0, .parser = {NULL}},
         [__NR_splice]          = {.slow = 0, .parser = {NULL}},
         [__NR_tee]             = {.slow = 0, .parser = {NULL}},
+#ifdef __NR_sync_file_range
         [__NR_sync_file_range] = {.slow = 0, .parser = {NULL}},
+#endif
         [__NR_vmsplice]        = {.slow = 0, .parser = {NULL}},
         [__NR_move_pages]      = {.slow = 0, .parser = {NULL}},
         [__NR_utimensat]       = {.slow = 0, .parser = {NULL}},
@@ -1320,4 +1341,109 @@ static void parse_wait_option(va_list* ap) {
 
     if (option & WNOHANG)
         PUTS("WNOHANG");
+}
+
+static void parse_ipccall(va_list* ap) {
+    unsigned int call = va_arg(*ap, unsigned int);
+
+    /* call may encode version in upper 16bits */
+    switch (call & 0xffff) {
+        case SEMOP:
+            PUTS("SEMOP");
+            break;
+        case SEMTIMEDOP:
+            PUTS("SEMTIMEDOP");
+            break;
+        case SEMGET:
+            PUTS("SEMGET");
+            break;
+        case SEMCTL:
+            PUTS("SEMCTL");
+            break;
+        case MSGSND:
+            PUTS("MSGSND");
+            break;
+        case MSGRCV:
+            PUTS("MSGRCV");
+            break;
+        case MSGGET:
+            PUTS("MSGGET");
+            break;
+        case MSGCTL:
+            PUTS("MSGCTL");
+            break;
+        default:
+            PRINTF("%d", call);
+            break;
+    }
+}
+
+static void parse_socketcall(va_list* ap) {
+    unsigned int call = va_arg(*ap, unsigned int);
+
+    switch (call) {
+        case SYS_SOCKET:
+            PUTS("SYS_SOCKET");
+            break;
+        case SYS_BIND:
+            PUTS("SYS_BIND");
+            break;
+        case SYS_CONNECT:
+            PUTS("SYS_CONNECT");
+            break;
+        case SYS_LISTEN:
+            PUTS("SYS_LISTEN");
+            break;
+        case SYS_ACCEPT:
+            PUTS("SYS_ACCEPT");
+            break;
+        case SYS_GETSOCKNAME:
+            PUTS("SYS_GETSOCKNAME");
+            break;
+        case SYS_GETPEERNAME:
+            PUTS("SYS_GETPEERNAME");
+            break;
+        case SYS_SOCKETPAIR:
+            PUTS("SYS_SOCKETPAIR");
+            break;
+        case SYS_SEND:
+            PUTS("SYS_SEND");
+            break;
+        case SYS_RECV:
+            PUTS("SYS_RECV");
+            break;
+        case SYS_SENDTO:
+            PUTS("SYS_SENDTO");
+            break;
+        case SYS_RECVFROM:
+            PUTS("SYS_RECVFROM");
+            break;
+        case SYS_SHUTDOWN:
+            PUTS("SYS_SHUTDOWN");
+            break;
+        case SYS_GETSOCKOPT:
+            PUTS("SYS_GETSOCKOPT");
+            break;
+        case SYS_SETSOCKOPT:
+            PUTS("SYS_SETSOCKOPT");
+            break;
+        case SYS_SENDMSG:
+            PUTS("SYS_SENDMSG");
+            break;
+        case SYS_RECVMSG:
+            PUTS("SYS_RECVMSG");
+            break;
+        case SYS_ACCEPT4:
+            PUTS("SYS_ACCEPT4");
+            break;
+        case SYS_RECVMMSG:
+            PUTS("SYS_RECVMMSG");
+            break;
+        case SYS_SENDMMSG:
+            PUTS("SYS_SENDMMSG");
+            break;
+        default:
+            PRINTF("%d", call);
+            break;
+    }
 }
