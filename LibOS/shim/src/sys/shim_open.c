@@ -221,6 +221,42 @@ out:
     return ret;
 }
 
+/* lseek is simply doing arithmetic on the offset, no PAL call here */
+off_t shim_do__llseek(int fd, unsigned long offset_high, unsigned long offset_low,
+                      unsigned long resultaddr, int origin)
+{
+    if (origin != SEEK_SET && origin != SEEK_CUR && origin != SEEK_END)
+        return -EINVAL;
+
+    struct shim_handle * hdl = get_fd_handle(fd, NULL, NULL);
+    if (!hdl)
+        return -EBADF;
+
+    off_t ret = 0;
+    struct shim_mount * fs = hdl->fs;
+    assert(fs && fs->fs_ops);
+
+    if (!fs->fs_ops->seek) {
+        ret = -ESPIPE;
+        goto out;
+    }
+
+    if (hdl->type == TYPE_DIR) {
+        /* TODO: handle lseek'ing of directories */
+        ret = -ENOSYS;
+        goto out;
+    }
+
+    off_t offset = offset_high << 32 | offset_low;
+
+    ret = fs->fs_ops->seek(hdl, offset, origin);
+out:
+    put_handle(hdl);
+    if (resultaddr)
+        *(loff_t *)resultaddr = ret;
+    return ret;
+}
+
 ssize_t shim_do_pread64 (int fd, char * buf, size_t count, loff_t pos)
 {
     if (!buf || test_user_memory(buf, count, true))
