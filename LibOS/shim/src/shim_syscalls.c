@@ -133,6 +133,13 @@ DEFINE_SHIM_SYSCALL(poll, 3, shim_do_poll, int, struct pollfd*, fds, nfds_t, nfd
 /* lseek: sys/shim_open.c */
 DEFINE_SHIM_SYSCALL(lseek, 3, shim_do_lseek, off_t, int, fd, off_t, offset, int, origin)
 
+#if defined(__powerpc64__)
+/* llseek: sys/shim_open.c */
+DEFINE_SHIM_SYSCALL(_llseek, 5, shim_do__llseek, off_t, int, fd, unsigned long, offset_high,
+                                                 unsigned long, offset_low, unsigned long, resultaddr,
+                                                 int, origin)
+#endif
+
 /* mmap: sys/shim_mmap.c */
 DEFINE_SHIM_SYSCALL(mmap, 6, shim_do_mmap, void*, void*, addr, size_t, length, int, prot, int,
                     flags, int, fd, off_t, offset)
@@ -250,9 +257,19 @@ DEFINE_SHIM_SYSCALL(accept, 3, shim_do_accept, int, int, fd, struct sockaddr*, a
 DEFINE_SHIM_SYSCALL(sendto, 6, shim_do_sendto, ssize_t, int, fd, const void*, buf, size_t, len, int,
                     flags, const struct sockaddr*, dest_addr, int, addrlen)
 
+#if defined(__powerpc64__)
+DEFINE_SHIM_SYSCALL(send, 4, shim_do_send, ssize_t, int, fd, const void*, buf, size_t, len, int,
+                    flags)
+#endif
+
 /* recvfrom : sys/shim_socket.c */
 DEFINE_SHIM_SYSCALL(recvfrom, 6, shim_do_recvfrom, ssize_t, int, fd, void*, buf, size_t, len, int,
                     flags, struct sockaddr*, addr, int*, addrlen)
+
+#if defined(__powerpc64__)
+DEFINE_SHIM_SYSCALL(recv, 4, shim_do_recv, ssize_t, int, fd, void*, buf, size_t, len, int,
+                    flags)
+#endif
 
 /* bind: sys/shim_socket.c */
 DEFINE_SHIM_SYSCALL(bind, 3, shim_do_bind, int, int, sockfd, struct sockaddr*, addr, int, addrlen)
@@ -289,6 +306,10 @@ DEFINE_SHIM_SYSCALL(setsockopt, 5, shim_do_setsockopt, int, int, fd, int, level,
 DEFINE_SHIM_SYSCALL(getsockopt, 5, shim_do_getsockopt, int, int, fd, int, level, int, optname,
                     char*, optval, int*, optlen)
 
+#if defined(__powerpc64__)
+DEFINE_SHIM_SYSCALL(socketcall, 2, shim_do_socketcall, int, int, call, unsigned long *, args);
+#endif
+
 /* clone: sys/shim_clone.c */
 DEFINE_SHIM_SYSCALL(clone, 5, shim_do_clone, int, int, flags, void*, user_stack_addr, int*,
                     parent_tidptr, int*, child_tidptr, void*, tls)
@@ -310,6 +331,10 @@ DEFINE_SHIM_SYSCALL(exit, 1, shim_do_exit, int, int, error_code)
 DEFINE_SHIM_SYSCALL(wait4, 4, shim_do_wait4, pid_t, pid_t, pid, int*, stat_addr, int, option,
                     struct __kernel_rusage*, ru)
 
+#if defined(__powerpc64__)
+DEFINE_SHIM_SYSCALL(waitpid, 3, shim_do_waitpid, pid_t, pid_t, pid, int*, stat_addr, int, option);
+#endif
+
 /* kill: sys/shim_sigaction.c */
 DEFINE_SHIM_SYSCALL(kill, 2, shim_do_kill, int, pid_t, pid, int, sig)
 
@@ -320,8 +345,10 @@ DEFINE_SHIM_SYSCALL(uname, 1, shim_do_uname, int, struct new_utsname*, buf)
 DEFINE_SHIM_SYSCALL(semget, 3, shim_do_semget, int, key_t, key, int, nsems, int, semflg)
 
 /* semop: sys/shim_semget.c */
+#if defined(__i386__) || defined(__x86_64__)
 DEFINE_SHIM_SYSCALL(semop, 3, shim_do_semop, int, int, semid, struct sembuf*, sops, unsigned int,
                     nsops)
+#endif
 
 /* semctl: sys/shim_semctl.c */
 DEFINE_SHIM_SYSCALL(semctl, 4, shim_do_semctl, int, int, semid, int, semnum, int, cmd,
@@ -342,6 +369,11 @@ DEFINE_SHIM_SYSCALL(msgrcv, 5, shim_do_msgrcv, int, int, msqid, void*, msgp, siz
 
 /* msgctl: sys/shim_msgget.c */
 DEFINE_SHIM_SYSCALL(msgctl, 3, shim_do_msgctl, int, int, msqid, int, cmd, struct msqid_ds*, buf)
+
+#if defined(__powerpc64__)
+DEFINE_SHIM_SYSCALL(ipc, 6, shim_do_ipc, int, unsigned int, call, int, first, unsigned long, second,
+                    unsigned long, third, void*, ptr, long, fifth);
+#endif
 
 /* fcntl: sys/shim_fcntl.c */
 DEFINE_SHIM_SYSCALL(fcntl, 3, shim_do_fcntl, int, int, fd, int, cmd, unsigned long, arg)
@@ -491,6 +523,9 @@ SHIM_SYSCALL_RETURN_ENOSYS(capget, 2, int, cap_user_header_t, header, cap_user_d
 SHIM_SYSCALL_RETURN_ENOSYS(capset, 2, int, cap_user_header_t, header, const cap_user_data_t, data)
 
 DEFINE_SHIM_SYSCALL(rt_sigpending, 2, shim_do_sigpending, int, __sigset_t*, set, size_t, sigsetsize)
+#if defined(__powerpc__)
+DEFINE_SHIM_SYSCALL(sigpending, 1, shim_do_sigpending_old, int, __sigset_t *, set);
+#endif
 
 SHIM_SYSCALL_RETURN_ENOSYS(rt_sigtimedwait, 4, int, const __sigset_t*, uthese, siginfo_t*, uinfo,
                            const struct timespec*, uts, size_t, sigsetsize)
@@ -1030,3 +1065,7 @@ SHIM_SYSCALL_RETURN_ENOSYS(setns, 2, int, int, fd, int, nstype)
 
 DEFINE_SHIM_SYSCALL(getcpu, 3, shim_do_getcpu, int, unsigned*, cpu, unsigned*, node,
                     struct getcpu_cache*, cache)
+
+#if defined(__powerpc64__)
+SHIM_SYSCALL_RETURN_ENOSYS(getrandom, 3, int, char *, buf, size_t, count, unsigned int, flags)
+#endif
