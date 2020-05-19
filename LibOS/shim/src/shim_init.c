@@ -169,6 +169,9 @@ void update_fs_base (unsigned long fs_base)
     shim_tcb_t * shim_tcb = shim_get_tcb();
     shim_tcb->context.fs_base = fs_base;
     DkSegmentRegister(PAL_SEGMENT_FS, (PAL_PTR)fs_base);
+#if defined(__powerpc64__)
+    shim_tcb_set_fs_base(fs_base, shim_tcb);
+#endif
     assert(shim_tcb_check_canary());
 }
 
@@ -205,6 +208,8 @@ void * allocate_stack (size_t size, size_t protect_size, bool user)
             return NULL;
         }
     }
+
+    debug("Got stack at %p - %p, starting to protect at %p\n", stack, stack+protect_size+size,stack+protect_size);
 
     stack += protect_size;
     // Ensure proper alignment for process' initial stack pointer value.
@@ -607,7 +612,9 @@ noreturn void* shim_init(int argc, void* args)
     struct shim_thread * cur_thread = (struct shim_thread *) cur_tcb->tp;
 
     if (cur_tcb->context.regs && shim_context_get_sp(&cur_tcb->context)) {
+#if defined(__i386__) || defined(__x86_64__)
         vdso_map_migrate();
+#endif
         restore_context(&cur_tcb->context);
     }
 

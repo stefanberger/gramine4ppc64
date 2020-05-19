@@ -8,6 +8,7 @@
  * (see Linux's arch/x86/include/asm/processor.h) */
 struct cpuinfo {
     int processor;
+#if defined(__i386__) || defined(__x86_64__)
     char vendor_id[16];
     int cpu_family;
     int model;
@@ -15,10 +16,15 @@ struct cpuinfo {
     int stepping;
     int core_id;
     int cpu_cores;
+#elif defined(__powerpc64__)
+#else
+#error Unsupported architecture
+#endif
 };
 
 static void init_cpuinfo(struct cpuinfo* ci) {
     ci->processor = -1;
+#if defined(__i386__) || defined(__x86_64__)
     memset(&ci->vendor_id, 0, sizeof(ci->vendor_id));
     ci->cpu_family = -1;
     ci->model      = -1;
@@ -26,6 +32,10 @@ static void init_cpuinfo(struct cpuinfo* ci) {
     ci->stepping  = -1;
     ci->core_id   = -1;
     ci->cpu_cores = -1;
+#elif defined(__powerpc64__)
+#else
+#error Unsupported architecture
+#endif
 }
 
 static int parse_line(char* line, struct cpuinfo* ci) {
@@ -54,6 +64,7 @@ static int parse_line(char* line, struct cpuinfo* ci) {
 
     if (!strcmp(k, "processor")) {
         sscanf(v, "%d\n", &ci->processor);
+#if defined(__i386__) || defined(__x86_64__)
     } else if (!strcmp(k, "cpu family")) {
         sscanf(v, "%d\n", &ci->cpu_family);
     } else if (!strcmp(k, "model")) {
@@ -68,6 +79,10 @@ static int parse_line(char* line, struct cpuinfo* ci) {
         snprintf(ci->vendor_id, sizeof(ci->vendor_id), "%s", v);
     } else if (!strcmp(k, "model name")) {
         snprintf(ci->model_name, sizeof(ci->model_name), "%s", v);
+#elif defined(__powerpc64__)
+#else
+#error Unsupported architecture
+#endif
     }
     return 0;
 
@@ -81,6 +96,7 @@ static int check_cpuinfo(struct cpuinfo* ci) {
         fprintf(stderr, "Could not get cpu index\n");
         return -1;
     }
+#if defined(__i386__) || defined(__x86_64__)
     if (ci->core_id == -1) {
         fprintf(stderr, "Could not get core id\n");
         return -1;
@@ -89,6 +105,10 @@ static int check_cpuinfo(struct cpuinfo* ci) {
         fprintf(stderr, "Could not get cpu cores\n");
         return -1;
     }
+#elif defined(__powerpc64__)
+#else
+#error Unsupported architecture
+#endif
 
     return 0;
 }

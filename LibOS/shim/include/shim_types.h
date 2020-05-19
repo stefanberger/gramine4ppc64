@@ -23,7 +23,9 @@
 
 #include <asm/posix_types.h>
 #include <asm/statfs.h>
-#include <asm/stat.h>
+#if defined(__i386__) || defined(__x86_64__)
+#include <asm/ldt.h>
+#endif
 #include <asm/signal.h>
 #include <asm/siginfo.h>
 #include <asm/poll.h>
@@ -49,6 +51,8 @@ typedef __kernel_clockid_t  clockid_t;
 typedef __kernel_key_t      key_t;
 typedef __kernel_timer_t    timer_t;
 typedef __kernel_fd_set     fd_set;
+
+#include <asm/stat.h>
 
 /* linux/time.h */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 18, 0)
