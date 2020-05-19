@@ -122,8 +122,15 @@ static inline void shim_regs_set_syscallnr(struct shim_regs* sr, uint64_t sc_num
         }                                                               \
     } while (0)
 
-static inline void shim_arch_update_fs_base(unsigned long fs_base) {
+typedef struct shim_tcb shim_tcb_t;
+static inline void shim_arch_update_fs_base(unsigned long fs_base, shim_tcb_t *shim_tcb) {
+    (void)shim_tcb;
     DkSegmentRegister(PAL_SEGMENT_FS, (PAL_PTR)fs_base);
+}
+
+/* on x86_64 the fs_base is the same as the tls parameter to 'clone' */
+static inline unsigned long tls_to_fs_base(unsigned long tls) {
+    return tls;
 }
 
 #endif /* _SHIM_TCB_ARCH_H_ */
