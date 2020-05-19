@@ -141,6 +141,9 @@ int shim_do_sigaltstack(const stack_t* ss, stack_t* oss) {
     if (oss)
         *oss = *cur_ss;
 
+    debug(">>>>>>>>> FIXME! %s @ %u: %p\n", __func__, __LINE__, shim_get_tcb());
+
+#ifndef __powerpc64__
     void* sp = (void*)shim_context_get_sp(&(shim_get_tcb()->context));
     /* check if thread is currently executing on an active altstack */
     if (!(cur_ss->ss_flags & SS_DISABLE) && sp && cur_ss->ss_sp <= sp &&
@@ -152,6 +155,7 @@ int shim_do_sigaltstack(const stack_t* ss, stack_t* oss) {
             return -EPERM;
         }
     }
+#endif
 
     if (ss) {
         if (ss->ss_flags & SS_DISABLE) {

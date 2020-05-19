@@ -40,6 +40,7 @@
 #include <shim_defs.h>
 #include <shim_tcb.h>
 #include <shim_types.h>
+#include <shim_sysdep.h>
 
 noreturn void shim_clean_and_exit(int exit_code);
 
@@ -736,6 +737,35 @@ static_always_inline void * current_stack(void)
 {
     void * _rsp;
     __asm__ volatile ("movq %%rsp, %0" : "=r"(_rsp) :: "memory");
+    return _rsp;
+}
+
+#elif defined(__powerpc64__)
+
+#define FRAME_MIN_SIZE_PARM	96
+
+#define __SWITCH_STACK(stack_top, func, arg)                    \
+    do {                                                        \
+        /* 16 Bytes align of stack */                           \
+        uintptr_t __stack_top = (uintptr_t)(stack_top);         \
+        __stack_top &= ~0xf;                                    \
+        __stack_top -= FRAME_MIN_SIZE_PARM;                     \
+        memset((void *)__stack_top, 0, FRAME_MIN_SIZE_PARM);    \
+        __asm__ volatile (                                      \
+            "mr %%r1, %0\n\t"                                   \
+            "mr %%r3, %2\n\t"                                   \
+            "mr %%r12, %1\n\t"                                  \
+            "mtctr %%r12\n\t"                                   \
+            "bctr\n\t"                                          \
+            :							\
+            : "r"(__stack_top), "r"(func), "r"(arg)		\
+            : "r3", "r12", "ctr", "memory");			\
+    } while (0)
+
+static_always_inline void * current_stack(void)
+{
+    void * _rsp;
+    __asm__ volatile ("mr %0, %%r1" : "=r"(_rsp) :: "memory");
     return _rsp;
 }
 
