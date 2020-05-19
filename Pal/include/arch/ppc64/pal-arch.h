@@ -102,4 +102,12 @@ typedef struct {
 
 #define DEFAULT_OBJECT_EXEC_ADDR ((void*)0x555555560000) /* Linux base location for PIE binaries */
 
+static inline void pal_context_set_ip(PAL_CONTEXT* context, PAL_NUM insnptr) {
+    context->gpregs.nip = insnptr;
+}
+
+static inline PAL_NUM pal_context_get_ip(PAL_CONTEXT *context) {
+    return context->gpregs.nip;
+}
+
 #endif

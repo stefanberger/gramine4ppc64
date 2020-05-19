@@ -1156,6 +1156,16 @@ ssize_t shim_do_sendto(int sockfd, const void* buf, size_t len, int flags,
     return do_sendmsg(sockfd, &iovbuf, 1, flags, addr, addrlen);
 }
 
+#if defined(__powerpc64__)
+ssize_t shim_do_send(int sockfd, const void* buf, size_t len, int flags) {
+    struct iovec iovbuf;
+    iovbuf.iov_base = (void*)buf;
+    iovbuf.iov_len  = len;
+
+    return do_sendmsg(sockfd, &iovbuf, 1, flags, NULL, 0);
+}
+#endif
+
 ssize_t shim_do_sendmsg(int sockfd, struct msghdr* msg, int flags) {
     return do_sendmsg(sockfd, msg->msg_iov, msg->msg_iovlen, flags, msg->msg_name,
                       msg->msg_namelen);
@@ -1421,6 +1431,16 @@ ssize_t shim_do_recvfrom(int sockfd, void* buf, size_t len, int flags, struct so
 
     return do_recvmsg(sockfd, &iovbuf, 1, flags, addr, addrlen);
 }
+
+#if defined(__powerpc64__)
+ssize_t shim_do_recv(int sockfd, void* buf, size_t len, int flags) {
+    struct iovec iovbuf;
+    iovbuf.iov_base = (void*)buf;
+    iovbuf.iov_len  = len;
+
+    return do_recvmsg(sockfd, &iovbuf, 1, flags, NULL, 0);
+}
+#endif
 
 ssize_t shim_do_recvmsg(int sockfd, struct msghdr* msg, int flags) {
     return do_recvmsg(sockfd, msg->msg_iov, msg->msg_iovlen, flags, msg->msg_name,

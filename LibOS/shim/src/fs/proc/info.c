@@ -156,6 +156,7 @@ static int proc_cpuinfo_open(struct shim_handle* hdl, const char* name, int flag
     } while (0)
 
     for (size_t n = 0; n < pal_control.cpu_info.cpu_num; n++) {
+#if defined(__i386__) || defined(__x86_64__)
         /* Below strings must match exactly the strings retrieved from /proc/cpuinfo
          * (see Linux's arch/x86/kernel/cpu/proc.c) */
         ADD_INFO("processor\t: %lu\n", n);
@@ -171,8 +172,24 @@ static int proc_cpuinfo_open(struct shim_handle* hdl, const char* name, int flag
         ADD_INFO("bogomips\t: %lu.%02lu\n",
                  (unsigned long)bogomips,
                  (unsigned long)(bogomips * 100.0 + 0.5) % 100);
+#elif defined(__powerpc64__)
+        ADD_INFO("processor\t: %lu\n", n);
+        ADD_INFO("cpu\t\t: %s\n", pal_control.cpu_info.cpu);
+        ADD_INFO("clock\t\t: %s\n", pal_control.cpu_info.clock);
+        ADD_INFO("revision\t: %s\n", pal_control.cpu_info.revision);
+#endif
         ADD_INFO("\n");
     }
+
+#if defined(__powerpc64__)
+    ADD_INFO("timebase\t: %s\n", pal_control.cpu_info.timebase);
+    ADD_INFO("platform\t: %s\n", pal_control.cpu_info.platform);
+    ADD_INFO("model\t\t: %s\n", pal_control.cpu_info.model);
+    ADD_INFO("machine\t: %s\n", pal_control.cpu_info.machine);
+    ADD_INFO("firmware\t: %s\n", pal_control.cpu_info.firmware);
+    ADD_INFO("MMU\t\t: %s\n", pal_control.cpu_info.mmu);
+#endif
+
 #undef ADD_INFO
 
     struct shim_str_data* data = calloc(1, sizeof(struct shim_str_data));
