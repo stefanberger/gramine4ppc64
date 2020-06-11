@@ -214,7 +214,7 @@ SIGHANDLER_FUNCTION(handle_async_signal)(int signum, siginfo_t* info, struct uco
     uintptr_t rip = uc->uc_mcontext.regs->nip;
 #endif
 
-    if (!ADDR_IN_PAL(rip)) {
+    if (!ADDR_IN_PAL(rip) || signum == SIGTERM) {
         /* signal arrived while in application or LibOS code, normal benign case */
         perform_signal_handling(event, info, uc);
         return;
