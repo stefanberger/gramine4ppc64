@@ -205,7 +205,7 @@ SIGHANDLER_FUNCTION(handle_async_signal)(int signum, siginfo_t* info, struct uco
     assert(event > 0);
 
     uintptr_t rip = pal_ucontext_get_ip(uc);
-    if (!ADDR_IN_PAL(rip)) {
+    if (!ADDR_IN_PAL(rip) || signum == SIGTERM) {
         /* signal arrived while in application or LibOS code, normal benign case */
         perform_signal_handling(event, info, uc);
         return;
