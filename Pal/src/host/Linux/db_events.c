@@ -37,7 +37,7 @@ int _DkEventSet(PAL_HANDLE event, int wakeup) {
     if (event->event.isnotification) {
         // Leave it signaled, wake all
         uint32_t t = 0;
-        if (__atomic_compare_exchange_n(&event->event.signaled, &t, 1, /*weak=*/true,
+        if (__atomic_compare_exchange_n(&event->event.signaled, &t, 1, /*weak=*/false,
                                         __ATOMIC_ACQUIRE, __ATOMIC_RELAXED)) {
             int nwaiters = atomic_read(&event->event.nwaiters);
             if (nwaiters) {
