@@ -118,6 +118,7 @@ static inline void set_stack_guard(uintptr_t stack_guard) {
         __func__, __LINE__, get_stack_guard(), get_r13());
 
 /* Set the TLS pointer; r13 contains the value to load into r13 */
+// FIXME: Do we need shim_tcb as parameter here or can we us shim_get_tcb()?
 static inline void set_tls(unsigned long r13, shim_tcb_t *shim_tcb) {
     unsigned long stack_guard;
     if (r13)
