@@ -18,14 +18,15 @@ shim_start:
 	ld	%r3, 0(%r6)	// argc
 	addi	%r4, %r6, 8	// argv
 
-	stdu	%r1, -40(%r1)
+	stdu	%r1, -48(%r1)	// keep 16-byte stack alignment
 
 	mr	%r31, %r1	// save our stack pointer
+	rldicr	%r1, %r1, 0, 59	// ensure 16-byte stack alignment
 
 	bl	shim_init
 	nop
 
-	addi	%r1, %r31, 40	// restore original stack
+	addi	%r1, %r31, 48	// restore original stack
 	ld	%r31, -8(%r1)
 	ld	%r0, 16(%r1)
 	mtlr	%r0
