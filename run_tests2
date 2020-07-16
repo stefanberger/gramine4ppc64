@@ -91,10 +91,20 @@ ppc64le)
 	fi
 	# Without 'env -i' it will NOT build (install) on Travis
 	env -i PWD=$PWD PATH=$PATH make &>make.log
-	env -i PWD=$PWD PATH=$PATH make &>>make.log
-	env -i PWD=$PWD PATH=$PATH make ltp.xml 2>&1 | tee -a make.log || \
-		env -i PWD=$PWD PATH=$PATH make ltp.xml 2>&1 | tee -a make.log || \
-		{ ERROR=1; RESULT="FAIL"; cat make.log; }
+	if [ $? -ne  0 ]; then
+		env -i PWD=$PWD PATH=$PATH make &>>make.log
+	fi
+	set -o pipefail
+	env -i PWD=$PWD PATH=$PATH make ltp.xml 2>&1 | tee -a make.log
+	if [ $? -ne 0 ]; then
+		env -i PWD=$PWD PATH=$PATH make ltp.xml 2>&1 | tee -a make.log
+		if [ $? -ne 0 ]; then
+			ERROR=1
+			RESULT="FAIL"
+			cat make.log
+		fi
+	fi
+	set +o pipefail
 	set +x
 	echo ">>>>> ${TEST}: $RESULT <<<<<"
 	popd &>/dev/null
