@@ -26,7 +26,8 @@ struct shim_regs {
     uint64_t    dar;
     uint64_t    dsisr;
     uint64_t    result;
-};
+    /* needs to be 16-byte aligned when on stack */
+} __attribute__((aligned(16)));
 
 static inline uint64_t shim_regs_get_sp(struct shim_regs* sr) {
     return sr->gpr[1];
