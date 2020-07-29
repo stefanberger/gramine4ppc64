@@ -12,6 +12,7 @@ addons:
         - libssl1.0-dev
         - python3-numpy
         - python3-scipy
+        - python3-setuptools
 script:
   - make -j$(nproc)
     && sudo pip3 install pytest
