@@ -30,6 +30,10 @@ long shim_do_statfs(const char* path, struct statfs* buf);
 long shim_do_fstatfs(int fd, struct statfs* buf);
 long shim_do_poll(struct pollfd* fds, nfds_t nfds, int timeout);
 long shim_do_lseek(int fd, off_t offset, int origin);
+#if defined(__powerpc64__)
+long shim_do__llseek(int fd, unsigned long offset_high, unsigned long offset_low,
+                     unsigned long resultaddr, int origin);
+#endif
 void* shim_do_mmap(void* addr, size_t length, int prot, int flags, int fd, unsigned long offset);
 long shim_do_mprotect(void* addr, size_t len, int prot);
 long shim_do_munmap(void* addr, size_t len);
@@ -68,6 +72,10 @@ long shim_do_sendto(int fd, const void* buf, size_t len, int flags,
                     const struct sockaddr* dest_addr, int addrlen);
 long shim_do_recvfrom(int fd, void* buf, size_t len, int flags, struct sockaddr* addr,
                       int* addrlen);
+#if defined(__powerpc64__)
+long shim_do_send(int fd, const void* buf, size_t len, int flags);
+long shim_do_recv(int fd, void* buf, size_t len, int flags);
+#endif
 long shim_do_bind(int sockfd, struct sockaddr* addr, int addrlen);
 long shim_do_listen(int sockfd, int backlog);
 long shim_do_sendmsg(int fd, struct msghdr* msg, int flags);
@@ -78,14 +86,21 @@ long shim_do_getpeername(int sockfd, struct sockaddr* addr, int* addrlen);
 long shim_do_socketpair(int domain, int type, int protocol, int* sv);
 long shim_do_setsockopt(int fd, int level, int optname, char* optval, int optlen);
 long shim_do_getsockopt(int fd, int level, int optname, char* optval, int* optlen);
+long shim_do_socketcall(int call, unsigned long *args);
+#if defined(__i386__) || defined(__x86_64__)
 long shim_do_clone(unsigned long flags, unsigned long user_stack_addr, int* parent_tidptr,
                    int* child_tidptr, unsigned long tls);
+#elif defined(__powerpc64__)
+long shim_do_clone (unsigned long flags, unsigned long user_stack_addr, int* parent_tidptr,
+                    unsigned long tls, int* child_tidptr);
+#endif
 long shim_do_fork(void);
 long shim_do_vfork(void);
 long shim_do_execve(const char* file, const char** argv, const char** envp);
 long shim_do_exit(int error_code);
 long shim_do_waitid(int which, pid_t id, siginfo_t* infop, int options, struct __kernel_rusage* ru);
 long shim_do_wait4(pid_t pid, int* stat_addr, int options, struct __kernel_rusage* ru);
+long shim_do_waitpid(pid_t pid, int* stat_addr, int option);
 long shim_do_kill(pid_t pid, int sig);
 long shim_do_uname(struct new_utsname* buf);
 long shim_do_semget(key_t key, int nsems, int semflg);
@@ -95,6 +110,10 @@ long shim_do_msgget(key_t key, int msgflg);
 long shim_do_msgsnd(int msqid, const void* msgp, size_t msgsz, int msgflg);
 long shim_do_msgrcv(int msqid, void* msgp, size_t msgsz, long msgtyp, int msgflg);
 long shim_do_msgctl(int msqid, int cmd, struct msqid_ds* buf);
+#if defined(__powerpc64__)
+long shim_do_ipc(unsigned int call, int first, unsigned long second, unsigned long third,
+                 void* ptr, long fifth);
+#endif
 long shim_do_fcntl(int fd, int cmd, unsigned long arg);
 long shim_do_fsync(int fd);
 long shim_do_fdatasync(int fd);
@@ -132,6 +151,9 @@ long shim_do_setsid(void);
 long shim_do_getpgid(pid_t pid);
 long shim_do_getsid(pid_t pid);
 long shim_do_rt_sigpending(__sigset_t* set, size_t sigsetsize);
+#if defined(__powerpc64__)
+long shim_do_sigpending_old(__sigset_t *set);
+#endif
 long shim_do_sigaltstack(const stack_t* ss, stack_t* oss);
 long shim_do_setpriority(int which, int who, int niceval);
 long shim_do_getpriority(int which, int who);
@@ -152,11 +174,18 @@ long shim_do_gettid(void);
 long shim_do_tkill(int pid, int sig);
 long shim_do_time(time_t* tloc);
 long shim_do_futex(int* uaddr, int op, int val, void* utime, int* uaddr2, int val3);
+#if defined(__powerpc64__)
+long shim_do_futex_time64(int* uaddr, int op, int val, void* utime, int* uaddr2, int val3);
+#endif
 long shim_do_sched_setaffinity(pid_t pid, unsigned int cpumask_size, unsigned long* user_mask_ptr);
 long shim_do_sched_getaffinity(pid_t pid, unsigned int cpumask_size, unsigned long* user_mask_ptr);
 long shim_do_set_tid_address(int* tidptr);
 long shim_do_semtimedop(int semid, struct sembuf* sops, unsigned int nsops,
                         const struct timespec* timeout);
+#if defined(__powerpc64__)
+long shim_do_semtimedop_time64(int semid, struct sembuf* sops, unsigned int nsops,
+                               const struct timespec64* timeout);
+#endif
 long shim_do_epoll_create(int size);
 long shim_do_getdents64(int fd, struct linux_dirent64* buf, size_t count);
 long shim_do_epoll_wait(int epfd, struct __kernel_epoll_event* events, int maxevents,
@@ -166,6 +195,10 @@ long shim_do_clock_gettime(clockid_t which_clock, struct timespec* tp);
 long shim_do_clock_getres(clockid_t which_clock, struct timespec* tp);
 long shim_do_clock_nanosleep(clockid_t clock_id, int flags, struct __kernel_timespec* req,
                              struct __kernel_timespec* rem);
+#if defined(__powerpc64__)
+long shim_do_clock_gettime64(clockid_t which_clock, struct timespec64* tp);
+long shim_do_clock_getres_time64(clockid_t which_clock, struct timespec64* tp);
+#endif
 long shim_do_exit_group(int error_code);
 long shim_do_tgkill(int tgid, int pid, int sig);
 long shim_do_mbind(void* start, unsigned long len, int mode, unsigned long* nmask,
@@ -210,7 +243,7 @@ long shim_do_getrandom(char* buf, size_t count, unsigned int flags);
 #ifndef MADV_FREE
 #define MADV_FREE 8
 #endif
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__powerpc64__)
 #ifndef MADV_WIPEONFORK
 #define MADV_WIPEONFORK 18
 #endif
