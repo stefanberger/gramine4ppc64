@@ -39,7 +39,6 @@
 #define TEST_FILE "testfile_map_noreserve"
 #define TEST_LENGTH  0xC0000000
 #define TEST_LENGTH2  0xC000000
-#define TEST_LENGTH3     0xA000
 #define TEST_RACE_NUM_ITERATIONS 3000
 
 static size_t g_page_size;
@@ -51,6 +50,9 @@ void mem_write(void* addr, uint8_t val) __attribute__((visibility("internal")));
 uint8_t mem_read(void* addr) __attribute__((visibility("internal")));
 
 #ifdef __x86_64__
+
+#define TEST_LENGTH3    0xA000
+
 void ret(void) __attribute__((visibility("internal")));
 __asm__ (
 ".pushsection .text\n"
@@ -85,6 +87,46 @@ static void memfault_handler(int signum, siginfo_t* info, void* context) {
 
     errx(1, "unexpected memory fault at: %#lx (pc: %#lx)\n", (uintptr_t)info->si_addr, pc);
 }
+
+#elif defined(__powerpc64__)
+
+#define TEST_LENGTH3    0xA0000
+
+void ret(void) __attribute__((visibility("internal")));
+__asm__ (
+".pushsection .text\n"
+".type mem_write, @function\n"
+".type mem_read, @function\n"
+".type ret, @function\n"
+"mem_write:\n"
+    "stb 4, 0(3)\n"
+    "blr\n"
+"mem_read:\n"
+    "lbz 3, 0(3)\n"
+    "blr\n"
+"ret:\n"
+    "blr\n"
+".popsection\n"
+);
+
+static void memfault_handler(int signum, siginfo_t* info, void* context) {
+    ucontext_t* uc = (ucontext_t*)context;
+    uintptr_t pc = uc->uc_mcontext.regs->nip;
+
+    if (pc == (uintptr_t)mem_write) {
+        uc->uc_mcontext.regs->nip = (unsigned long)ret;
+        g_write_failed = true;
+        return;
+    } else if (pc == (uintptr_t)mem_read) {
+        uc->uc_mcontext.regs->nip = (unsigned long)ret;
+        uc->uc_mcontext.regs->gpr[3] = 0;
+        g_read_failed = true;
+        return;
+    }
+
+    errx(1, "unexpected memory fault at: %#lx (pc: %#lx)   mem_write=%p mem_read=%p\n", (uintptr_t)info->si_addr, pc, mem_write, mem_read);
+}
+
 
 #else
 #error Unsupported architecture
