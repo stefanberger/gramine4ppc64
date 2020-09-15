@@ -117,3 +117,79 @@ long libos_syscall_clock_nanosleep(clockid_t clock_id, int flags, struct __kerne
 
     return do_nanosleep(timeout_us, rem);
 }
+
+#if defined(__NR_clock_nanosleep_time64)
+static int do_nanosleep_time64(uint64_t timeout_us, struct __kernel_timespec64* rem) {
+    int ret = -EINTR;
+    thread_prepare_wait();
+    while (!have_pending_signals()) {
+        ret = thread_wait(&timeout_us, /*ignore_pending_signals=*/false);
+        if (ret == -ETIMEDOUT) {
+            ret = 0;
+            break;
+        }
+        ret = -EINTR;
+    }
+    /*
+     * If `have_pending_signals` spotted a signal, we just pray it was targeted directly at this
+     * thread or no other thread handles it first.
+     * Ideally, we could have something like the Linux kernel: restart block, which holds a pointer
+     * to a function to be called instead of restarting the syscall.
+     */
+
+    if (rem) {
+        rem->tv_sec = timeout_us / TIME_US_IN_S;
+        rem->tv_nsec = (timeout_us % TIME_US_IN_S) * TIME_NS_IN_US;
+    }
+
+    return ret;
+}
+
+static int check_params_time64(struct __kernel_timespec64* req, struct __kernel_timespec64* rem) {
+    if (!is_user_memory_readable(req, sizeof(*req))) {
+        return -EFAULT;
+    }
+    if (rem && !is_user_memory_writable(rem, sizeof(*rem))) {
+        return -EFAULT;
+    }
+
+    if (req->tv_sec < 0 || req->tv_nsec < 0 || (uint64_t)req->tv_nsec >= TIME_NS_IN_S) {
+        return -EINVAL;
+    }
+
+    return 0;
+}
+
+long libos_syscall_clock_nanosleep_time64(clockid_t clock_id, int flags,
+                                          struct __kernel_timespec64* req,
+                                          struct __kernel_timespec64* rem) {
+    /* In Graphene all clocks are the same. */
+    if (clock_id < 0 || clock_id >= MAX_CLOCKS) {
+        return -EINVAL;
+    }
+
+    int ret = check_params_time64(req, rem);
+    if (ret < 0) {
+        return ret;
+    }
+
+    uint64_t timeout_us = timespec64_to_us(req);
+    if (flags & TIMER_ABSTIME) {
+        uint64_t current_time = 0;
+        ret = PalSystemTimeQuery(&current_time);
+        if (ret < 0) {
+            ret = pal_to_unix_errno(ret);
+            log_error("clock_nanosleep: DkSystemTimeQuery failed with: %d", ret);
+            die_or_inf_loop();
+        }
+        if (timeout_us <= current_time) {
+            /* We timed out even before reaching this point. */
+            return 0;
+        }
+        timeout_us -= current_time;
+        rem = NULL;
+    }
+
+    return do_nanosleep_time64(timeout_us, rem);
+}
+#endif
