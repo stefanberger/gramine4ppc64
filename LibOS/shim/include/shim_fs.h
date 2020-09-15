@@ -9,7 +9,11 @@
 #define _SHIM_FS_H_
 
 #include <stdbool.h>
+#if !defined(__powerpc64__)
 #include <asm/stat.h>
+#else
+#include "stat.h"
+#endif
 
 #include "list.h"
 #include "pal.h"

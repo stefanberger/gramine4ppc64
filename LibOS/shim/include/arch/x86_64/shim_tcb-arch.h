@@ -145,12 +145,15 @@ struct shim_xstate {
         }                                                               \
     } while (0)
 
-static inline void set_tls(unsigned long tls) {
+struct shim_tcb;
+typedef struct shim_tcb shim_tcb_t;
+static inline void set_tls(unsigned long tls, shim_tcb_t* shim_tcb) {
+    __UNUSED(shim_tcb);
     DkSegmentRegisterSet(PAL_SEGMENT_FS, (PAL_PTR)tls);
 }
 
 static inline void set_default_tls(void) {
-    set_tls(0);
+    set_tls(0, NULL);
 }
 
 static inline unsigned long get_tls(void) {
