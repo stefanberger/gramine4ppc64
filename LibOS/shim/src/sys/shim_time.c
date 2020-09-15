@@ -86,3 +86,43 @@ long shim_do_clock_getres(clockid_t which_clock, struct timespec* tp) {
     }
     return 0;
 }
+
+#if defined(__powerpc64__)
+long shim_do_clock_gettime64(clockid_t which_clock, struct timespec64* tp) {
+    /* all clock are the same */
+    if (!(0 <= which_clock && which_clock < MAX_CLOCKS))
+        return -EINVAL;
+
+    if (!tp)
+        return -EINVAL;
+
+    if (test_user_memory(tp, sizeof(*tp), true))
+        return -EFAULT;
+
+    uint64_t time = DkSystemTimeQuery();
+
+    if (time == (uint64_t)-1)
+        return -PAL_ERRNO();
+
+    tp->tv_sec  = time / 1000000;
+    tp->tv_nsec = (time % 1000000) * 1000;
+    return 0;
+}
+
+long shim_do_clock_getres_time64(clockid_t which_clock, struct timespec64* tp) {
+    /* all clock are the same */
+    if (!(0 <= which_clock && which_clock < MAX_CLOCKS))
+        return -EINVAL;
+
+    if (!tp)
+        return -EINVAL;
+
+    if (test_user_memory(tp, sizeof(*tp), true))
+        return -EFAULT;
+
+    tp->tv_sec  = 0;
+    tp->tv_nsec = 1000;
+    return 0;
+}
+
+#endif
