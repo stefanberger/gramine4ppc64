@@ -10,6 +10,7 @@
 #include <asm/posix_types.h>
 #include <asm/siginfo.h>
 #include <asm/signal.h>
+#include <sys/types.h>
 #include <asm/stat.h>
 #include <asm/statfs.h>
 #include <linux/aio_abi.h>
@@ -51,6 +52,13 @@ typedef __kernel_fd_set    fd_set;
 struct __kernel_timespec {
     __kernel_time_t tv_sec; /* seconds */
     long tv_nsec;           /* nanoseconds */
+};
+#endif
+
+#if defined(__powerpc64__)
+struct __kernel_timespec64 {
+    __kernel_time64_t tv_sec; /* seconds */
+    long tv_nsec;             /* nanoseconds */
 };
 #endif
 
