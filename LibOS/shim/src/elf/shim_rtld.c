@@ -1341,11 +1341,15 @@ static const struct {
     const char* name;
     ElfW(Addr) value;
     ElfW(Addr)** func;
+#if defined(__i386__) || defined(__x86_64__)
 } vsyms[] = {{
                  .name  = "__vdso_syscalldb",
                  .value = (ElfW(Addr))&syscalldb,
                  .func  = &__vdso_syscalldb,
              }};
+#else
+} vsyms[0];
+#endif
 
 static int vdso_map_init(void) {
     /*
