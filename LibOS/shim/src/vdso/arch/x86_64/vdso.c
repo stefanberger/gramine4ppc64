@@ -9,7 +9,9 @@
 #include <asm/unistd.h>
 
 #include "vdso.h"
+#if defined(__x86_64__)
 #include "vdso_syscall.h"
+#endif
 
 /*
  * The symbol below needs to be exported for libsysdb to inject those values,
@@ -17,6 +19,7 @@
  */
 #define EXPORT_SYMBOL(name) extern __typeof__(name) __vdso_##name __attribute__((alias(#name)))
 
+#if defined(__x86_64__)
 #define EXPORT_WEAK_SYMBOL(name) \
     __typeof__(__vdso_##name) name __attribute__((weak, alias("__vdso_" #name)))
 
@@ -39,3 +42,4 @@ long __vdso_getcpu(unsigned* cpu, struct getcpu_cache* unused) {
     return vdso_arch_syscall(__NR_getcpu, (long)cpu, (long)unused);
 }
 EXPORT_WEAK_SYMBOL(getcpu);
+#endif
