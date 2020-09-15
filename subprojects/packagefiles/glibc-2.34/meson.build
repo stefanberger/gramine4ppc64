@@ -46,6 +46,13 @@ if host_machine.cpu_family() == 'x86_64'
     ]
 endif
 
+if host_machine.cpu_family() == 'ppc64le' or host_machine.cpu_family() == 'ppc64'
+    glibc_output_paths += [
+        'elf/ld64.so.2',
+        'elf/ld.so',
+    ]
+endif
+
 glibc_output = []
 foreach path : glibc_output_paths
     glibc_output += fs.name(path)
@@ -72,6 +79,7 @@ glibc = custom_target('glibc',
     input: [
         'configure',
         'glibc-2.34.patch',
+        'glibc-2.34-ppc64.patch',
         'hp-timing-2.34.patch',
     ],
 
