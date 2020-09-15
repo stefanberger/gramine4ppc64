@@ -134,7 +134,15 @@ static int libos_syscall_execve_rtld(struct libos_handle* hdl, char** argv, cons
     free(*argv);
     free(argv);
 
+#if defined(__powerpc64__)
+    /* Need to call function with new stack since PalVirtualMemoryFree in
+     * __libos_syscall_execve_rtld will free the stack otherwise!!
+     * x86 has a differnt stack here already!
+     */
+    __SWITCH_STACK(new_argp, &__libos_syscall_execve_rtld, new_argp, new_auxv);
+#else
     __libos_syscall_execve_rtld(new_argp, new_auxv);
+#endif
     /* UNREACHABLE */
 }
 
