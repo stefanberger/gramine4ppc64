@@ -52,6 +52,13 @@ static void parse_getrandom_flags(struct print_buf*, va_list*);
 static void parse_epoll_op(struct print_buf*, va_list*);
 static void parse_epoll_event(struct print_buf* buf, va_list* ap);
 
+#ifdef __NR_ipc
+static void parse_ipccall(struct print_buf*, va_list*);
+#endif
+#ifdef __NR_socketcall
+static void parse_socketcall(struct print_buf*, va_list*);
+#endif
+
 static void parse_string_arg(struct print_buf*, va_list* ap);
 static void parse_pointer_arg(struct print_buf*, va_list* ap);
 static void parse_long_arg(struct print_buf*, va_list* ap);
@@ -85,6 +92,10 @@ struct parser_table {
                    parse_integer_arg, parse_integer_arg}},
     [__NR_lseek] = {.slow = false, .name = "lseek", .parser = {parse_long_arg, parse_integer_arg,
                     parse_long_arg, parse_seek}},
+#ifdef __NR__llseek
+    [__NR__llseek] = {.slow = false, .name = "_llseek", .parser = {parse_long_arg, parse_integer_arg,
+                      parse_long_arg, parse_long_arg, parse_pointer_arg, parse_seek}},
+#endif
     [__NR_mmap] = {.slow = true, .name = "mmap", .parser = {parse_pointer_ret, parse_pointer_arg,
                    parse_pointer_arg, parse_mmap_prot, parse_mmap_flags, parse_integer_arg,
                    parse_long_arg}},
@@ -151,6 +162,10 @@ struct parser_table {
     [__NR_recvfrom] = {.slow = false, .name = "recvfrom", .parser = {parse_long_arg,
                        parse_integer_arg, parse_pointer_arg, parse_pointer_arg, parse_integer_arg,
                        parse_pointer_arg, parse_pointer_arg}},
+#ifdef __NR_recv
+    [__NR_recv] = {.slow = false, .name = "recv", .parser = {parse_long_arg,
+                   parse_integer_arg, parse_pointer_arg, parse_integer_arg, parse_integer_arg}},
+#endif
     [__NR_sendmsg] = {.slow = false, .name = "sendmsg", .parser = {parse_long_arg,
                       parse_integer_arg, parse_pointer_arg, parse_integer_arg}},
     [__NR_recvmsg] = {.slow = true, .name = "recvmsg", .parser = {parse_long_arg, parse_integer_arg,
@@ -173,6 +188,10 @@ struct parser_table {
     [__NR_getsockopt] = {.slow = false, .name = "getsockopt", .parser = {parse_long_arg,
                          parse_integer_arg, parse_integer_arg, parse_integer_arg, parse_pointer_arg,
                          parse_pointer_arg}},
+#ifdef __NR_socketcall
+    [__NR_socketcall]  = {.slow = false, .name = "socketcall", .parser = {parse_long_arg,
+                          parse_socketcall, parse_pointer_arg}},
+#endif
     [__NR_clone] = {.slow = true, .name = "clone", .parser = {parse_long_arg, parse_clone_flags,
                     parse_pointer_arg, parse_pointer_arg, parse_pointer_arg, parse_pointer_arg}},
     [__NR_fork] = {.slow = true, .name = "fork", .parser = {parse_long_arg}},
@@ -187,8 +206,10 @@ struct parser_table {
     [__NR_uname] = {.slow = false, .name = "uname", .parser = {parse_long_arg, parse_pointer_arg}},
     [__NR_semget] = {.slow = false, .name = "semget", .parser = {parse_long_arg, parse_integer_arg,
                      parse_integer_arg, parse_integer_arg}},
+#ifdef __NR_semop
     [__NR_semop] = {.slow = true, .name = "semop", .parser = {parse_long_arg, parse_integer_arg,
                     parse_pointer_arg, parse_integer_arg}},
+#endif
     [__NR_semctl] = {.slow = false, .name = "semctl", .parser = {parse_long_arg, parse_integer_arg,
                      parse_integer_arg, parse_integer_arg, parse_pointer_arg}},
     [__NR_shmdt] = {.slow = false, .name = "shmdt", .parser = {NULL}},
@@ -200,6 +221,11 @@ struct parser_table {
                      parse_pointer_arg, parse_pointer_arg, parse_long_arg, parse_integer_arg}},
     [__NR_msgctl] = {.slow = true, .name = "msgctl", .parser = {parse_long_arg, parse_integer_arg,
                      parse_integer_arg, parse_pointer_arg}},
+#ifdef __NR_ipc
+    [__NR_ipc] = {.slow = true, .name = "ipc", .parser = {parse_long_arg, parse_ipccall,
+                  parse_integer_arg, parse_long_arg, parse_long_arg, parse_pointer_arg,
+                  parse_long_arg}},
+#endif
     [__NR_fcntl] = {.slow = false, .name = "fcntl", .parser = {parse_long_arg, parse_integer_arg,
                     parse_fcntlop, parse_pointer_arg}},
     [__NR_flock] = {.slow = true, .name = "flock", .parser = {parse_long_arg, parse_integer_arg,
@@ -300,6 +326,14 @@ struct parser_table {
                      parse_pointer_arg}},
     [__NR_fstatfs] = {.slow = false, .name = "fstatfs", .parser = {parse_long_arg,
                       parse_integer_arg, parse_pointer_arg}},
+#ifdef __NR_statfs64
+    [__NR_statfs64] = {.slow = false, .name = "statfs64", .parser = {parse_long_arg, parse_string_arg,
+                     parse_long_arg, parse_pointer_arg}},
+#endif
+#ifdef __NR_fstatsfs64
+    [__NR_fstatfs64] = {.slow = false, .name = "fstatfs64", .parser = {parse_long_arg,
+                      parse_integer_arg, parse_long_arg, parse_pointer_arg}},
+#endif
     [__NR_sysfs] = {.slow = false, .name = "sysfs", .parser = {NULL}},
     [__NR_getpriority] = {.slow = false, .name = "getpriority", .parser = {parse_long_arg,
                           parse_integer_arg, parse_integer_arg}},
@@ -369,7 +403,9 @@ struct parser_table {
     [__NR_putpmsg] = {.slow = false, .name = "putpmsg", .parser = {NULL}},
     [__NR_afs_syscall] = {.slow = false, .name = "afs_syscall", .parser = {NULL}},
     [__NR_tuxcall] = {.slow = false, .name = "tuxcall", .parser = {NULL}},
+#ifdef __NR_security
     [__NR_security] = {.slow = false, .name = "security", .parser = {NULL}},
+#endif
     [__NR_gettid] = {.slow = false, .name = "gettid", .parser = {parse_long_arg}},
     [__NR_readahead] = {.slow = false, .name = "readahead", .parser = {NULL}},
     [__NR_setxattr] = {.slow = false, .name = "setxattr", .parser = {NULL}},
@@ -410,8 +446,12 @@ struct parser_table {
     [__NR_lookup_dcookie] = {.slow = false, .name = "lookup_dcookie", .parser = {NULL}},
     [__NR_epoll_create] = {.slow = false, .name = "epoll_create", .parser = {parse_long_arg,
                            parse_integer_arg}},
+#ifdef __NR_epoll_ctl_old
     [__NR_epoll_ctl_old] = {.slow = false, .name = "epoll_ctl_old", .parser = {NULL}},
+#endif
+#ifdef __NR_epoll_wait_old
     [__NR_epoll_wait_old] = {.slow = false, .name = "epoll_wait_old", .parser = {NULL}},
+#endif
     [__NR_remap_file_pages] = {.slow = false, .name = "remap_file_pages", .parser = {NULL}},
     [__NR_getdents64] = {.slow = false, .name = "getdents64", .parser = {parse_long_arg,
                          parse_integer_arg, parse_pointer_arg, parse_pointer_arg}},
@@ -499,6 +539,10 @@ struct parser_table {
                        parse_pointer_arg, parse_pointer_arg}},
     [__NR_ppoll] = {.slow = true, .name = "ppoll", .parser = {parse_long_arg, parse_pointer_arg,
                     parse_integer_arg, parse_pointer_arg, parse_pointer_arg, parse_pointer_arg}},
+#if defined(__NR_ppoll_time64)
+    [__NR_ppoll_time64] = {.slow = true, .name = "ppoll_time64", .parser = {parse_long_arg, parse_pointer_arg,
+                    parse_integer_arg, parse_pointer_arg, parse_pointer_arg, parse_pointer_arg}},
+#endif
     [__NR_unshare] = {.slow = false, .name = "unshare", .parser = {NULL}},
     [__NR_set_robust_list] = {.slow = false, .name = "set_robust_list", .parser = {parse_long_arg,
                               parse_pointer_arg, parse_pointer_arg}},
@@ -506,7 +550,9 @@ struct parser_table {
                               parse_integer_arg, parse_pointer_arg, parse_pointer_arg}},
     [__NR_splice] = {.slow = false, .name = "splice", .parser = {NULL}},
     [__NR_tee] = {.slow = false, .name = "tee", .parser = {NULL}},
+#ifdef __NR_sync_file_range
     [__NR_sync_file_range] = {.slow = false, .name = "sync_file_range", .parser = {NULL}},
+#endif
     [__NR_vmsplice] = {.slow = false, .name = "vmsplice", .parser = {NULL}},
     [__NR_move_pages] = {.slow = false, .name = "move_pages", .parser = {NULL}},
     [__NR_utimensat] = {.slow = false, .name = "utimensat", .parser = {NULL}},
@@ -602,6 +648,20 @@ struct parser_table {
     [__NR_process_mrelease] = {.slow = false, .name = "process_mrelease", .parser = {NULL}},
     [__NR_futex_waitv] = {.slow = false, .name = "futex_waitv", .parser = {NULL}},
     [__NR_set_mempolicy_home_node] = {.slow = false, .name = "set_mempolicy_home_node", .parser = {NULL}},
+#ifdef __NR_clock_gettime64
+    [__NR_clock_gettime64] = {.slow = false, .name = "clock_gettime64", .parser = {parse_long_arg,
+                              parse_integer_arg, parse_pointer_arg}},
+#endif
+#ifdef __NR_clock_getres_time64
+    [__NR_clock_getres_time64] = {.slow = false, .name = "clock_getres_time64", .parser = {
+                                  parse_long_arg, parse_integer_arg, parse_pointer_arg}},
+#endif
+#ifdef __NR_semtimedop_time64
+    [__NR_semtimedop_time64] = {.slow = false, .name = "semtimedop_time64", .parser = {NULL}},
+#endif
+#ifdef __NR_futex_time64
+    [__NR_futex_time64] = {.slow = false, .name = "futex_time64", .parser = {NULL}},
+#endif
 };
 
 const char* const siglist[SIGRTMIN] = {
@@ -1588,7 +1648,11 @@ static void parse_epoll_event(struct print_buf* buf, va_list* ap) {
 #undef PUTS_FLAG
     }
 
+#if defined(__powerpc64__)
+    buf_printf(buf, ", .data=%#lx}", event->data);
+#else
     buf_printf(buf, ", .data=%#llx}", event->data);
+#endif
 }
 
 static void parse_string_arg(struct print_buf* buf, va_list* ap) {
@@ -1734,3 +1798,112 @@ void debug_print_syscall_after(unsigned long sysno, ...) {
 
     buf_flush(&buf);
 }
+
+#ifdef __NR_ipc
+static void parse_ipccall(struct print_buf* buf, va_list* ap) {
+    unsigned int call = va_arg(*ap, unsigned int);
+
+    /* call may encode version in upper 16bits */
+    switch (call & 0xffff) {
+        case SEMOP:
+            buf_puts(buf, "SEMOP");
+            break;
+        case SEMTIMEDOP:
+            buf_puts(buf, "SEMTIMEDOP");
+            break;
+        case SEMGET:
+            buf_puts(buf, "SEMGET");
+            break;
+        case SEMCTL:
+            buf_puts(buf, "SEMCTL");
+            break;
+        case MSGSND:
+            buf_puts(buf, "MSGSND");
+            break;
+        case MSGRCV:
+            buf_puts(buf, "MSGRCV");
+            break;
+        case MSGGET:
+            buf_puts(buf, "MSGGET");
+            break;
+        case MSGCTL:
+            buf_puts(buf, "MSGCTL");
+            break;
+        default:
+            buf_printf(buf, "%d", call);
+            break;
+    }
+}
+#endif
+
+#ifdef __NR_socketcall
+static void parse_socketcall(struct print_buf* buf, va_list* ap) {
+    unsigned int call = va_arg(*ap, unsigned int);
+
+    switch (call) {
+        case SYS_SOCKET:
+            buf_puts(buf, "SYS_SOCKET");
+            break;
+        case SYS_BIND:
+            buf_puts(buf, "SYS_BIND");
+            break;
+        case SYS_CONNECT:
+            buf_puts(buf, "SYS_CONNECT");
+            break;
+        case SYS_LISTEN:
+            buf_puts(buf, "SYS_LISTEN");
+            break;
+        case SYS_ACCEPT:
+            buf_puts(buf, "SYS_ACCEPT");
+            break;
+        case SYS_GETSOCKNAME:
+            buf_puts(buf, "SYS_GETSOCKNAME");
+            break;
+        case SYS_GETPEERNAME:
+            buf_puts(buf, "SYS_GETPEERNAME");
+            break;
+        case SYS_SOCKETPAIR:
+            buf_puts(buf, "SYS_SOCKETPAIR");
+            break;
+        case SYS_SEND:
+            buf_puts(buf, "SYS_SEND");
+            break;
+        case SYS_RECV:
+            buf_puts(buf, "SYS_RECV");
+            break;
+        case SYS_SENDTO:
+            buf_puts(buf, "SYS_SENDTO");
+            break;
+        case SYS_RECVFROM:
+            buf_puts(buf, "SYS_RECVFROM");
+            break;
+        case SYS_SHUTDOWN:
+            buf_puts(buf, "SYS_SHUTDOWN");
+            break;
+        case SYS_GETSOCKOPT:
+            buf_puts(buf, "SYS_GETSOCKOPT");
+            break;
+        case SYS_SETSOCKOPT:
+            buf_puts(buf, "SYS_SETSOCKOPT");
+            break;
+        case SYS_SENDMSG:
+            buf_puts(buf, "SYS_SENDMSG");
+            break;
+        case SYS_RECVMSG:
+            buf_puts(buf, "SYS_RECVMSG");
+            break;
+        case SYS_ACCEPT4:
+            buf_puts(buf, "SYS_ACCEPT4");
+            break;
+        case SYS_RECVMMSG:
+            buf_puts(buf, "SYS_RECVMMSG");
+            break;
+        case SYS_SENDMMSG:
+            buf_puts(buf, "SYS_SENDMMSG");
+            break;
+        default:
+            buf_printf(buf, "%d", call);
+            break;
+    }
+}
+#endif
