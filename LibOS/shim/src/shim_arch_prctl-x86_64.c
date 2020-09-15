@@ -15,7 +15,7 @@
 long shim_do_arch_prctl(int code, void* addr) {
     switch (code) {
         case ARCH_SET_FS:
-            set_tls((unsigned long)addr);
+            set_tls((unsigned long)addr, NULL);
             return 0;
 
         case ARCH_GET_FS:

@@ -56,7 +56,7 @@ noreturn void __abort(void) {
 /* we use GCC's stack protector; when it detects corrupted stack, it calls __stack_chk_fail() */
 noreturn void __stack_chk_fail(void); /* to suppress GCC's warning "no previous prototype" */
 noreturn void __stack_chk_fail(void) {
-    debug("Stack protector: Graphene LibOS internal stack corruption detected\n");
+    debug(">>>> Stack protector: Graphene LibOS internal stack corruption detected\n");
     __abort();
 }
 
@@ -448,7 +448,7 @@ noreturn void* shim_init(int argc, void* args) {
     shim_tcb_t* cur_tcb = shim_get_tcb();
 
     if (cur_tcb->context.regs) {
-        restore_child_context_after_clone(&cur_tcb->context);
+        restore_child_context_after_clone(&cur_tcb->context, /*is_process=*/true);
         /* UNREACHABLE */
     }
 
