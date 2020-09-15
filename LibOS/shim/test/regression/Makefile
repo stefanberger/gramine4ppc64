@@ -72,6 +72,7 @@ c_executables = \
 	shared_object \
 	sigaction_per_process \
 	sigaltstack \
+	sighandler_contextswitch \
 	sighandler_reset \
 	sighandler_sigpipe \
 	signal_multithread \
@@ -147,6 +148,7 @@ CFLAGS-futex_wake_op = -pthread
 CFLAGS-proc_common = -pthread
 CFLAGS-spinlock += -I$(PALDIR)/../include/lib -I$(PALDIR)/../include/arch/$(ARCH) -pthread
 CFLAGS-sigaction_per_process += -pthread
+CFLAGS-sighandler_contextswitch += -O0
 CFLAGS-signal_multithread += -pthread
 CFLAGS-pthread_set_get_affinity += -pthread
 
