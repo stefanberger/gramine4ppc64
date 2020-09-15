@@ -80,7 +80,7 @@ static inline bool shim_tcb_check_canary(void) {
 static inline void update_fs_base(unsigned long fs_base) {
     shim_tcb_t* shim_tcb = shim_get_tcb();
     shim_tcb->context.fs_base = fs_base;
-    shim_arch_update_fs_base(fs_base);
+    shim_arch_update_fs_base(fs_base, shim_tcb);
     assert(shim_tcb_check_canary());
 }
 

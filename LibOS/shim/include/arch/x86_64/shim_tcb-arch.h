@@ -186,7 +186,9 @@ static inline void shim_regs_set_syscallnr(struct shim_regs* sr, uint64_t sc_num
         }                                                               \
     } while (0)
 
-static inline void shim_arch_update_fs_base(unsigned long fs_base) {
+typedef struct shim_tcb shim_tcb_t;
+static inline void shim_arch_update_fs_base(unsigned long fs_base, shim_tcb_t *shim_tcb) {
+    (void)shim_tcb;
     DkSegmentRegisterSet(PAL_SEGMENT_FS, (PAL_PTR)fs_base);
 }
 
