@@ -21,6 +21,17 @@ struct __kernel_timespec {
 };
 #endif
 
+#if defined(__x86_64__)
+/* not typically used on x86_64 */
+typedef long long __kernel_time64_t;
+#endif
+
+/* needed by powerpc64 */
+struct __kernel_timespec64 {
+    __kernel_time64_t tv_sec; /* seconds */
+    long tv_nsec;             /* nanoseconds */
+};
+
 struct __kernel_timeval {
     __kernel_time_t tv_sec;       /* seconds */
     __kernel_suseconds_t tv_usec; /* microsecond */
