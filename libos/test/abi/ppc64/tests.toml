@@ -1,0 +1,7 @@
+binary_dir = "@GRAMINE_PKGLIBDIR@/tests/libos/entrypoint"
+
+manifests = [
+  "stack",
+  "stack_env",
+  "stack_auxiliary",
+]
