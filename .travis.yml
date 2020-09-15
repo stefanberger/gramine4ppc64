@@ -4,30 +4,36 @@ sudo: required
 addons:
   apt:
       packages:
-        - meson
+        - libssl-dev
         - ninja-build
+        - protobuf-c-compiler
+        - python3
+        - python3-click
+        - python3-jinja2
+        - python3-lxml
+        - python3-numpy
         - python3-pip
-        - python3-pytest
+        - python3-scipy
+        - python3-setuptools
+        - python3-toml
 script:
-  - make -j$(nproc)
-    && meson build -Ddirect=enabled
-    && ninja -C build
+  - ./build.sh
+    && sudo ninja -C build &>build.log || tail -n 200 build.log
     && sudo ninja -C build install
-    && export PYTHONPATH=${PWD}/python
-    && ERROR=0
-    && pushd Pal/test &>/dev/null
-    &&  make test || ERROR=1
-    && popd &>/dev/null
-    && pushd Pal/regression &>/dev/null
-    &&  make regression || ERROR=1
-    && popd &>/dev/null
-    && [ $ERROR -eq 0 ] || false
+    && sudo pip3 install pytest
+    && python3 -c "import sys; print(sys.path)"
+    && export INSTALL_DEPS=1 PATH=$PATH:/usr/local/bin PYTHONPATH=/usr/local/lib/python3.8/site-packages
+    && cat /proc/cpuinfo
+    && bash ./run_tests0
+    && bash ./run_tests1
+    && bash ./run_tests2
 
 matrix:
   include:
-    - name: Build and test on x86_64
-      os: linux
-      arch: amd64
-    - name: Build and test on ppc64
+    - name: Build and test on ppc64 focal
       os: linux
       arch: ppc64le
+      dist: focal
+      env: PYTHONVERSION=python3.8
+      before_script:
+        - python3 -m pip install 'meson>=0.56,<0.57'
