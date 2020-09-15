@@ -11,7 +11,9 @@
 #include <asm/posix_types.h>
 #include <asm/siginfo.h>
 #include <asm/signal.h>
+#if defined(__x86_64__)
 #include <asm/stat.h>
+#endif
 #include <asm/statfs.h>
 #include <linux/aio_abi.h>
 #include <linux/eventpoll.h>
@@ -45,6 +47,10 @@ typedef __kernel_old_dev_t dev_t;
 typedef __kernel_ino_t     ino_t;
 typedef __kernel_clockid_t clockid_t;
 typedef __kernel_fd_set    fd_set;
+
+#if defined(__powerpc64__)
+#include "stat.h"
+#endif
 
 /* linux/time.h */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 18, 0)
