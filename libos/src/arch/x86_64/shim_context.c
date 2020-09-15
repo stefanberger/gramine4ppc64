@@ -187,7 +187,8 @@ static bool libos_xstate_copy(struct libos_xstate* dst, const struct libos_xstat
     return src_is_xstate;
 }
 
-noreturn void restore_child_context_after_clone(struct libos_context* context) {
+noreturn void restore_child_context_after_clone(struct libos_context* context, bool is_process) {
+    __UNUSED(is_process);
     assert(context->regs);
 
     /* Set 0 as child return value. */
