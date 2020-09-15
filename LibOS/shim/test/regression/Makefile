@@ -91,7 +91,12 @@ c_executables = \
 	vfork_and_exec \
 	$(c_executables-$(ARCH))
 
-cxx_executables = bootstrap_cpp
+ifeq ($(ARCH),ppc64)
+c_executables += \
+	sighandler_contextswitch
+endif
+
+cxx_executables-x86_64 = bootstrap_cpp
 
 repo_manifests = \
 	argv_from_file.manifest \
@@ -111,12 +116,12 @@ repo_manifests = \
 # Empty rule to prevent overriding them using "%.manifest: manifest.template" rule.
 $(repo_manifests): ;
 
-gen_manifests = $(filter-out $(repo_manifests),$(addsuffix .manifest,$(c_executables) $(cxx_executables)))
+gen_manifests = $(filter-out $(repo_manifests),$(addsuffix .manifest,$(c_executables) $(cxx_executables-$(ARCH))))
 all_manifests = $(repo_manifests) $(gen_manifests)
 
 exec_target = \
 	$(c_executables) \
-	$(cxx_executables)
+	$(cxx_executables-$(ARCH))
 
 # repo_manifests needs to be included here to generate .manifest.sgx on SGX also for them.
 target = \
@@ -150,6 +155,7 @@ CFLAGS-futex_wake_op = -pthread
 CFLAGS-proc_common = -pthread
 CFLAGS-spinlock += -I$(PALDIR)/../include/lib -I$(PALDIR)/../include/arch/$(ARCH) -pthread
 CFLAGS-sigaction_per_process += -pthread
+CFLAGS-sighandler_contextswitch += -O0 -mno-vsx
 CFLAGS-signal_multithread += -pthread
 CFLAGS-pthread_set_get_affinity += -pthread
 CFLAGS-gettimeofday += -pthread
