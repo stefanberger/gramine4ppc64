@@ -673,6 +673,22 @@ out:
     return ret;
 }
 
+#if defined(__NR_send)
+ssize_t libos_syscall_send(int fd, const void* buf, size_t len, unsigned int flags) {
+    struct libos_handle* handle = get_fd_handle(fd, NULL, NULL);
+    if (!handle) {
+        return -EBADF;
+    }
+
+    struct iovec iovbuf = {
+        .iov_base = (void*)buf,
+        .iov_len  = len,
+    };
+
+    return do_sendmsg(handle, &iovbuf, 1, NULL, 0, flags);
+}
+#endif
+
 long libos_syscall_sendto(int fd, void* buf, size_t len, unsigned int flags, void* addr,
                           int addrlen) {
     if (addr) {
@@ -909,6 +925,21 @@ out:
     }
     return ret;
 }
+
+#if defined(__NR_recv)
+long libos_syscall_recv(int fd, void* buf, size_t len, unsigned int flags) {
+    struct libos_handle* handle = get_fd_handle(fd, NULL, NULL);
+    if (!handle) {
+        return -EBADF;
+    }
+
+    struct iovec iovbuf;
+    iovbuf.iov_base = (void*)buf;
+    iovbuf.iov_len  = len;
+
+    return do_recvmsg(handle, &iovbuf, 1, NULL, 0, &flags);
+}
+#endif
 
 long libos_syscall_recvfrom(int fd, void* buf, size_t len, unsigned int flags, void* addr,
                             int* _addrlen) {
@@ -1367,3 +1398,69 @@ out:
     put_handle(handle);
     return ret;
 }
+
+#if defined(__NR_socketcall)
+/* Also see socketcall:
+   https://elixir.bootlin.com/linux/v5.9/source/net/socket.c#L2853
+ */
+long libos_syscall_socketcall(int call, unsigned long* args) {
+    const unsigned char numargs[SYS_SENDMMSG + 1] = {
+        0, 3, 3, 3, 2, 3, 3, 3, 4, 4, 4, 6, 6, 2, 5, 5, 3, 3, 4, 5, 4
+    };
+    if (call < 1 || (unsigned int)call > ARRAY_SIZE(numargs))
+        return -EINVAL;
+
+    size_t len = numargs[call] * sizeof(unsigned long);
+    if (!is_user_memory_readable(args, len))
+        return -EFAULT;
+
+    switch (call) {
+    case SYS_SOCKET:
+        return libos_syscall_socket(args[0], args[1], args[2]);
+    case SYS_BIND:
+        return libos_syscall_bind(args[0], (struct sockaddr*)args[1], args[2]);
+    case SYS_CONNECT:
+        return libos_syscall_connect(args[0], (struct sockaddr*)args[1], args[2]);
+    case SYS_LISTEN:
+        return libos_syscall_listen(args[0], args[1]);
+    case SYS_ACCEPT:
+        return libos_syscall_accept(args[0], (struct sockaddr*)args[1], (int *)args[2]);
+    case SYS_GETSOCKNAME:
+        return libos_syscall_getsockname(args[0], (struct sockaddr*)args[1], (int*)args[2]);
+    case SYS_GETPEERNAME:
+        return libos_syscall_getsockname(args[0], (struct sockaddr*)args[1], (int*)args[2]);
+    case SYS_SOCKETPAIR:
+        return libos_syscall_socketpair(args[0], args[1], args[2], (int*)args[3]);
+    case SYS_SEND:
+        return libos_syscall_sendto(args[0], (void*)args[1], args[2], args[3], NULL, 0);
+    case SYS_RECV:
+        return libos_syscall_recvfrom(args[0], (void*)args[1], args[2], args[3], NULL, NULL);
+    case SYS_SENDTO:
+        return libos_syscall_sendto(args[0], (void*)args[1], args[2], args[3],
+                                    (struct sockaddr*)args[4], args[5]);
+    case SYS_RECVFROM:
+        return libos_syscall_recvfrom(args[0], (void*)args[1], args[2], args[3],
+                                      (struct sockaddr*)args[4], (int*)args[5]);
+    case SYS_SHUTDOWN:
+        return libos_syscall_shutdown(args[0], args[1]);
+    case SYS_SETSOCKOPT:
+        return libos_syscall_setsockopt(args[0], args[1], args[2], (char*)args[3], args[4]);
+    case SYS_GETSOCKOPT:
+        return libos_syscall_getsockopt(args[0], args[1], args[2], (char*)args[3], (int*)args[4]);
+    case SYS_SENDMSG:
+        return libos_syscall_sendmsg(args[0], (struct msghdr*)args[1], args[2]);
+    case SYS_RECVMSG:
+        return libos_syscall_recvmsg(args[0], (struct msghdr*)args[1], args[2]);
+    case SYS_ACCEPT4:
+        return libos_syscall_accept4(args[0], (struct sockaddr*)args[1], (int*)args[2], args[3]);
+    case SYS_RECVMMSG:
+        return libos_syscall_recvmmsg(args[0], (struct mmsghdr*)args[1], args[2], args[3],
+                                      (struct __kernel_timespec*)args[4]);
+    case SYS_SENDMMSG:
+        return libos_syscall_sendmmsg(args[0], (struct mmsghdr*)args[1], args[2], args[3]);
+    default:
+        log_debug("socketcall %d not supported", call);
+        return -EINVAL;
+    }
+}
+#endif
