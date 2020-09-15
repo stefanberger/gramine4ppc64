@@ -12,6 +12,6 @@ endif
 $(targets):
 	$(MAKE) -C Scripts $@
 	$(MAKE) -C Pal $@
-	echo $(MAKE) -C LibOS $@
+	$(MAKE) -C LibOS $@
 	$(MAKE) -C Runtime $@
 	$(MAKE) -C Tools $@
