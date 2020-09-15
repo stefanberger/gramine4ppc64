@@ -711,7 +711,7 @@ static int check_futex_ptr(uint32_t* ptr, bool check_write) {
 }
 
 static int _libos_syscall_futex(uint32_t* uaddr, int op, uint32_t val, void* utime, uint32_t* uaddr2,
-                                uint32_t val3) {
+                                uint32_t val3, bool is64bit) {
     int cmd = op & FUTEX_CMD_MASK;
     bool no_timeout = true;
     uint64_t timeout = 0;
@@ -719,11 +719,19 @@ static int _libos_syscall_futex(uint32_t* uaddr, int op, uint32_t val, void* uti
 
     if (utime && (cmd == FUTEX_WAIT || cmd == FUTEX_WAIT_BITSET || cmd == FUTEX_LOCK_PI ||
                   cmd == FUTEX_WAIT_REQUEUE_PI)) {
-        struct __kernel_timespec* user_timeout = utime;
-        if (!is_user_memory_readable(user_timeout, sizeof(*user_timeout))) {
-            return -EFAULT;
+        if (!is64bit) {
+            struct __kernel_timespec* user_timeout = utime;
+            if (!is_user_memory_readable(user_timeout, sizeof(*user_timeout))) {
+                return -EFAULT;
+            }
+            timeout = timespec_to_us(user_timeout);
+        } else {
+            struct __kernel_timespec64* user_timeout = utime;
+            if (!is_user_memory_readable(user_timeout, sizeof(*user_timeout))) {
+                return -EFAULT;
+            }
+            timeout = timespec64_to_us((struct __kernel_timespec64*)utime);
         }
-        timeout = timespec_to_us(user_timeout);
         if (cmd != FUTEX_WAIT) {
             /* For FUTEX_WAIT, timeout is interpreted as a relative value, which differs from other
              * futex operations, where timeout is interpreted as an absolute value. */
@@ -809,8 +817,16 @@ static int _libos_syscall_futex(uint32_t* uaddr, int op, uint32_t val, void* uti
 long libos_syscall_futex(int* uaddr, int op, int val, void* utime, int* uaddr2, int val3) {
     static_assert(sizeof(int) == 4, "futexes are defined to be 32-bit");
     return _libos_syscall_futex((uint32_t*)uaddr, op, (uint32_t)val, utime, (uint32_t*)uaddr2,
-                                (uint32_t)val3);
+                                (uint32_t)val3, false);
 }
+
+#if defined(__NR_futex_time64)
+long libos_syscall_futex_time64(int *uaddr, int op, int val, void* utime, int* uaddr2, int val3) {
+    static_assert(sizeof(int) == 4, "futexes are defined to be 32-bit");
+    return _libos_syscall_futex((uint32_t*)uaddr, op, (uint32_t)val, utime, (uint32_t*)uaddr2,
+                                (uint32_t)val3, true);
+}
+#endif
 
 long libos_syscall_set_robust_list(struct robust_list_head* head, size_t len) {
     if (len != sizeof(struct robust_list_head)) {
