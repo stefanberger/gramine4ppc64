@@ -16,7 +16,7 @@ static int copy_value(void* addr, size_t size, uint64_t* out_value) {
     if (!addr || size > sizeof(*out_value))
         return -PAL_ERROR_INVAL;
 
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__powerpc64__)
     /* the copy below assumes little-endian machines (which x86 is) */
     *out_value = 0;
     memcpy(out_value, addr, size);
