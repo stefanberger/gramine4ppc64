@@ -68,7 +68,9 @@ static int clone_implementation_wrapper(struct shim_clone_args* arg) {
 
     shim_tcb_init();
     set_cur_thread(my_thread);
-    update_fs_base(arg->fs_base);
+
+    uint64_t fs_base = arg->fs_base;
+    update_fs_base(fs_base);
 
     /* only now we can call LibOS/PAL functions because they require a set-up TCB;
      * do not move the below functions before shim_tcb_init/set_cur_thread()! */
@@ -114,12 +116,13 @@ static int clone_implementation_wrapper(struct shim_clone_args* arg) {
 
     /* Inform the parent thread that we finished initialization. */
     DkEventSet(arg->initialize_event);
+    /* !!! arg is now useless */
 
     debug("child swapping stack to %p return 0x%lx: %d\n", stack, shim_regs_get_ip(&regs),
           my_thread->tid);
 
     tcb->context.regs = &regs;
-    fixup_child_context(tcb->context.regs);
+    fixup_child_context(tcb->context.regs, stack, fs_base);
     shim_context_set_sp(&tcb->context, (unsigned long)stack);
 
     put_thread(my_thread);
@@ -139,7 +142,9 @@ static BEGIN_MIGRATION_DEF(fork, struct shim_process* process_description,
     DEFINE_MIGRATE(brk, NULL, 0);
     DEFINE_MIGRATE(loaded_libraries, NULL, 0);
 #ifdef DEBUG
+#if !defined(__powerpc64__)
     DEFINE_MIGRATE(gdb_map, NULL, 0);
+#endif
 #endif
     DEFINE_MIGRATE(groups_info, NULL, 0);
 }
@@ -253,8 +258,14 @@ static long do_clone_new_vm(unsigned long flags, struct shim_thread* thread, uns
     return ret;
 }
 
+#if defined(__i386__) || defined(__x86_64__)
 long shim_do_clone(unsigned long flags, unsigned long user_stack_addr, int* parent_tidptr,
                   int* child_tidptr, unsigned long tls) {
+#elif defined(__powerpc64__)
+/* tls already contains the TLS_TCB_OFFSET */
+long shim_do_clone (unsigned long flags, unsigned long user_stack_addr, int* parent_tidptr,
+                    unsigned long tls, void* child_tidptr) {
+#endif
     /*
      * Currently not supported:
      * CLONE_PARENT
