@@ -40,13 +40,10 @@
 
 #include "common.h"
 
-/* this test can be augmented to run on any arch, but we currently only care about x86-64 */
-#ifndef __x86_64__
-#error Unsupported architecture
-#endif
-
+/* this test can be augmented to run on any arch, but we currently only care about x86-64 & ppc64 */
 uint64_t mem_read(void* addr) __attribute__((visibility("internal")));
 void ret(void) __attribute__((visibility("internal")));
+#if defined(__x86_64__)
 __asm__ (
 ".pushsection .text\n"
 ".type mem_read, @function\n"
@@ -57,6 +54,20 @@ __asm__ (
     "ret\n"
 ".popsection\n"
 );
+#elif defined(__powerpc64__)
+__asm__ (
+".pushsection .text\n"
+".type mem_read, @function\n"
+".type ret, @function\n"
+"mem_read:\n"
+    "ld %r3, 0(%r3)\n"
+"ret:\n"
+    "blr\n"
+".popsection\n"
+);
+#else
+#error Unsupported architecture
+#endif
 
 static int g_sigbus_triggered = 0;
 
@@ -66,14 +77,27 @@ static void sigbus_handler(int signum, siginfo_t* si, void* uc) {
         _Exit(1);
     }
 
+#if defined(__x86_64)
     uint64_t rip = ((ucontext_t*)uc)->uc_mcontext.gregs[REG_RIP];
+#elif defined(__powerpc64__)
+    uint64_t rip = ((ucontext_t*)uc)->uc_mcontext.regs->nip;
+#else
+# error Unsupported architecture
+#endif
     if (rip != (uint64_t)(mem_read))
         _Exit(1);
 
     g_sigbus_triggered++;
 
+#if defined(__x86_64__)
     ((ucontext_t*)uc)->uc_mcontext.gregs[REG_RAX] = 0xdeadbeef;
     ((ucontext_t*)uc)->uc_mcontext.gregs[REG_RIP] = (uint64_t)ret;
+#elif defined(__powerpc64__)
+    ((ucontext_t*)uc)->uc_mcontext.regs->gpr[3] = 0xdeadbeef;
+    ((ucontext_t*)uc)->uc_mcontext.regs->nip = (uint64_t)ret;
+#else
+# error Unsupported architecture
+#endif
 }
 
 static void run_tests(char* m, const char* write_path) {
