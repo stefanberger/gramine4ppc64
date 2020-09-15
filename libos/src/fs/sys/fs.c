@@ -268,7 +268,9 @@ static void init_cpu_dir(struct pseudo_node* cpu) {
     pseudo_add_str(indexX, "size", &sys_cache_load);
     pseudo_add_str(indexX, "coherency_line_size", &sys_cache_load);
     pseudo_add_str(indexX, "number_of_sets", &sys_cache_load);
+#if !defined(__powerpc64__)
     pseudo_add_str(indexX, "physical_line_partition", &sys_cache_load);
+#endif
 }
 
 static void init_node_dir(struct pseudo_node* node) {
