@@ -10,6 +10,7 @@
 #include <asm/posix_types.h>
 #include <asm/siginfo.h>
 #include <asm/signal.h>
+#include <sys/types.h>
 #include <asm/stat.h>
 #include <asm/statfs.h>
 #include <linux/aio_abi.h>
@@ -178,3 +179,9 @@ struct libos_lock {
 /* This is not defined in the older kernels e.g. the default kernel on Ubuntu 18.04. */
 #define EPOLLNVAL ((uint32_t)0x00000020)
 #endif
+
+/* powerpc64 needs this: */
+struct timespec64 {
+    int64_t tv_sec;
+    long tv_nsec;
+};
