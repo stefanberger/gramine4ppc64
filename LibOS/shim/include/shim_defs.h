@@ -20,6 +20,8 @@
 
 #if defined(__i386__) || defined(__x86_64__)
 #define LIBOS_SYSCALL_BOUND (340 + 1)
+#elif defined(__powerpc64__)
+#define LIBOS_SYSCALL_BOUND (500 + 1)
 #endif
 
 #endif /* _SHIM_DEFS_H_ */
