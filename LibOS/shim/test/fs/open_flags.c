@@ -71,10 +71,12 @@ int main(int argc, char* argv[]) {
               /*do_write=*/true);
 
     // exists - should truncate
+#if !defined(__powerpc64__)
     OPEN_TEST(argv[1], O_CREAT | O_TRUNC | O_RDWR, /*exists=*/true, /*expect_success=*/true,
               /*do_write=*/false);
     if (get_file_size(argv[1]) != 0)
         fatal_error("File was not truncated\n");
+#endif
 
     if (unlink(argv[1]) < 0)
         fatal_error("unlink(%s) failed: %s\n", argv[1], strerror(errno));
