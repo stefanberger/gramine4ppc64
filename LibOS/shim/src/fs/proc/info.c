@@ -141,8 +141,11 @@ int proc_cpuinfo_load(struct shim_dentry* dent, char** out_data, size_t* out_siz
         return -ENOMEM;
 
     const struct pal_topo_info* ti = &g_pal_public_state->topo_info;
+#if defined(__x86_64__)
     const struct pal_cpu_info* ci = &g_pal_public_state->cpu_info;
+#endif
     for (size_t i = 0; i < ti->online_logical_cores_cnt; i++) {
+#if defined(__x86_64__)
         /* Below strings must match exactly the strings retrieved from /proc/cpuinfo
          * (see Linux's arch/x86/kernel/cpu/proc.c) */
         ADD_INFO("processor\t: %lu\n",   i);
@@ -158,8 +161,23 @@ int proc_cpuinfo_load(struct shim_dentry* dent, char** out_data, size_t* out_siz
         // Apparently Gramine snprintf cannot into floats.
         ADD_INFO("bogomips\t: %lu.%02lu\n", (unsigned long)bogomips,
                  (unsigned long)(bogomips * 100.0 + 0.5) % 100);
+#elif defined(__powerpc64__)
+        ADD_INFO("processor\t: %lu\n", i);
+        ADD_INFO("cpu\t\t: %s\n", g_pal_public_state->cpu_info.cpu);
+        ADD_INFO("clock\t\t: %s\n", g_pal_public_state->cpu_info.clock);
+        ADD_INFO("revision\t: %s\n", g_pal_public_state->cpu_info.revision);
+#endif
         ADD_INFO("\n");
     }
+
+#if defined(__powerpc64__)
+    ADD_INFO("timebase\t: %s\n", g_pal_public_state->cpu_info.timebase);
+    ADD_INFO("platform\t: %s\n", g_pal_public_state->cpu_info.platform);
+    ADD_INFO("model\t\t: %s\n", g_pal_public_state->cpu_info.model);
+    ADD_INFO("machine\t\t: %s\n", g_pal_public_state->cpu_info.machine);
+    ADD_INFO("firmware\t: %s\n", g_pal_public_state->cpu_info.firmware);
+    ADD_INFO("MMU\t\t: %s\n", g_pal_public_state->cpu_info.mmu);
+#endif
 
     *out_data = str;
     *out_size = size;
