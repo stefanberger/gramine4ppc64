@@ -57,7 +57,9 @@ static int clone_implementation_wrapper(struct shim_clone_args* arg) {
 
     shim_tcb_init();
     set_cur_thread(my_thread);
-    update_fs_base(arg->fs_base);
+
+    uint64_t fs_base = arg->fs_base;
+    update_fs_base(fs_base);
     shim_tcb_t* tcb = my_thread->shim_tcb;
 
     /* only now we can call LibOS/PAL functions because they require a set-up TCB;
@@ -104,6 +106,7 @@ static int clone_implementation_wrapper(struct shim_clone_args* arg) {
 
     /* Don't signal the initialize event until we are actually init-ed */
     DkEventSet(arg->initialize_event);
+    /* !!! arg is now useless */
 
     /***** From here down, we are switching to the user-provided stack ****/
 
@@ -114,7 +117,7 @@ static int clone_implementation_wrapper(struct shim_clone_args* arg) {
           my_thread->tid);
 
     tcb->context.regs = &regs;
-    fixup_child_context(tcb->context.regs);
+    fixup_child_context(tcb->context.regs, stack, fs_base);
     shim_context_set_sp(&tcb->context, (unsigned long)stack);
 
     put_thread(my_thread);
@@ -152,8 +155,14 @@ static int migrate_fork(struct shim_cp_store* store, struct shim_thread* thread,
     return ret;
 }
 
+#if defined(__i386__) || defined(__x86_64__)
 long shim_do_clone(unsigned long flags, unsigned long user_stack_addr, int* parent_tidptr,
-                  int* child_tidptr, unsigned long tls) {
+                   int* child_tidptr, unsigned long tls) {
+#elif defined(__powerpc64__)
+/* tls already contains the TLS_TCB_OFFSET */
+long shim_do_clone (unsigned long flags, unsigned long user_stack_addr, int* parent_tidptr,
+                    unsigned long tls, void* child_tidptr) {
+#endif
     struct shim_thread* self = get_cur_thread();
     assert(self);
     int* set_parent_tid = NULL;

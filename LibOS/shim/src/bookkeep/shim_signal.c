@@ -565,6 +565,7 @@ static void illegal_upcall(PAL_PTR event, PAL_NUM arg, PAL_CONTEXT* context) {
             !(lookup_vma((void*)arg, &vma_info)) && !(vma_info.flags & VMA_INTERNAL)) {
         assert(context);
 
+#if defined(__i386__) || defined(__x86_64__)
         uint8_t* rip = (uint8_t*)pal_context_get_ip(context);
         /*
          * Emulate syscall instruction (opcode 0x0f 0x05);
@@ -606,6 +607,8 @@ static void illegal_upcall(PAL_PTR event, PAL_NUM arg, PAL_CONTEXT* context) {
                   (unsigned long)rip);
             deliver_signal(ALLOC_SIGINFO(SIGILL, ILL_ILLOPC, si_addr, (void*)arg), context);
         }
+#elif defined(__powerpc64__)
+#endif
     } else {
         internal_fault("Illegal instruction during Graphene internal execution", arg, context);
     }
@@ -688,7 +691,7 @@ static __rt_sighandler_t get_sighandler(struct shim_thread* thread, int sig, boo
      * because 1-3 arguments are passed by register and
      * sa_handler simply ignores 2nd and 3rd argument.
      */
-#ifndef __x86_64__
+#if !defined(__x86_64__) && !defined(__powerpc64__)
 #error "get_sighandler: see the comment above"
 #endif
 
