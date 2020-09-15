@@ -42,8 +42,10 @@ static int cache_info_open(struct shim_handle* hdl, const char* name, int flags)
         cache_filebuf = cache->coherency_line_size;
     } else if (!strcmp(filename, "number_of_sets")) {
         cache_filebuf = cache->number_of_sets;
+#if !defined(__powerpc64__)
     } else if (!strcmp(filename, "physical_line_partition")) {
         cache_filebuf = cache->physical_line_partition;
+#endif
     } else {
         log_debug("Unrecognized file %s\n", name);
         return -ENOENT;
