@@ -20,7 +20,9 @@
 
 #define MBEDTLS_AESNI_C
 #define MBEDTLS_AES_C
+#if defined(__x86_64__)
 #define MBEDTLS_AES_USE_HARDWARE_ONLY
+#endif
 #define MBEDTLS_ASN1_PARSE_C
 #define MBEDTLS_ASN1_WRITE_C
 #define MBEDTLS_BASE64_C
