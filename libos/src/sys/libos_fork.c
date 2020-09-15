@@ -10,9 +10,17 @@
 #include "libos_table.h"
 
 long libos_syscall_fork(void) {
+#if defined(__i386__) || defined(__x86_64__)
     return libos_syscall_clone(SIGCHLD, 0, NULL, NULL, 0);
+#elif defined(__powerpc64__)
+    return libos_syscall_clone(SIGCHLD, 0, NULL, 0, NULL);
+#endif
 }
 
 long libos_syscall_vfork(void) {
+#if defined(__i386__) || defined(__x86_64__)
     return libos_syscall_clone(CLONE_VFORK | CLONE_VM | SIGCHLD, 0, NULL, NULL, 0);
+#elif defined(__powerpc64__)
+    return libos_syscall_clone(CLONE_VFORK | CLONE_VM | SIGCHLD, 0, NULL, 0, NULL);
+#endif
 }
