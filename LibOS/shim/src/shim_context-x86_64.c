@@ -185,7 +185,8 @@ static bool shim_xstate_copy(struct shim_xstate* dst, const struct shim_xstate* 
     return src_is_xstate;
 }
 
-noreturn void restore_child_context_after_clone(struct shim_context* context) {
+noreturn void restore_child_context_after_clone(struct shim_context* context, bool is_process) {
+    __UNUSED(is_process);
     assert(context->regs);
 
     /* Set 0 as child return value. */
@@ -193,7 +194,7 @@ noreturn void restore_child_context_after_clone(struct shim_context* context) {
 
     context->syscall_nr = -1;
 
-    set_tls(context->tls);
+    set_tls(context->tls, NULL);
 
     PAL_CONTEXT* regs = context->regs;
     context->regs = NULL;

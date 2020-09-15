@@ -41,8 +41,10 @@ static int cache_info_open(struct shim_handle* hdl, const char* name, int flags)
         cache_filebuf = pal_control.topo_info.core_topology[cpunum].cache[idx].coherency_line_size;
     } else if (!strcmp(filename, "number_of_sets")) {
         cache_filebuf = pal_control.topo_info.core_topology[cpunum].cache[idx].number_of_sets;
+#if !defined(__powerpc64__)
     } else if (!strcmp(filename, "physical_line_partition")) {
         cache_filebuf = pal_control.topo_info.core_topology[cpunum].cache[idx].physical_line_partition;
+#endif
     } else {
         debug("Unrecognized file %s\n", name);
         return -ENOENT;
