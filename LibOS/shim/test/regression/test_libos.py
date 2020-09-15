@@ -10,6 +10,8 @@ import unittest
 from regression import (
     HAS_SGX,
     ON_X86,
+    ON_PPC,
+    ON_TRAVIS,
     RegressionTestCase,
 )
 
@@ -526,6 +528,11 @@ class TC_30_Syscall(RegressionTestCase):
         stdout, _ = self.run_binary(['kill_all'])
         self.assertIn('TEST OK', stdout)
 
+    @unittest.skipUnless(ON_PPC, "ppc64-specific")
+    def test_096_sighandler_contextswitch(self):
+        stdout, _ = self.run_binary(['sighandler_contextswitch'])
+        self.assertIn('TEST OK', stdout)
+
     def test_100_get_set_groups(self):
         stdout, _ = self.run_binary(['groups'])
         self.assertIn('child OK', stdout)
@@ -582,7 +589,8 @@ class TC_40_FileSystem(RegressionTestCase):
         self.assertIn('/proc/2/cwd/proc_common.c', stdout)
         self.assertIn('/lib/libpthread.so', stdout)
         self.assertIn('stack', stdout)
-        self.assertIn('vendor_id', stdout)
+        if ON_X86:
+            self.assertIn('vendor_id', stdout)
 
     def test_001_devfs(self):
         stdout, _ = self.run_binary(['devfs'])
@@ -597,6 +605,7 @@ class TC_40_FileSystem(RegressionTestCase):
         self.assertIn('Four bytes from /dev/urandom', stdout)
         self.assertIn('TEST OK', stdout)
 
+    @unittest.skipIf(not os.path.exists("/dev/kmsg"), "no access to /dev/kmsg on Travis for PowerPC64")
     def test_002_device(self):
         stdout, _ = self.run_binary(['device'])
         self.assertIn('TEST OK', stdout)
@@ -615,11 +624,13 @@ class TC_40_FileSystem(RegressionTestCase):
         stdout, _ = self.run_binary(['fdleak'], timeout=10)
         self.assertIn("Test succeeded.", stdout)
 
+    @unittest.skipIf(ON_TRAVIS & ON_PPC, "necessary files not available on Travis")
     def test_040_sysfs(self):
         stdout, _ = self.run_binary(['sysfs_common'])
         self.assertIn('TEST OK', stdout)
 
 
+@unittest.skipIf(ON_PPC, "not supported on PowerPC64")
 class TC_50_GDB(RegressionTestCase):
     def setUp(self):
         if not self.has_debug():
