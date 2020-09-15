@@ -7,6 +7,9 @@
 
 #pragma once
 
+#if defined(__powerpc64__)
+ #include <stat_types.h>
+#endif
 #include <asm/stat.h>
 #include <stdbool.h>
 #include <stdint.h>
