@@ -29,5 +29,9 @@ if host_machine.cpu_family() == 'x86_64'
 #   gcc_libs += 'gcc-build/x86_64-pc-linux-gnu/libgomp/.libs/libgomp.so.1'
 endif
 
+if host_machine.cpu_family() == 'ppc64le' or host_machine.cpu_family() == 'ppc64'
+    glibc_libs += 'glibc-build/elf/ld64.so.2'
+endif
+
 install_data(glibc_libs + gcc_libs,
     install_dir: join_paths(pkglibdir, 'runtime', 'glibc'))
