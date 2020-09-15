@@ -9,6 +9,11 @@
 /* These need to be binary-identical with the ones used by Linux. */
 
 // TODO: remove all of these includes and make this header libc-independent.
+#if defined(__powerpc64__)
+/* needed for asm/stat.h */
+ #include <stat_types.h>
+#endif
+
 #include <asm/errno.h>
 #include <asm/poll.h>
 #include <asm/posix_types.h>
