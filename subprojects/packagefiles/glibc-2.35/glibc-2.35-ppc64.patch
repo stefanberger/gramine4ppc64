@@ -1,0 +1,303 @@
+From 57f9fbd629e1bf011eed0d002b122a8bb942a6b7 Mon Sep 17 00:00:00 2001
+From: Stefan Berger <stefanb@linux.ibm.com>
+Date: Mon, 18 Jul 2022 01:53:17 +0000
+Subject: [PATCH] glibc-2.35 for gramine ppc64
+
+---
+ sysdeps/powerpc/nptl/tls.h                    | 14 +++++++
+ sysdeps/powerpc/powerpc64/sysdep.h            | 32 ++++++++-------
+ .../linux/powerpc/powerpc64/____longjmp_chk.S |  2 +-
+ .../unix/sysv/linux/powerpc/powerpc64/clone.S | 39 ++++++++++++++++++-
+ sysdeps/unix/sysv/linux/powerpc/syscall.S     | 25 ++++++++++++
+ sysdeps/unix/sysv/linux/powerpc/sysdep.h      | 30 ++++++++++++--
+ 6 files changed, 123 insertions(+), 19 deletions(-)
+
+diff --git a/sysdeps/powerpc/nptl/tls.h b/sysdeps/powerpc/nptl/tls.h
+index b80d39ad41..4375672781 100644
+--- a/sysdeps/powerpc/nptl/tls.h
++++ b/sysdeps/powerpc/nptl/tls.h
+@@ -66,6 +66,8 @@
+    are private.  */
+ typedef struct
+ {
++  /* LibOS needs its own TCB */
++  void *LibOS_TCB;
+   /* Reservation for HWCAP data.  To be accessed by GCC in
+      __builtin_cpu_supports(), so it is a part of public ABI.  */
+   uint64_t hwcap;
+@@ -136,9 +138,14 @@ typedef struct
+    operation can cause a failure 'errno' must not be touched.  */
+ # define TLS_INIT_TP(tcbp) \
+   ({ 									      \
++    void *libostcb = NULL;						      \
++    if (__thread_register) {						      \
++      libostcb = THREAD_GET_LIBOS_TCB();				      \
++    }									      \
+     __thread_register = (void *) (tcbp) + TLS_TCB_OFFSET;		      \
+     THREAD_SET_HWCAP (__tcb_hwcap);					      \
+     THREAD_SET_AT_PLATFORM (__tcb_platform);				      \
++    THREAD_SET_LIBOS_TCB (libostcb);					      \
+     NULL;								      \
+   })
+ 
+@@ -203,6 +210,13 @@ typedef struct
+ # define THREAD_SET_AT_PLATFORM(value) \
+     (THREAD_GET_AT_PLATFORM () = (value))
+ 
++/* LibOS_TCN field in TCB head.  */
++# define THREAD_GET_LIBOS_TCB() \
++    (((tcbhead_t *) ((char *) __thread_register				      \
++		     - TLS_TCB_OFFSET))[-1].LibOS_TCB)
++# define THREAD_SET_LIBOS_TCB(value) \
++    (THREAD_GET_LIBOS_TCB () = (value))
++
+ /* l_tls_offset == 0 is perfectly valid on PPC, so we have to use some
+    different value to mean unset l_tls_offset.  */
+ # define NO_TLS_OFFSET		-1
+diff --git a/sysdeps/powerpc/powerpc64/sysdep.h b/sysdeps/powerpc/powerpc64/sysdep.h
+index 3fec06e0df..af65f13f44 100644
+--- a/sysdeps/powerpc/powerpc64/sysdep.h
++++ b/sysdeps/powerpc/powerpc64/sysdep.h
+@@ -319,18 +319,23 @@ LT_LABELSUFFIX(name,_name_end): ; \
+    to save its content beforehand.  */
+ # define DO_CALL(syscall) \
+     li r0,syscall; \
+-    NVOLREG_SAVE; \
+-    CHECK_SCV_SUPPORT r31 0f; \
+-    DO_CALL_SCV; \
+-    b 1f; \
+-0:  DO_CALL_SC; \
++    /*NVOLREG_SAVE;*/ \
++    /*CHECK_SCV_SUPPORT r31 0f;*/ \
++    /*DO_CALL_SCV;*/ \
++    /*b 1f;*/ \
++0:  DO_CALL_SC \
+ 1:
+ #endif /* !defined(USE_PPC_SCV) || IS_IN(rtld) */
+ 
++#define DO_CALL_STACKROOM(syscall, STACKROOM) \
++    li 0,syscall; \
++    SYSCALLDB_R9(STACKROOM)
++
+ /* DO_CALL_SC and DO_CALL_SCV expect the syscall number to be in r0.  */
+ #define DO_CALL_SC \
+-    sc
++    SYSCALLDB_R9(256)
+ 
++#if 0
+ #define DO_CALL_SCV \
+     mflr r9; \
+     std r9,SCV_FRAME_SIZE+FRAME_LR_SAVE(r1);   \
+@@ -342,6 +347,7 @@ LT_LABELSUFFIX(name,_name_end): ; \
+     ld r9,SCV_FRAME_SIZE+FRAME_LR_SAVE(r1);      \
+     mtlr r9; \
+     cfi_restore(lr);
++#endif
+ 
+ /* ppc64 is always PIC */
+ #undef JUMPTARGET
+@@ -390,11 +396,11 @@ LT_LABELSUFFIX(name,_name_end): ; \
+    set, we know we have entered the kernel using scv, so handle the return code
+    accordingly.  */
+ # define PSEUDO_RET \
+-    cmpdi cr5,r31,0; \
+-    NVOLREG_RESTORE; \
+-    beq cr5,0f; \
+-    RET_SCV; \
+-    b 1f; \
++    /*cmpdi cr5,r31,0;*/ \
++    /*NVOLREG_RESTORE;*/ \
++    /*beq cr5,0f;*/ \
++    /*RET_SCV;*/ \
++    /*b 1f;*/ \
+ 0:  RET_SC; \
+ 1:  TAIL_CALL_SYSCALL_ERROR
+ #endif /* !defined(USE_PPC_SCV) || IS_IN(rtld) */
+@@ -425,7 +431,7 @@ LT_LABELSUFFIX(name,_name_end): ; \
+ #else
+ /* This should only be called after a DO_CALL.  */
+ # define PSEUDO_RET_NOERRNO \
+-    NVOLREG_RESTORE; \
++    /*NVOLREG_RESTORE;*/ \
+     blr
+ #endif /* !defined(USE_PPC_SCV) || IS_IN(rtld) */
+ 
+@@ -446,7 +452,7 @@ LT_LABELSUFFIX(name,_name_end): ; \
+ #else
+ /* This should only be called after a DO_CALL.  */
+ # define PSEUDO_RET_ERRVAL \
+-    NVOLREG_RESTORE; \
++    /*NVOLREG_RESTORE;*/ \
+     blr
+ #endif /* !defined(USE_PPC_SCV) || IS_IN(rtld) */
+ 
+diff --git a/sysdeps/unix/sysv/linux/powerpc/powerpc64/____longjmp_chk.S b/sysdeps/unix/sysv/linux/powerpc/powerpc64/____longjmp_chk.S
+index a93b8fb3b2..8cc6703d79 100644
+--- a/sysdeps/unix/sysv/linux/powerpc/powerpc64/____longjmp_chk.S
++++ b/sysdeps/unix/sysv/linux/powerpc/powerpc64/____longjmp_chk.S
+@@ -43,7 +43,7 @@
+ 	li	r3,0;					\
+ 	addi	r4,r1,FRAME_MIN_SIZE;			\
+ 	li	r0,__NR_sigaltstack;			\
+-	sc;						\
++	SYSCALLDB_R9(128)				\
+ 	/* Without working sigaltstack we cannot perform the test.  */ \
+ 	bso	.Lok2;					\
+ 	lwz	r0,FRAME_MIN_SIZE+8(r1);		\
+diff --git a/sysdeps/unix/sysv/linux/powerpc/powerpc64/clone.S b/sysdeps/unix/sysv/linux/powerpc/powerpc64/clone.S
+index 0e1c4d140a..c12e01d378 100644
+--- a/sysdeps/unix/sysv/linux/powerpc/powerpc64/clone.S
++++ b/sysdeps/unix/sysv/linux/powerpc/powerpc64/clone.S
+@@ -72,6 +103,7 @@ ENTRY (__clone)
+ 	cfi_endproc
+ 
+ 	/* Do the call.  */
++#if 0
+ 	li 	r0,SYS_ify(clone)
+ #ifdef USE_PPC_SCV
+ 	CHECK_SCV_SUPPORT r28 0f
+@@ -92,6 +124,8 @@ ENTRY (__clone)
+ 	b 1f
+ #endif /* USE_PPC_SCV */
+ 0:      DO_CALL_SC
++#endif
++0:      DO_CALL_STACKROOM(SYS_ify(clone), (/* red zone */32 + FRAME_MIN_SIZE))
+ 
+ 	/* Check for child process.  */
+ 	/* With sc, error is indicated by cr0.SO.  */
+@@ -119,8 +153,10 @@ L(badargs):
+ 	TAIL_CALL_SYSCALL_ERROR
+ 
+ L(parent):
++#if 0
+ 	/* Check if scv is available. */
+ 	cmpdi cr1,r28,0
++#endif
+ 
+ 	/* Parent.  Restore registers & return.  */
+ #ifdef USE_PPC_SCV
+@@ -138,7 +174,8 @@ L(parent):
+ 	cfi_restore(r30)
+ 	cfi_restore(r31)
+ 
++#if 0
+-#ifdef USE_PPC_SCV
++//#ifdef USE_PPC_SCV
+ 	beq cr1,0f
+ 	RET_SCV
+ 	b 1f
+diff --git a/sysdeps/unix/sysv/linux/powerpc/syscall.S b/sysdeps/unix/sysv/linux/powerpc/syscall.S
+index 8e90bb8464..3b8a6668ed 100644
+--- a/sysdeps/unix/sysv/linux/powerpc/syscall.S
++++ b/sysdeps/unix/sysv/linux/powerpc/syscall.S
+@@ -18,6 +18,10 @@
+ #include <sysdep.h>
+ 
+ ENTRY (syscall)
++	mflr r0
++	std  r0,16(r1)
++	stdu r1,-32(r1)
++
+ 	mr   r0,r3
+ 	mr   r3,r4
+ 	mr   r4,r5
+@@ -25,6 +29,26 @@ ENTRY (syscall)
+ 	mr   r6,r7
+ 	mr   r7,r8
+ 	mr   r8,r9
++
++	mr   r9,r0
++
++	// call syscalldb using tcbhead_t->LibOS_TCB, which gives us
++	// PAL_TCB*
++	std   r2,24(r1)
++	subi  r12,r13,0x7000 + TCBHEAD_LIBOS_PTR_FROM_END_OFFSET
++	// pointer to PAL_TCB with tcbhead_t
++	ld   r12,0(r12)
++	// our special offset in PAL_TCB containing syscalldb address
++	ld   r12,GRAMINE_SYSCALL_OFFSET(r12)
++	// function address must be in r12
++	mtctr r12
++	bctrl
++	ld   r2,24(r1)
++
++	addi r1,r1,32
++	ld   r0,16(r1)
++	mtlr r0
++#if 0
+ #if defined(USE_PPC_SCV) && !IS_IN(rtld) && (defined(__PPC64__) || defined(__powerpc64__))
+ 	CHECK_SCV_SUPPORT r9 0f
+ 	stdu r1,-SCV_FRAME_SIZE(r1)
+@@ -36,6 +60,7 @@ ENTRY (syscall)
+ 	b 1f
+ #endif
+ 0:	DO_CALL_SC
++#endif
+ 	RET_SC
+ 1:	TAIL_CALL_SYSCALL_ERROR
+ PSEUDO_END (syscall)
+diff --git a/sysdeps/unix/sysv/linux/powerpc/sysdep.h b/sysdeps/unix/sysv/linux/powerpc/sysdep.h
+index 4fb135aa8d..ee76ff4ef9 100644
+--- a/sysdeps/unix/sysv/linux/powerpc/sysdep.h
++++ b/sysdeps/unix/sysv/linux/powerpc/sysdep.h
+@@ -22,6 +22,8 @@
+ #include <sysdeps/unix/sysv/linux/sysdep.h>
+ #include <sysdeps/unix/powerpc/sysdep.h>
+ #include <tls.h>
++#include <gramine_entry_api.h>
++
+ /* Define __set_errno() for INLINE_SYSCALL macro below.  */
+ #include <errno.h>
+ 
+@@ -93,6 +95,7 @@
+     r3;					\
+   })
+ 
++#if 0
+ #define SYSCALL_SC(nr)				\
+   ({						\
+     __asm__ __volatile__			\
+@@ -107,6 +110,7 @@
+ 	 "xer", "cr0", "ctr", "memory");	\
+     r0 & (1 << 28) ? -r3 : r3;			\
+   })
++#endif
+ 
+ /* This will only be non-empty for 64-bit systems, see below.  */
+ #define TRY_SYSCALL_SCV(nr)
+@@ -138,10 +142,28 @@
+ 
+ # define INTERNAL_SYSCALL_NCS(name, nr, args...)	\
+   ({							\
+-    DECLARE_REGS;					\
+-    LOADARGS_##nr (name, ##args);			\
+-    TRY_SYSCALL_SCV(nr)					\
+-    SYSCALL_SC(nr);					\
++    register long int r0;				\
++    register long int r3 = 0;				\
++    register long int r4 = 0;				\
++    register long int r5 = 0;				\
++    register long int r6 = 0;				\
++    register long int r7 = 0;				\
++    register long int r8 = 0;				\
++    typedef unsigned long (*syscalldb_func)(unsigned long, unsigned long,	\
++			    unsigned long, unsigned long, unsigned long,	\
++                            unsigned long, unsigned long);			\
++    syscalldb_func syscalldb;							\
++    LOADARGS_##nr (name, ##args);						\
++    __asm__ __volatile__("subi %0,13,%1\n\t"					\
++                         "ld %0,0(%0)\n\t"					\
++                         "ld %0,%2(%0)\n\t"					\
++                         : "=&r" (syscalldb)					\
++                         : "i" (0x7000 + TCBHEAD_LIBOS_PTR_FROM_END_OFFSET),	\
++                           "i" (GRAMINE_SYSCALL_OFFSET)			\
++                         :);							\
++    r3 = syscalldb(r3, r4, r5, r6, r7, r8, r0);					\
++    __asm__ __volatile__("mfcr %0\n\t" : "=&r" (r0) ::);			\
++    r0 & (1 << 28) ? -r3 : r3;							\
+   })
+ 
+ #undef INTERNAL_SYSCALL
+-- 
+2.25.1
+
