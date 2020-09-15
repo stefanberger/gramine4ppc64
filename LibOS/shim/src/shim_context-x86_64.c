@@ -55,7 +55,10 @@ void restore_child_context_after_clone(struct shim_context* context) {
  * child thread can _not_ use parent stack. So return right after syscall
  * instruction as if syscall_wrapper is executed.
  */
-void fixup_child_context(struct shim_regs* regs) {
+void fixup_child_context(struct shim_regs* regs, void* stack, uint64_t fs_base) {
+    __UNUSED(stack);
+    __UNUSED(fs_base);
+
     if (regs->rip == (unsigned long)&syscall_wrapper_after_syscalldb) {
         /*
          * we don't need to emulate stack pointer change because %rsp is
