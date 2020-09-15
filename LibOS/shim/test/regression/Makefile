@@ -7,6 +7,9 @@ c_executables-x86_64 = \
 	rdtsc \
 	sighandler_divbyzero
 
+c_executables-ppc64 = \
+	sighandler_contextswitch
+
 c_executables = \
 	abort \
 	abort_multithread \
@@ -141,6 +144,7 @@ CFLAGS-futex_wake_op = -pthread
 CFLAGS-proc_common = -pthread
 CFLAGS-spinlock += -I$(PALDIR)/../include/lib -I$(PALDIR)/../include/arch/$(ARCH) -pthread
 CFLAGS-sigaction_per_process += -pthread
+CFLAGS-sighandler_contextswitch += -O0 -mno-vsx
 CFLAGS-signal_multithread += -pthread
 CFLAGS-pthread_set_get_affinity += -pthread
 CFLAGS-gettimeofday += -pthread
