@@ -78,6 +78,30 @@ long libos_syscall_clock_gettime(clockid_t which_clock, struct timespec* tp) {
     return 0;
 }
 
+#if defined(__NR_clock_gettime64)
+long libos_syscall_clock_gettime64(clockid_t which_clock, struct __kernel_timespec64* tp) {
+    /* all clock are the same */
+    if (!(0 <= which_clock && which_clock < MAX_CLOCKS))
+        return -EINVAL;
+
+    if (!tp)
+        return -EINVAL;
+
+    if (!is_user_memory_writable(tp, sizeof(*tp)))
+        return -EFAULT;
+
+    uint64_t time;
+    int ret = PalSystemTimeQuery(&time);
+    if (ret < 0) {
+        return pal_to_unix_errno(ret);
+    }
+
+    tp->tv_sec  = time / 1000000;
+    tp->tv_nsec = (time % 1000000) * 1000;
+    return 0;
+}
+#endif /* __NR_clock_gettime64 */
+
 long libos_syscall_clock_getres(clockid_t which_clock, struct timespec* tp) {
     /* all clocks are the same */
     if (!(0 <= which_clock && which_clock < MAX_CLOCKS))
@@ -99,3 +123,20 @@ long libos_syscall_clock_getres(clockid_t which_clock, struct timespec* tp) {
     }
     return 0;
 }
+
+#if defined(__NR_clock_getres_time64)
+long libos_syscall_clock_getres_time64(clockid_t which_clock, struct __kernel_timespec64* tp) {
+    /* all clock are the same */
+    if (!(0 <= which_clock && which_clock < MAX_CLOCKS))
+        return -EINVAL;
+
+    if (tp) {
+        if (!is_user_memory_writable(tp, sizeof(*tp)))
+            return -EFAULT;
+
+        tp->tv_sec  = 0;
+        tp->tv_nsec = 1000;
+    }
+    return 0;
+}
+#endif /* __NR_clock_getres_time64 */
