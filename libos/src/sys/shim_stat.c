@@ -187,6 +187,25 @@ static int __do_statfs(struct shim_mount* mount, struct statfs* buf) {
     return 0;
 }
 
+#if defined(__NR_statfs64) || defined(__NR_fstats64)
+static int __do_statfs64(struct shim_mount* mount, struct statfs64* buf) {
+    __UNUSED(mount);
+    if (!is_user_memory_writable(buf, sizeof(*buf)))
+        return -EFAULT;
+
+    memset(buf, 0, sizeof(*buf));
+
+    buf->f_bsize  = 4096;
+    buf->f_blocks = 20000000;
+    buf->f_bfree  = 10000000;
+    buf->f_bavail = 10000000;
+
+    log_debug("statfs64: %ld %ld %ld", buf->f_blocks, buf->f_bfree, buf->f_bavail);
+
+    return 0;
+}
+#endif
+
 long libos_syscall_statfs(const char* path, struct statfs* buf) {
     if (!is_user_string_readable(path))
         return -EFAULT;
@@ -205,6 +224,28 @@ long libos_syscall_statfs(const char* path, struct statfs* buf) {
     return __do_statfs(mount, buf);
 }
 
+#if defined(__NR_statfs64)
+long libos_syscall_statfs64(const char* path, size_t bufsize, struct statfs64* buf) {
+    if (!is_user_string_readable(path))
+        return -EFAULT;
+    if (bufsize != sizeof(*buf))
+        return -EINVAL;
+
+    int ret;
+    struct shim_dentry* dent = NULL;
+
+    lock(&g_dcache_lock);
+    ret = path_lookupat(/*start=*/NULL, path, LOOKUP_FOLLOW, &dent);
+    unlock(&g_dcache_lock);
+    if (ret < 0)
+        return ret;
+
+    struct shim_mount* mount = dent->mount;
+    put_dentry(dent);
+    return __do_statfs64(mount, buf);
+}
+#endif
+
 long libos_syscall_fstatfs(int fd, struct statfs* buf) {
     struct shim_handle* hdl = get_fd_handle(fd, NULL, NULL);
     if (!hdl)
@@ -214,6 +255,21 @@ long libos_syscall_fstatfs(int fd, struct statfs* buf) {
     put_handle(hdl);
     return __do_statfs(mount, buf);
 }
+
+#if defined(__NR_fstatfs64)
+long libos_syscall_fstatfs64(int fd, size_t bufsize, struct statfs64* buf) {
+    if (bufsize != sizeof(*buf))
+        return -EINVAL;
+
+    struct shim_handle* hdl = get_fd_handle(fd, NULL, NULL);
+    if (!hdl)
+        return -EBADF;
+
+    struct shim_mount* mount = hdl->dentry ? hdl->dentry->mount : NULL;
+    put_handle(hdl);
+    return __do_statfs64(mount, buf);
+}
+#endif
 
 /*
  * Handle the special case of `fstatat` with empty path (permitted with AT_EMPTY_PATH). Note that in
