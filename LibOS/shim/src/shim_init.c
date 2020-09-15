@@ -494,7 +494,7 @@ noreturn void* shim_init(int argc, const char** argv, const char** envp) {
     shim_tcb_t* cur_tcb = shim_get_tcb();
 
     if (cur_tcb->context.regs) {
-        restore_child_context_after_clone(&cur_tcb->context);
+        restore_child_context_after_clone(&cur_tcb->context, /*is_process=*/true);
         /* UNREACHABLE */
     }
 
