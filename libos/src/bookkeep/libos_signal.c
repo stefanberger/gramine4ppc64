@@ -464,9 +464,16 @@ static void illegal_upcall(bool is_in_pal, uintptr_t addr, PAL_CONTEXT* context)
     assert(context);
 
     struct libos_vma_info vma_info = {.file = NULL};
-    if (is_internal(get_cur_thread()) || context_is_libos(context)
-            || lookup_vma((void*)addr, &vma_info) || (vma_info.flags & VMA_INTERNAL)) {
-        internal_fault("Illegal instruction during Gramine internal execution", addr, context);
+
+    if (is_internal(get_cur_thread()) || lookup_vma((void *)addr, &vma_info)) {
+        goto internal_error;
+    }
+
+    bool ctxt_is_libos = context_is_libos(context);
+    if (!(ctxt_is_libos && is_valid_libos_syscall(context))) {
+        if (ctxt_is_libos || (vma_info.flags & VMA_INTERNAL)) {
+            goto internal_error;
+        }
     }
 
     if (vma_info.file) {
@@ -486,6 +493,10 @@ static void illegal_upcall(bool is_in_pal, uintptr_t addr, PAL_CONTEXT* context)
         handle_signal(context);
     }
     /* else syscall was emulated. */
+    return;
+
+internal_error:
+    internal_fault("Illegal instruction during Gramine internal execution", addr, context);
 }
 
 static void quit_upcall(bool is_in_pal, uintptr_t addr, PAL_CONTEXT* context) {
@@ -717,7 +728,11 @@ bool handle_signal(PAL_CONTEXT* context) {
     assert(current);
     assert(!is_internal(current));
     assert(!context_is_libos(context)
-           || pal_context_get_ip(context) == (uint64_t)&libos_syscall_entry);
+           || pal_context_get_ip(context) == (uint64_t)&libos_syscall_entry
+#if defined(__powerpc64__)
+           || pal_context_get_ip(context) == (uint64_t)&return_from_syscall_emulation
+#endif
+    );
 
     if (__atomic_load_n(&current->time_to_die, __ATOMIC_ACQUIRE)) {
         thread_exit(/*error_code=*/0, /*term_signal=*/0);
