@@ -5,6 +5,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if defined(__powerpc64__)
+/* needed for asm/stat.h */
+#include <sys/types.h>
+#endif
+
 #include <asm/errno.h>
 #include <asm/poll.h>
 #include <asm/posix_types.h>
@@ -53,6 +58,17 @@ struct __kernel_timespec {
     long tv_nsec;           /* nanoseconds */
 };
 #endif
+
+#if defined(__x86_64__)
+/* not typically used on x86_64 */
+typedef long long __kernel_time64_t;
+#endif
+
+/* needed by powerpc64 */
+struct __kernel_timespec64 {
+    __kernel_time64_t tv_sec; /* seconds */
+    long tv_nsec;             /* nanoseconds */
+};
 
 struct __kernel_timeval {
     __kernel_time_t tv_sec;       /* seconds */
