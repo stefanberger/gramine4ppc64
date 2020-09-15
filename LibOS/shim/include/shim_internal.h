@@ -11,6 +11,9 @@
 #include "shim_internal-arch.h"
 #include "shim_tcb.h"
 #include "shim_types.h"
+#if defined(__powerpc64__)
+#include "shim_syscalls.h" // __NR_shimget etc.
+#endif
 
 void* shim_init(int argc, void* args);
 
