@@ -20,4 +20,4 @@ PYTHONEXEC := $(PYTHONPATH)/bin/$(PYTHONVERSION)
 PYTHONSHORTVERSION := $(subst python,,$(subst .,,$(PYTHONVERSION)))
 
 # Fedora/Redhat and Ubuntu use for example x86_64-linux-gnu
-PYTHON_ARCH_LONG := $(ARCH)-linux-gnu
+PYTHON_ARCH_LONG := $(ARCH_EXP)-linux-gnu
