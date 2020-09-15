@@ -10,6 +10,7 @@
 #include <asm/posix_types.h>
 #include <asm/siginfo.h>
 #include <asm/signal.h>
+#include <sys/types.h>
 #include <asm/stat.h>
 #include <asm/statfs.h>
 #include <linux/aio_abi.h>
@@ -53,6 +54,12 @@ struct __kernel_timespec {
     long tv_nsec;           /* nanoseconds */
 };
 #endif
+
+/* needed by powerpc64 */
+struct __kernel_timespec64 {
+    __kernel_time64_t tv_sec; /* seconds */
+    long tv_nsec;             /* nanoseconds */
+};
 
 struct __kernel_timeval {
     __kernel_time_t tv_sec;       /* seconds */
