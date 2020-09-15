@@ -1,4 +1,5 @@
 
+
 ROOTDIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 SRCDIR = $(ROOTDIR)/src
@@ -46,10 +47,20 @@ etc/passwd:
 	mkdir -p etc
 	printf "root:x:0:0:root:/root:/bin/bash\nnobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin\n" > $@
 
+SYS ?= $(shell gcc -dumpmachine)
+ARCH := $(word 1,$(subst -, -, $(SYS)))
+# normalize to ppc64
+ifeq ($(ARCH),powerpc64le)
+    ARCH := ppc64
+endif
+ifeq ($(ARCH),ppc64le)
+    ARCH := ppc64
+endif
+
 ifeq ($(SGX),"1")
 CFG = ltp.cfg ltp-sgx.cfg ltp-bug-1075.cfg
 else
-CFG = ltp.cfg
+CFG = ltp.cfg ltp-$(ARCH).cfg
 endif
 
 .PHONY: regression
