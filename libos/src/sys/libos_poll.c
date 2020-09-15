@@ -240,8 +240,8 @@ long libos_syscall_poll(struct pollfd* fds, unsigned int nfds, int timeout_ms) {
     return do_poll(fds, nfds, timeout_ms < 0 ? NULL : &timeout_us);
 }
 
-long libos_syscall_ppoll(struct pollfd* fds, unsigned int nfds, struct timespec* tsp,
-                         const __sigset_t* sigmask_ptr, size_t sigsetsize) {
+static long _libos_syscall_ppoll(struct pollfd* fds, unsigned int nfds, void* _tsp, bool is64bit,
+                                 const __sigset_t* sigmask_ptr, size_t sigsetsize) {
     if (nfds > get_rlimit_cur(RLIMIT_NOFILE) || nfds > INT_MAX)
         return -EINVAL;
 
@@ -255,25 +255,62 @@ long libos_syscall_ppoll(struct pollfd* fds, unsigned int nfds, struct timespec*
     }
 
     uint64_t timeout_us = 0;
-    if (tsp) {
-        if (!is_user_memory_readable(tsp, sizeof(*tsp))) {
-            return -EFAULT;
+    if (_tsp) {
+        if (!is64bit) {
+            struct timespec* tsp = _tsp;
+            if (!is_user_memory_readable(tsp, sizeof(*tsp))) {
+                return -EFAULT;
+            }
+            if (tsp->tv_sec < 0 || tsp->tv_nsec < 0 || (unsigned long)tsp->tv_nsec >= TIME_NS_IN_S) {
+                return -EINVAL;
+            }
+            timeout_us = tsp->tv_sec * TIME_US_IN_S + tsp->tv_nsec / TIME_NS_IN_US;
+        } else {
+            struct __kernel_timespec64* tsp = _tsp;
+            if (!is_user_memory_readable(tsp, sizeof(*tsp))) {
+                return -EFAULT;
+            }
+            if (tsp->tv_sec < 0 || tsp->tv_nsec < 0 || (unsigned long)tsp->tv_nsec >= TIME_NS_IN_S) {
+                return -EINVAL;
+            }
+            timeout_us = tsp->tv_sec * TIME_US_IN_S + tsp->tv_nsec / TIME_NS_IN_US;
         }
-        if (tsp->tv_sec < 0 || tsp->tv_nsec < 0 || (unsigned long)tsp->tv_nsec >= TIME_NS_IN_S) {
-            return -EINVAL;
-        }
-        timeout_us = tsp->tv_sec * TIME_US_IN_S + tsp->tv_nsec / TIME_NS_IN_US;
     }
 
-    ret = do_poll(fds, nfds, tsp ? &timeout_us : NULL);
+    ret = do_poll(fds, nfds, _tsp ? &timeout_us : NULL);
 
     /* If `tsp` is in read-only memory, skip the update. */
-    if (tsp && is_user_memory_writable_no_skip(tsp, sizeof(*tsp))) {
-        tsp->tv_sec = timeout_us / TIME_US_IN_S;
-        tsp->tv_nsec = (timeout_us % TIME_US_IN_S) * TIME_NS_IN_US;
+    if (_tsp) {
+        if (!is64bit) {
+            struct timespec* tsp = _tsp;
+            if (is_user_memory_writable_no_skip(tsp, sizeof(*tsp))) {
+                tsp->tv_sec = timeout_us / TIME_US_IN_S;
+                tsp->tv_nsec = (timeout_us % TIME_US_IN_S) * TIME_NS_IN_US;
+            }
+        } else {
+            struct __kernel_timespec64* tsp = _tsp;
+            if (is_user_memory_writable_no_skip(tsp, sizeof(*tsp))) {
+                tsp->tv_sec = timeout_us / TIME_US_IN_S;
+                tsp->tv_nsec = (timeout_us % TIME_US_IN_S) * TIME_NS_IN_US;
+            }
+        }
     }
     return ret;
 }
+
+long libos_syscall_ppoll(struct pollfd* fds, unsigned int nfds, struct timespec* tsp,
+                         const __sigset_t* sigmask_ptr, size_t sigsetsize)
+{
+    return _libos_syscall_ppoll(fds, nfds, tsp, false, sigmask_ptr, sigsetsize);
+}
+
+#if defined(__NR_ppoll_time64)
+long libos_syscall_ppoll_time64(struct pollfd* fds, unsigned int nfds, struct __kernel_timespec64* tsp,
+                                const __sigset_t* sigmask_ptr, size_t sigsetsize)
+{
+    return _libos_syscall_ppoll(fds, nfds, tsp, true, sigmask_ptr, sigsetsize);
+}
+#endif
 
 static long do_select(int nfds, struct linux_fd_set* read_set, struct linux_fd_set* write_set,
                       struct linux_fd_set* except_set, uint64_t* timeout_us) {
