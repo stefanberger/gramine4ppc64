@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -x
+
+echo PATH=${PATH}
+ls -l /usr/local/bin
+
+ARCH=$(uname -m)
+[ "${ARCH}" == "ppc64le" ] && ARCH=ppc64
+
+ERROR=0 \
+    && pushd pal/regression &>/dev/null \
+    &&   TEST="Pal regresssion"; echo ">>>>>> $TEST <<<<<<"; RESULT="PASS" \
+    &&   gramine-test pytest || { ERROR=1; RESULT="FAIL"; } \
+    &&   echo ">>>>>> ${TEST}: $RESULT <<<<<" \
+    && popd &>/dev/null \
+    && pushd libos/test/fs &>/dev/null \
+    &&   TEST="shim fs test"; echo ">>>>>> $TEST <<<<<<"; RESULT="PASS" \
+    &&   gramine-test pytest || { ERROR=1; RESULT="FAIL"; } \
+    &&   echo ">>>>>> ${TEST}: $RESULT <<<<<" \
+    && popd &>/dev/null \
+    && pushd libos/test/regression &>/dev/null \
+    &&   TEST="shim regression"; echo ">>>>>> $TEST <<<<<<"; RESULT="PASS" \
+    &&   gramine-test pytest || { ERROR=1; RESULT="FAIL"; } \
+    &&   echo ">>>>>> ${TEST}: $RESULT <<<<<" \
+    && popd &>/dev/null \
+    && pushd libos/test/abi/${ARCH} &>/dev/null \
+    &&   TEST="shim abi"; echo ">>>>>> $TEST <<<<<<"; RESULT="PASS" \
+    &&   gramine-test pytest || { ERROR=1; RESULT="FAIL"; } \
+    &&   echo ">>>>>> ${TEST}: $RESULT <<<<<" \
+    && popd &>/dev/null \
+    && exit $ERROR
