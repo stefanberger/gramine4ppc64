@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <sys/types.h>
 #include <asm/stat.h>
 #include <stdbool.h>
 #include <stdint.h>
