@@ -21,6 +21,6 @@ void shim_xstate_restore(const void* xstate_extended);
 void shim_xstate_reset(void);
 
 noreturn void restore_child_context_after_clone(struct shim_context* context);
-void fixup_child_context(struct shim_regs* regs);
+void fixup_child_context(struct shim_regs* regs, void* stack, uint64_t fs_base);
 
 #endif /* _SHIM_CONTEXT_H_ */
