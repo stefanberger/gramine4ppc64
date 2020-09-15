@@ -45,6 +45,13 @@ if host_machine.cpu_family() == 'x86_64'
     ]
 endif
 
+if host_machine.cpu_family() == 'ppc64le' or host_machine.cpu_family() == 'ppc64'
+    glibc_output_paths += [
+        'elf/ld64.so.2',
+        'elf/ld.so',
+    ]
+endif
+
 glibc_output = []
 foreach path : glibc_output_paths
     glibc_output += fs.name(path)
@@ -72,6 +79,7 @@ glibc = custom_target('glibc',
     input: [
         'glibc-2.38/configure',
         'gramine-syscall.patch',
+        'glibc-2.38-ppc64.patch',
         'hp-timing.patch',
         # backporting the fix for CVE-2023-4527; drop when we update to glibc 2.39;
         # see the following:
