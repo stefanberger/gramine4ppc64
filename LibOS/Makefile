@@ -11,7 +11,7 @@ SHIM_DIR = shim
 all:
 	$(MAKE) -C $(SHIM_DIR) all
 
-ifeq ($(findstring x86_64,$(SYS))$(findstring linux,$(SYS)),x86_64linux)
+ifeq ($(ARCH),$(filter $(ARCH),x86_64 ppc64))
 
 # ------------------------------------------------------------------------------------------------
 # GCC build: patch libgomp.so.1 (OpenMP runtime library) to replace raw SYSCALL instruction with
