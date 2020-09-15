@@ -27,8 +27,18 @@ long libos_syscall_fstat(int fd, struct stat* statbuf);
 long libos_syscall_lstat(const char* file, struct stat* stat);
 long libos_syscall_statfs(const char* path, struct statfs* buf);
 long libos_syscall_fstatfs(int fd, struct statfs* buf);
+#if defined(__NR_statfs64)
+long libos_syscall_statfs64(const char* path, size_t bufsize, struct statfs64* buf);
+#endif
+#if defined(__NR_fstatfs64)
+long libos_syscall_fstatfs64(int fd, size_t bufsize, struct statfs64* buf);
+#endif
 long libos_syscall_poll(struct pollfd* fds, unsigned int nfds, int timeout);
 long libos_syscall_lseek(int fd, off_t offset, int origin);
+#if defined(__NR__llseek)
+long libos_syscall__llseek(int fd, unsigned long offset_high, unsigned long offset_low,
+                           unsigned long resultaddr, int origin);
+#endif
 void* libos_syscall_mmap(void* addr, size_t length, int prot, int flags, int fd,
                          unsigned long offset);
 long libos_syscall_mprotect(void* addr, size_t len, int prot);
@@ -56,6 +66,17 @@ long libos_syscall_dup(unsigned int fd);
 long libos_syscall_dup2(unsigned int oldfd, unsigned int newfd);
 long libos_syscall_pause(void);
 long libos_syscall_nanosleep(struct __kernel_timespec* req, struct __kernel_timespec* rem);
+#if defined(__NR_clock_nanosleep_time64)
+long libos_syscall_clock_nanosleep_time64(clockid_t clock_id, int flags,
+                                          struct __kernel_timespec64* req,
+                                          struct __kernel_timespec64* rem);
+#endif
+#if defined(__NR_clock_gettime64)
+long libos_syscall_clock_gettime64(clockid_t which_clock, struct __kernel_timespec64* tp);
+#endif
+#if defined(__NR_clock_getres_time64)
+long libos_syscall_clock_getres_time64(clockid_t which_clock, struct __kernel_timespec64* tp);
+#endif
 long libos_syscall_getitimer(int which, struct __kernel_itimerval* value);
 long libos_syscall_alarm(unsigned int seconds);
 long libos_syscall_setitimer(int which, struct __kernel_itimerval* value,
@@ -69,6 +90,12 @@ long libos_syscall_sendto(int fd, void* buf, size_t len, unsigned int flags, voi
                           int addrlen);
 long libos_syscall_recvfrom(int fd, void* buf, size_t len, unsigned int flags, void* addr,
                             int* addrlen);
+#if defined(__NR_send)
+long libos_syscall_send(int fd, const void* buf, size_t len, unsigned int flags);
+#endif
+#if defined(__NR_recv)
+long libos_syscall_recv(int fd, void* buf, size_t len, unsigned int flags);
+#endif
 long libos_syscall_bind(int fd, void* addr, int addrlen);
 long libos_syscall_listen(int fd, int backlog);
 long libos_syscall_sendmsg(int fd, struct msghdr* msg, unsigned int flags);
@@ -79,8 +106,16 @@ long libos_syscall_getpeername(int fd, void* addr, int* addrlen);
 long libos_syscall_socketpair(int domain, int type, int protocol, int* sv);
 long libos_syscall_setsockopt(int fd, int level, int optname, char* optval, int optlen);
 long libos_syscall_getsockopt(int fd, int level, int optname, char* optval, int* optlen);
+#if defined(__NR_socketcall)
+long libos_syscall_socketcall(int call, unsigned long *args);
+#endif
+#if defined(__i386__) || defined(__x86_64__)
 long libos_syscall_clone(unsigned long flags, unsigned long user_stack_addr, int* parent_tidptr,
                          int* child_tidptr, unsigned long tls);
+#elif defined(__powerpc64__)
+long libos_syscall_clone (unsigned long flags, unsigned long user_stack_addr, int* parent_tidptr,
+                    unsigned long tls, int* child_tidptr);
+#endif
 long libos_syscall_fork(void);
 long libos_syscall_vfork(void);
 long libos_syscall_execve(const char* file, const char* const* argv, const char* const* envp);
@@ -88,6 +123,9 @@ long libos_syscall_exit(int error_code);
 long libos_syscall_waitid(int which, pid_t id, siginfo_t* infop, int options,
                           struct __kernel_rusage* ru);
 long libos_syscall_wait4(pid_t pid, int* stat_addr, int options, struct __kernel_rusage* ru);
+#if defined(__NR_waitpid)
+long libos_syscall_waitpid(pid_t pid, int* stat_addr, int option);
+#endif
 long libos_syscall_kill(pid_t pid, int sig);
 long libos_syscall_uname(struct new_utsname* buf);
 long libos_syscall_fcntl(int fd, int cmd, unsigned long arg);
@@ -154,6 +192,9 @@ long libos_syscall_gettid(void);
 long libos_syscall_tkill(int pid, int sig);
 long libos_syscall_time(time_t* tloc);
 long libos_syscall_futex(int* uaddr, int op, int val, void* utime, int* uaddr2, int val3);
+#if defined(__NR_futex_time64)
+long libos_syscall_futex_time64(int* uaddr, int op, int val, void* utime, int* uaddr2, int val3);
+#endif
 long libos_syscall_sched_setaffinity(pid_t pid, unsigned int user_mask_size,
                                      unsigned long* user_mask_ptr);
 long libos_syscall_sched_getaffinity(pid_t pid, unsigned int user_mask_size,
@@ -214,13 +255,13 @@ long libos_syscall_sysinfo(struct sysinfo* info);
 #ifndef MADV_FREE
 #define MADV_FREE 8
 #endif
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__powerpc64__)
 #ifndef MADV_WIPEONFORK
 #define MADV_WIPEONFORK 18
 #endif
 #ifndef MADV_KEEPONFORK
 #define MADV_KEEPONFORK 19
 #endif
-#else /* __x86_64__ */
+#else /* __x86_64__ || __powerpc64__ */
 #error "Unsupported platform"
 #endif
