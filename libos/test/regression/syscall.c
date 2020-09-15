@@ -13,6 +13,15 @@ int main(void) {
         : "0"(__NR_getpid)
         : "memory", "cc", "rcx", "r11"
     );
+#elif defined (__powerpc64__)
+    __asm__ volatile (
+        "li 0, %1\n\t"
+        "sc\n\t"
+        "mr %0, 3\n\t"
+        : "=&r" (ret)
+        : "i" (__NR_getpid)
+        : "cc", "ctr", "r3"
+    );
 #endif
     if (ret != 1)
         errx(EXIT_FAILURE, "getpid syscall: %ld (expected 1)", ret);
