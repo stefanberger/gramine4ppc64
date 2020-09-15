@@ -18,6 +18,9 @@
 #include "shim_internal-arch.h"
 #include "shim_tcb.h"
 #include "shim_types.h"
+#if defined(__powerpc64__)
+#include "shim_syscalls.h" // __NR_shimget etc.
+#endif
 
 noreturn void* shim_init(int argc, const char** argv, const char** envp);
 
@@ -71,7 +74,7 @@ noreturn void _return_from_syscall(PAL_CONTEXT* context);
  *
  * Restores LibOS \p context after a successful clone or fork.
  */
-noreturn void restore_child_context_after_clone(struct shim_context* context);
+noreturn void restore_child_context_after_clone(struct shim_context* context, bool is_process);
 
 /*!
  * \brief Create a signal frame.
