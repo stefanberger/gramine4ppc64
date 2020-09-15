@@ -4,30 +4,42 @@ sudo: required
 addons:
   apt:
       packages:
-        - meson
+        - libssl-dev
         - ninja-build
+        - python3
+        - python3-click
+        - python3-jinja2
+        - python3-lxml
+        - python3-numpy
         - python3-pip
-        - python3-pytest
+        - python3-scipy
+        - python3-setuptools
 script:
   - make -j$(nproc)
     && meson build -Ddirect=enabled
     && ninja -C build
     && sudo ninja -C build install
-    && export PYTHONPATH=${PWD}/python
-    && ERROR=0
-    && pushd Pal/test &>/dev/null
-    &&  make test || ERROR=1
-    && popd &>/dev/null
-    && pushd Pal/regression &>/dev/null
-    &&  make regression || ERROR=1
-    && popd &>/dev/null
-    && [ $ERROR -eq 0 ] || false
+    && sudo pip3 install pytest
+    && export INSTALL_DEPS=1
+    && ./run_tests0
+    && ./run_tests1
+    && ./run_tests2
 
 matrix:
   include:
-    - name: Build and test on x86_64
-      os: linux
-      arch: amd64
-    - name: Build and test on ppc64
+    - name: Build and test on ppc64 bionic
       os: linux
       arch: ppc64le
+      dist: bionic
+      env: PYTHONVERSION=python3.6
+      before_script:
+        - sed -i 's/GLIBC_VERSION ?= .*/GLIBC_VERSION ?= 2.31/' LibOS/Makefile
+        - python3 -m pip install 'meson>=0.55,<0.56'
+    - name: Build and test on ppc64 focal
+      os: linux
+      arch: ppc64le
+      dist: focal
+      env: PYTHONVERSION=python3.8
+      before_script:
+        - sed -i 's/GLIBC_VERSION ?= .*/GLIBC_VERSION ?= 2.33/' LibOS/Makefile
+        - python3 -m pip install 'meson>=0.55,<0.56'
