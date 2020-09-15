@@ -67,7 +67,16 @@ else
 	$(MAKE) ltp.xml
 endif
 
-ltp.xml: CFG = ltp.cfg
+SYS ?= $(shell gcc -dumpmachine)
+ARCH := $(word 1,$(subst -, -, $(SYS)))
+# normalize to ppc64
+ifeq ($(ARCH),powerpc64le)
+    ARCH := ppc64
+endif
+ifeq ($(ARCH),ppc64le)
+    ARCH := ppc64
+endif
+ltp.xml: CFG = ltp.cfg ltp-$(ARCH).cfg
 ltp-sgx.xml: CFG = ltp.cfg ltp-sgx.cfg ltp-bug-1075.cfg
 
 %.xml: $(CFG) $(INSTALLDIR)/INSTALL_SUCCESS manifests
