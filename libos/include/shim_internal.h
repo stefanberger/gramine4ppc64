@@ -70,7 +70,7 @@ noreturn void _return_from_syscall(PAL_CONTEXT* context);
  *
  * Restores LibOS \p context after a successful clone or fork.
  */
-noreturn void restore_child_context_after_clone(struct libos_context* context);
+noreturn void restore_child_context_after_clone(struct libos_context* context, bool is_process);
 
 /*!
  * \brief Create a signal frame.
