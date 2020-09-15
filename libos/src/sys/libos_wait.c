@@ -285,3 +285,8 @@ long libos_syscall_wait4(pid_t pid, int* status, int options, struct __kernel_ru
     }
     return info.si_pid;
 }
+#if defined(__NR_waitpid)
+long libos_syscall_waitpid(pid_t pid, int* status, int option) {
+    return libos_syscall_wait4(pid, status, option, NULL);
+}
+#endif
