@@ -134,7 +134,11 @@ static int libos_syscall_execve_rtld(struct libos_handle* hdl, char** argv, cons
     free(*argv);
     free(argv);
 
+#if defined(__powerpc64__)
+    __SWITCH_STACK(new_argp, &__libos_syscall_execve_rtld, new_argp, new_auxv);
+#else
     __libos_syscall_execve_rtld(new_argp, new_auxv);
+#endif
     /* UNREACHABLE */
 }
 
