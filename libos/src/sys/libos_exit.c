@@ -63,6 +63,13 @@ static noreturn void libos_clean_and_exit(int exit_code) {
 }
 
 noreturn void thread_exit(int error_code, int term_signal) {
+#if defined(__powerpc64__)
+    /* Need to get rid of possible glibc-allocated TLS because a concurrent
+     * thread may be releasing all the memory, including the TLS memory.
+     */
+    REPLACE_GLIBC_TLS;
+#endif
+
     struct libos_thread* cur_thread = get_cur_thread();
     if (cur_thread->robust_list) {
         release_robust_list(cur_thread->robust_list);
