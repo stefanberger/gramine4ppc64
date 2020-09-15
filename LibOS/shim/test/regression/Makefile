@@ -15,6 +15,9 @@ ifeq ($(SGX),1)
 	c_executables-x86_64 += attestation
 endif
 
+c_executables-ppc64 = \
+	sighandler_contextswitch
+
 c_executables = \
 	abort \
 	abort_multithread \
