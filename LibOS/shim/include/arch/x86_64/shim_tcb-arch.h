@@ -145,9 +145,19 @@ struct shim_xstate {
         }                                                               \
     } while (0)
 
-static inline void set_tls(unsigned long tls) {
+static inline void set_tls(unsigned long tls, shim_tcb_t* shim_tcb) {
+    __UNUSED(shim_tcb);
     DkSegmentRegisterSet(PAL_SEGMENT_FS, (PAL_PTR)tls);
 }
+
+#if 0
+// FIXME: remove
+typedef struct shim_tcb shim_tcb_t;
+static inline void shim_arch_update_tls_base(unsigned long tls_base, shim_tcb_t *shim_tcb) {
+    (void)shim_tcb;
+    DkSegmentRegisterSet(PAL_SEGMENT_FS, (PAL_PTR)tls_base);
+}
+#endif
 
 static inline void set_default_tls(void) {
     set_tls(0);
