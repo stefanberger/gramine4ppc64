@@ -158,6 +158,14 @@ if host_machine.cpu_family() == 'x86_64'
     }
 endif
 
+if host_machine.cpu_family() == 'ppc64'
+    tests += {
+        'sighandler_contextswitch_ppc64': {
+            'c_args': ['-O0', '-mno-vsx'],
+        },
+    }
+endif
+
 if sgx
     tests += {
         'attestation': {

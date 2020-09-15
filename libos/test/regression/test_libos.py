@@ -11,7 +11,9 @@ from graminelibos.regression import (
     HAS_EDMM,
     HAS_SGX,
     ON_X86,
+    ON_PPC64,
     USES_MUSL,
+    ON_TRAVIS,
     RegressionTestCase,
 )
 
@@ -156,6 +158,7 @@ class TC_01_Bootstrap(RegressionTestCase):
         self.assertNotIn('] = C=THIS_SHOULDNT_BE_PASSED\n', stdout)
         self.assertNotIn('] = D=THIS_SHOULDNT_BE_PASSED_TOO\n', stdout)
 
+    @unittest.skipIf(ON_PPC64, "Won't work on ppc64 if linked with unpatched glibc due to needed tls changes!")
     def test_106_basic_bootstrapping_static(self):
         stdout, _ = self.run_binary(['bootstrap_static'])
         self.assertIn('Hello world (bootstrap_static)!', stdout)
@@ -869,7 +872,7 @@ class TC_30_Syscall(RegressionTestCase):
         self.assertIn('eventfd_using_various_flags completed successfully', stdout)
         self.assertIn('eventfd_using_fork completed successfully', stdout)
 
-    @unittest.skipIf(USES_MUSL, 'sched_setscheduler is not supported in musl')
+    @unittest.skipIf(USES_MUSL or ON_TRAVIS, 'sched_setscheduler is not supported in musl or on Travis')
     def test_080_sched(self):
         stdout, _ = self.run_binary(['sched'])
 
@@ -913,21 +916,32 @@ class TC_30_Syscall(RegressionTestCase):
         stdout, _ = self.run_binary(['kill_all'])
         self.assertIn('TEST OK', stdout)
 
+    @unittest.skipUnless(ON_PPC64, "ppc64-specific")
+    def test_096_sighandler_contextswitch_pp64(self):
+        stdout, _ = self.run_binary(['sighandler_contextswitch_ppc64'])
+        self.assertIn('TEST OK', stdout)
+
     def test_100_get_set_groups(self):
         stdout, _ = self.run_binary(['groups'])
         self.assertIn('child OK', stdout)
         self.assertIn('parent OK', stdout)
 
+    @unittest.skipIf(ON_TRAVIS, 'sched_set_get_affinity is not supported on Travis')
     def test_101_sched_set_get_cpuaffinity(self):
         stdout, _ = self.run_binary(['sched_set_get_affinity'])
         self.assertIn('TEST OK', stdout)
 
+    @unittest.skipIf(ON_TRAVIS, 'pthread_set_get_affinity is not supported on Travis')
     def test_102_pthread_set_get_affinity(self):
         stdout, _ = self.run_binary(['pthread_set_get_affinity', '1000'])
         self.assertIn('TEST OK', stdout)
 
     def test_103_gettimeofday(self):
-        stdout, _ = self.run_binary(['gettimeofday'])
+        if ON_PPC64:
+            # May be slow on ppc64 due to missing vdso support
+            stdout, _ = self.run_binary(['gettimeofday'], timeout=20)
+        else:
+            stdout, _ = self.run_binary(['gettimeofday'])
         self.assertIn('TEST OK', stdout)
 
     def test_110_fcntl_lock(self):
@@ -1047,6 +1061,7 @@ class TC_40_FileSystem(RegressionTestCase):
         # proc/cpuinfo Linux-based formatting
         self.assertIn('cpuinfo test passed', stdout)
 
+    @unittest.skipIf(ON_TRAVIS, 'proc_stat is not supported on Travis')
     def test_021_procstat(self):
         stdout, _ = self.run_binary(['proc_stat'])
 
@@ -1061,6 +1076,8 @@ class TC_40_FileSystem(RegressionTestCase):
         self.assertIn("TEST OK", stdout)
 
     def get_cache_levels_cnt(self):
+        if ON_PPC64:
+            return 0
         cpu0 = '/sys/devices/system/cpu/cpu0/'
         self.assertTrue(os.path.exists(f'{cpu0}/cache/'))
 
@@ -1071,6 +1088,7 @@ class TC_40_FileSystem(RegressionTestCase):
         self.assertGreater(n, 0, "no information about CPU cache found")
         return n
 
+    @unittest.skipIf(ON_TRAVIS & ON_PPC64, "necessary files not available on Travis")
     def test_040_sysfs(self):
         cpus_cnt = os.cpu_count()
         cache_levels_cnt = self.get_cache_levels_cnt()
@@ -1165,6 +1183,7 @@ class TC_40_FileSystem(RegressionTestCase):
         self.assertIn("TEST OK", stdout)
 
 
+@unittest.skipIf(ON_PPC64, "not supported on PowerPC64")
 class TC_50_GDB(RegressionTestCase):
     def setUp(self):
         if not self.has_debug():
