@@ -32,6 +32,7 @@ export SYS
 
 ARCH := $(word 1,$(subst -, -, $(SYS)))
 # normalize to ppc64
+ARCH_EXP := $(ARCH)
 ifeq ($(ARCH),powerpc64le)
     ARCH := ppc64
 endif
