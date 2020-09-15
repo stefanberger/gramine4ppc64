@@ -53,8 +53,10 @@ int sys_cache_load(struct shim_dentry* dent, char** out_data, size_t* out_size) 
         ret = snprintf(str, sizeof(str), "%zu\n", cache_info->coherency_line_size);
     } else if (strcmp(name, "number_of_sets") == 0) {
         ret = snprintf(str, sizeof(str), "%zu\n", cache_info->number_of_sets);
+#if !defined(__powerpc64__)
     } else if (strcmp(name, "physical_line_partition") == 0) {
         snprintf(str, sizeof(str), "%zu\n", cache_info->physical_line_partition);
+#endif
     } else {
         log_debug("unrecognized file: %s", name);
         ret = -ENOENT;
