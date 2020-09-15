@@ -21,7 +21,7 @@
 #ifndef MADV_FREE
 #define MADV_FREE 8
 #endif
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__powerpc64__)
 #ifndef MADV_WIPEONFORK
 #define MADV_WIPEONFORK 18
 #endif
