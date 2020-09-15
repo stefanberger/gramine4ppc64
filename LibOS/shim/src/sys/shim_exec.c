@@ -134,7 +134,11 @@ static int shim_do_execve_rtld(struct shim_handle* hdl, char** argv, const char*
     free(*argv);
     free(argv);
 
+#if defined(__powerpc64__)
+    __SWITCH_STACK(new_argp, &__shim_do_execve_rtld, new_argp, new_auxv);
+#else
     __shim_do_execve_rtld(new_argp, new_auxv);
+#endif
     /* UNREACHABLE */
 }
 
