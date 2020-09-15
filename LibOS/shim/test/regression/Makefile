@@ -10,6 +10,9 @@ ifeq ($(SGX),1)
 	c_executables-x86_64 += attestation
 endif
 
+c_executables-ppc64 = \
+	sighandler_contextswitch
+
 c_executables = \
 	abort \
 	abort_multithread \
@@ -159,6 +162,7 @@ CFLAGS-pthread_set_get_affinity += -pthread
 CFLAGS-run_test += -iquote ../../include -iquote ../../include/arch/$(ARCH)
 CFLAGS-shared_object = -fPIC -pie
 CFLAGS-sigaction_per_process += -pthread
+CFLAGS-sighandler_contextswitch += -O0 -mno-vsx
 CFLAGS-signal_multithread += -pthread
 CFLAGS-spinlock += -iquote ../../../../common/include -iquote ../../../../common/include/arch/$(ARCH) -pthread
 
