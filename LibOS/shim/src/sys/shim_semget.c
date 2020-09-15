@@ -18,6 +18,8 @@
 #include "shim_table.h"
 #include "shim_utils.h"
 
+#include <linux/ipc.h>
+
 #define SEM_HASH_LEN  8
 #define SEM_HASH_NUM  (1 << SEM_HASH_LEN)
 #define SEM_HASH_MASK (SEM_HASH_NUM - 1)
@@ -313,6 +315,16 @@ int shim_do_semtimedop(int semid, struct sembuf* sops, unsigned int nsops,
     return __do_semop(semid, sops, nsops, timeout_ns);
 }
 
+int shim_do_semtimedop_time64(int semid, struct sembuf* sops, unsigned int nsops,
+                              const struct timespec64* timeout) {
+    unsigned long timeout_ns = IPC_SEM_NOTIMEOUT;
+    if (timeout) {
+        timeout_ns = timeout->tv_sec * 1000000000ULL + timeout->tv_nsec;
+    }
+
+    return __do_semop(semid, sops, nsops, timeout_ns);
+}
+
 int shim_do_semctl(int semid, int semnum, int cmd, unsigned long arg) {
     struct shim_sem_handle* sem;
     int ret;
@@ -327,6 +339,8 @@ int shim_do_semctl(int semid, int semnum, int cmd, unsigned long arg) {
     struct shim_handle* hdl = SEM_TO_HANDLE(sem);
     lock(&hdl->lock);
 
+    /* cmd may have IPC_64 set */
+    cmd &= ~IPC_64;
     switch (cmd) {
         case IPC_RMID: {
             if (!sem->owned) {
@@ -731,3 +745,47 @@ out:
         free(sem_ops);
     return ret;
 }
+
+#if defined(__powerpc64__)
+/* Also see ksys_ipc:
+   https://elixir.bootlin.com/linux/v5.9/source/ipc/syscall.c#L20
+ */
+int shim_do_ipc(unsigned int call, int a1, unsigned long a2, unsigned long a3, void* ptr,long a5) {
+    int version;
+    struct ipc_kludge* k;
+
+    switch (call & 0xffff) {
+    case SEMOP:
+        return shim_do_semop(/*semid=*/a1, ptr, a2);
+    case SEMGET:
+        return shim_do_semget(/*semid=*/a1, a2, a3);
+    case SEMCTL:
+        return shim_do_semctl(/*semid=*/a1, /*semnum=*/a2, /*cmd=*/a3,
+                              ((unsigned long*)ptr)[0]);
+    case SEMTIMEDOP:
+        return shim_do_semtimedop(/*semid=*/a1, ptr, /*nsops=*/a2,
+                                 (const struct timespec*)a5);
+    case MSGSND:
+        return shim_do_msgsnd(/*msqid=*/a1, ptr, /*msgsz=*/a2, a3);
+    case MSGRCV:
+        version = call >> 16;
+        if (version == 0) {
+            k = ptr;
+            if (test_user_memory(k, sizeof(*k), /*write=*/false))
+                return -EFAULT;
+            return shim_do_msgrcv(/*msqid=*/a1, k->msgp, /*msgsz=*/a2, /*msgtype=*/k->msgtyp,
+                                  /*msgflg=*/a3);
+        } else {
+            return shim_do_msgrcv(/*msqid=*/a1, ptr, /*msgsz=*/a2, /*msgtype=*/a5,
+                                  /*msgflg=*/a3);
+        }
+    case MSGGET:
+        return shim_do_msgget((key_t)a1, /*msgflg=*/a2);
+    case MSGCTL:
+        return shim_do_msgctl(/*msqid*/a1, /*cmd=*/a2, ptr);
+    default:
+        debug("ipc call %d is not supported\n", call);
+        return -ENOSYS;
+    }
+}
+#endif /* __powerpc64__*/

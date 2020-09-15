@@ -13,6 +13,9 @@
 #include "shim_internal-arch.h"
 #include "shim_tcb.h"
 #include "shim_types.h"
+#if defined(__powerpc64__)
+#include "shim_syscalls.h" // __NR_shimget etc.
+#endif
 
 void* shim_init(int argc, void* args);
 
@@ -57,6 +60,7 @@ void debug_vprintf(const char* fmt, va_list ap) __attribute__((format(printf, 1,
 #define DEBUG_BREAK_ON_FAILURE() do {} while (0)
 #endif
 
+#if defined(__x86_64__)
 #define BUG()                                       \
     do {                                            \
         warn("BUG() " __FILE__ ":%d\n", __LINE__);  \
@@ -68,6 +72,15 @@ void debug_vprintf(const char* fmt, va_list ap) __attribute__((format(printf, 1,
             "jmp 1b \n"                             \
         );                                          \
     } while (0)
+#elif defined(__powerpc64__)
+#define BUG()                                       \
+    do {                                            \
+        warn("BUG() " __FILE__ ":%d\n", __LINE__);  \
+        DEBUG_BREAK_ON_FAILURE();                   \
+        /* Crash the process. */                    \
+        *(int *)~0 = 0;                             \
+    } while (0)
+#endif
 
 #define DEBUG_HERE()                                         \
     do {                                                     \
