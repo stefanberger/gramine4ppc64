@@ -32,7 +32,7 @@ ERROR=0 \
     && popd &>/dev/null \
     && pushd Examples/gcc &>/dev/null \
     &&   TEST="gcc"; echo ">>>>>> $TEST <<<<<<"; RESULT="PASS" \
-    &&   make &>/dev/null && make check || { ERROR=1; RESULT="FAIL"; } \
+    &&   make &>/dev/null && echo make check || { ERROR=1; RESULT="FAIL"; } \
     &&   echo ">>>>> ${TEST}: $RESULT <<<<<" \
     && popd &>/dev/null \
     && pushd Examples/python-scipy-insecure &>/dev/null \
