@@ -56,7 +56,7 @@ else
 	$(MAKE) ltp.xml
 endif
 
-ltp.xml: CFG = ltp.cfg
+ltp.xml: CFG = ltp.cfg ltp-bug-$(ARCH).cfg
 ltp-sgx.xml: CFG = ltp.cfg ltp-sgx.cfg ltp-bug-1075.cfg
 
 %.xml: $(CFG) $(LTPSCENARIO) $(target)
