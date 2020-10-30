@@ -29,8 +29,24 @@ struct shim_pt_regs {
     /* needs to be 16-byte aligned when on stack */
 } __attribute__((aligned(16)));
 
+/* Since we cannot access the MSR from user space to check which facilities are enabled,
+ * it is easiest to just store the 64 vsr registers.
+ */
+typedef struct {
+    uint64_t a;
+    uint64_t b;
+} __attribute__((aligned(16))) vsr_reg;
+
+struct shim_xt_regs {
+    vsr_reg  vsr[64];
+    uint64_t vrsave;
+    uint64_t fpscr __attribute__((aligned(16))); /* needs to be 16 byte aligned */
+    vsr_reg  vscr;	/* stvx stores 16 bytes */
+} __attribute__((aligned(16)));
+
 struct shim_regs {
     struct shim_pt_regs pt_regs; // general purpose registers
+    struct shim_xt_regs xt_regs; // extended set of registers: VSRs, vscr, fpsave, fpscr
 } __attribute__((aligned(16)));
 
 // FIXME: BEGIN These and the associated code should not be necessary for ppc64
