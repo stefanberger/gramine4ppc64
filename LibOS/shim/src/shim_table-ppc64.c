@@ -509,6 +509,10 @@ void shim_set_context_regs(struct shim_regs* shim_regs) {
               syscallnr, shim_regs->pt_regs.gpr[1], shim_regs->pt_regs.nip,
               shim_regs->pt_regs.gpr[2], shim_regs->pt_regs.gpr[12], shim_regs->pt_regs.gpr[13]);
 
+        debug("vrsave: 0x%lx fpscr: 0x%lx vscr: 0x%08lx%08lx\n",
+              shim_regs->xt_regs.vrsave, shim_regs->xt_regs.fpscr,
+              shim_regs->xt_regs.vscr.a, shim_regs->xt_regs.vscr.b);
+
         switch (syscallnr) {
         case 2: /* fork */
             debug("fork syscall (%ld) not supported. HALTING\n", syscallnr); while(1);
