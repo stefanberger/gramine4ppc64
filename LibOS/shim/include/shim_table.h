@@ -243,6 +243,7 @@ long __shim_getdents64(long, long, long);
 long __shim_set_tid_address(long);
 long __shim_restart_syscall(void);
 long __shim_semtimedop(long, long, long, long);
+long __shim_semtimedop_time64(long, long, long, long);
 long __shim_fadvise64(long, long, long, long);
 long __shim_timer_create(long, long, long);
 long __shim_timer_settime(long, long, long, long);
@@ -519,6 +520,10 @@ long shim_do_sched_getaffinity(pid_t pid, unsigned int cpumask_size, unsigned lo
 int shim_do_set_tid_address(int* tidptr);
 int shim_do_semtimedop(int semid, struct sembuf* sops, unsigned int nsops,
                        const struct timespec* timeout);
+#if defined(__powerpc64__)
+int shim_do_semtimedop_time64(int semid, struct sembuf* sops, unsigned int nsops,
+                              const struct timespec64* timeout);
+#endif
 int shim_do_epoll_create(int size);
 size_t shim_do_getdents64(int fd, struct linux_dirent64* buf, size_t count);
 int shim_do_epoll_wait(int epfd, struct __kernel_epoll_event* events, int maxevents,
