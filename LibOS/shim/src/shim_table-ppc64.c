@@ -425,7 +425,7 @@ shim_fp shim_table[LIBOS_SYSCALL_BOUND] = {
     (shim_fp)0,
     (shim_fp)0,					/* 390*/
     (shim_fp)0,
-    (shim_fp)0,
+    (shim_fp)__shim_semtimedop,
     (shim_fp)0,
     (shim_fp)0,
     (shim_fp)0,					/* 395*/
