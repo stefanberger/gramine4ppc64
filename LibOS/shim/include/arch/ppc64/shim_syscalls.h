@@ -49,6 +49,12 @@
 #if !defined __NR_msgctl
 #define __NR_msgctl 402
 #endif
+#if !defined __NR_clock_gettime64
+#define __NR_clock_gettime64 403
+#endif
+#if !defined __NR_clock_getres_time64
+#define __NR_clock_getres_time64 406
+#endif
 #if !defined __NR_pidfd_send_signal
 #define __NR_pidfd_send_signal 424
 #endif
