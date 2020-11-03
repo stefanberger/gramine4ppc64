@@ -300,6 +300,10 @@ static uint64_t timespec_to_us(const struct timespec* ts) {
     return (uint64_t)ts->tv_sec * 1000000u + (uint64_t)ts->tv_nsec / 1000u;
 }
 
+static uint64_t timespec64_to_us(const struct timespec64* ts) {
+    return ts->tv_sec * 1000000u + (uint64_t)ts->tv_nsec / 1000u;
+}
+
 static int futex_wait(uint32_t* uaddr, uint32_t val, uint64_t timeout, uint32_t bitset) {
     int ret = 0;
     struct shim_futex* futex = NULL;
@@ -692,17 +696,24 @@ static int is_valid_futex_ptr(uint32_t* ptr, bool check_write) {
 }
 
 static int _shim_do_futex(uint32_t* uaddr, int op, uint32_t val, void* utime, uint32_t* uaddr2,
-                          uint32_t val3) {
+                          uint32_t val3, bool is64bit) {
     int cmd = op & FUTEX_CMD_MASK;
     uint64_t timeout = NO_TIMEOUT;
     uint32_t val2 = 0;
 
     if (utime && (cmd == FUTEX_WAIT || cmd == FUTEX_WAIT_BITSET || cmd == FUTEX_LOCK_PI ||
                   cmd == FUTEX_WAIT_REQUEUE_PI)) {
-        if (test_user_memory(utime, sizeof(struct timespec), /*write=*/false)) {
-            return -EFAULT;
+        if (!is64bit) {
+            if (test_user_memory(utime, sizeof(struct timespec), /*write=*/false)) {
+                return -EFAULT;
+            }
+            timeout = timespec_to_us((struct timespec*)utime);
+        } else {
+            if (test_user_memory(utime, sizeof(struct timespec64), /*write=*/false)) {
+                return -EFAULT;
+            }
+            timeout = timespec64_to_us((struct timespec64*)utime);
         }
-        timeout = timespec_to_us((struct timespec*)utime);
         if (cmd != FUTEX_WAIT) {
             /* For FUTEX_WAIT, timeout is interpreted as a relative value, which differs from other
              * futex operations, where timeout is interpreted as an absolute value. */
@@ -788,7 +799,13 @@ static int _shim_do_futex(uint32_t* uaddr, int op, uint32_t val, void* utime, ui
 int shim_do_futex(int* uaddr, int op, int val, void* utime, int* uaddr2, int val3) {
     static_assert(sizeof(int) == 4, "futexes are defined to be 32-bit");
     return _shim_do_futex((uint32_t*)uaddr, op, (uint32_t)val, utime, (uint32_t*)uaddr2,
-                          (uint32_t)val3);
+                          (uint32_t)val3, false);
+}
+
+int shim_do_futex_time64(int *uaddr, int op, int val, void* utime, int* uaddr2, int val3) {
+    static_assert(sizeof(int) == 4, "futexes are defined to be 32-bit");
+    return _shim_do_futex((uint32_t*)uaddr, op, (uint32_t)val, utime, (uint32_t*)uaddr2,
+                          (uint32_t)val3, true);
 }
 
 int shim_do_set_robust_list(struct robust_list_head* head, size_t len) {
