@@ -715,6 +715,12 @@ DEFINE_SHIM_SYSCALL(clock_gettime, 2, shim_do_clock_gettime, int, clockid_t, whi
 
 DEFINE_SHIM_SYSCALL(clock_getres, 2, shim_do_clock_getres, int, clockid_t, which_clock,
                     struct timespec*, tp)
+#if defined(__powerpc64__)
+DEFINE_SHIM_SYSCALL(clock_gettime64, 2, shim_do_clock_gettime64, int, clockid_t, which_clock,
+                    struct timespec64*, tp)
+DEFINE_SHIM_SYSCALL(clock_getres_time64, 2, shim_do_clock_getres_time64, int, clockid_t, which_clock,
+                    struct timespec64*, tp)
+#endif
 
 /* clock_nanosleep: sys/shim_sleep.c */
 DEFINE_SHIM_SYSCALL(clock_nanosleep, 4, shim_do_clock_nanosleep, int, clockid_t, which_clock, int,
