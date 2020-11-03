@@ -436,6 +436,9 @@ struct parser_table {
 #ifdef __NR_clock_getres_time64
         [__NR_clock_getres_time64] = {.slow = 0, .parser = {NULL}},
 #endif
+#ifdef __NR_semtimedop_time64
+        [__NR_semtimedop_time64]   = {.slow = 0, .parser = {NULL}},
+#endif
 #ifdef __NR_futex_time64
         [__NR_futex_time64]      = {.slow = 0, .parser = {NULL}},
 #endif

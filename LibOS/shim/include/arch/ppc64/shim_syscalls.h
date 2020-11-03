@@ -55,6 +55,9 @@
 #if !defined __NR_clock_getres_time64
 #define __NR_clock_getres_time64 406
 #endif
+#if !defined __NR_semtimedop_time64
+#define __NR_semtimedop_time64 420
+#endif
 #if !defined __NR_futex_time64
 #define __NR_futex_time64 422
 #endif
