@@ -693,6 +693,10 @@ SHIM_SYSCALL_RETURN_ENOSYS(restart_syscall, 0, int)
 /* semtimedop: sys/shim_semget.c */
 DEFINE_SHIM_SYSCALL(semtimedop, 4, shim_do_semtimedop, int, int, semid, struct sembuf*, sops,
                     unsigned int, nsops, const struct timespec*, timeout)
+#if defined(__powerpc64__)
+DEFINE_SHIM_SYSCALL(semtimedop_time64, 4, shim_do_semtimedop_time64, int, int, semid,
+                    struct sembuf*, sops, unsigned int, nsops, const struct timespec64*, timeout)
+#endif
 
 SHIM_SYSCALL_RETURN_ENOSYS(fadvise64, 4, int, int, fd, loff_t, offset, size_t, len, int, advice)
 
