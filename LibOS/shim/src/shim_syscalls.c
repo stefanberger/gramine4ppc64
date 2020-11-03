@@ -640,6 +640,10 @@ DEFINE_SHIM_SYSCALL(time, 1, shim_do_time, time_t, time_t*, tloc)
 /* futex: sys/shim_futex.c */
 DEFINE_SHIM_SYSCALL(futex, 6, shim_do_futex, int, int*, uaddr, int, op, int, val, void*, utime,
                     int*, uaddr2, int, val3)
+#if defined(__powerpc64__)
+DEFINE_SHIM_SYSCALL(futex_time64, 6, shim_do_futex_time64, int, int*, uaddr, int, op, int, val, void*, utime,
+                    int*, uaddr2, int, val3)
+#endif
 
 DEFINE_SHIM_SYSCALL(sched_setaffinity, 3, shim_do_sched_setaffinity, long, pid_t, pid,
                     unsigned int, len, unsigned long*, user_mask_ptr)
