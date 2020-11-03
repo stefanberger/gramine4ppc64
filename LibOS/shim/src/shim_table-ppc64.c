@@ -440,6 +440,24 @@ shim_fp shim_table[LIBOS_SYSCALL_BOUND] = {
     (shim_fp)0,
     (shim_fp)0,					/* 405 */
     (shim_fp)__shim_clock_getres_time64,
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,					/* 410 */
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,					/* 415 */
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,					/* 420 */
+    (shim_fp)0,
+    (shim_fp)__shim_futex_time64,
+    (shim_fp)0,
+    (shim_fp)0,
 };
 
 #define CR0_SO (0x80000000 >> 3)  /* summary overflow; indicates syscall error */
