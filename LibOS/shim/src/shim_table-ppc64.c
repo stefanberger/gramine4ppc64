@@ -394,6 +394,52 @@ shim_fp shim_table[LIBOS_SYSCALL_BOUND] = {
     (shim_fp)0,//__shim_seccomp,
     (shim_fp)__shim_getrandom,
     (shim_fp)0,//__shim_memfd_create		/* 360 */
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,					/* 365 */
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,					/* 370 */
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,					/* 375 */
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,					/* 380 */
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,					/* 385 */
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,					/* 390*/
+    (shim_fp)0,
+    (shim_fp)__shim_semtimedop,
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,					/* 395*/
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)0,					/* 400 */
+    (shim_fp)0,
+    (shim_fp)0,
+    (shim_fp)__shim_clock_gettime64,
+    (shim_fp)0,
+    (shim_fp)0,					/* 405 */
+    (shim_fp)__shim_clock_getres_time64,
 };
 
 #define CR0_SO (0x80000000 >> 3)  /* summary overflow; indicates syscall error */

@@ -250,7 +250,9 @@ long __shim_timer_getoverrun(long);
 long __shim_timer_delete(long);
 long __shim_clock_settime(long, long);
 long __shim_clock_gettime(long, long);
+long __shim_clock_gettime64(long, long);
 long __shim_clock_getres(long, long);
+long __shim_clock_getres_time64(long, long);
 long __shim_clock_nanosleep(long, long, long, long);
 long __shim_exit_group(long);
 long __shim_epoll_wait(long, long, long, long);
@@ -522,6 +524,10 @@ int shim_do_epoll_wait(int epfd, struct __kernel_epoll_event* events, int maxeve
 int shim_do_epoll_ctl(int epfd, int op, int fd, struct __kernel_epoll_event* event);
 int shim_do_clock_gettime(clockid_t which_clock, struct timespec* tp);
 int shim_do_clock_getres(clockid_t which_clock, struct timespec* tp);
+#if defined(__powerpc64__)
+int shim_do_clock_gettime64(clockid_t which_clock, struct timespec64* tp);
+int shim_do_clock_getres_time64(clockid_t which_clock, struct timespec64* tp);
+#endif
 int shim_do_clock_nanosleep(clockid_t clock_id, int flags, const struct __kernel_timespec* rqtp,
                             struct __kernel_timespec* rmtp);
 noreturn int shim_do_exit_group(int error_code);
