@@ -430,6 +430,12 @@ struct parser_table {
         [__NR_io_uring_setup]    = {.slow = 0, .parser = {NULL}},
         [__NR_io_uring_enter]    = {.slow = 0, .parser = {NULL}},
         [__NR_io_uring_register] = {.slow = 0, .parser = {NULL}},
+#ifdef __NR_clock_gettime64
+        [__NR_clock_gettime64]   = {.slow = 0, .parser = {NULL}},
+#endif
+#ifdef __NR_clock_getres_time64
+        [__NR_clock_getres_time64] = {.slow = 0, .parser = {NULL}},
+#endif
 };
 
 #define S(sig) #sig
