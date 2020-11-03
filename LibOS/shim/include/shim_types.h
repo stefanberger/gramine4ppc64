@@ -86,6 +86,13 @@ struct __kernel_timezone {
     int tz_dsttime;     /* type of dst correction */
 };
 
+#if defined(__powerpc64__)
+struct timespec64 {
+    int64_t tv_sec;
+    long tv_nsec;
+};
+#endif
+
 /* linux/time.h
  * syscall interface - used (mainly by NTP daemon)
  * to discipline kernel clock oscillator
