@@ -25,6 +25,7 @@ pthread_barrier_t barrier;
 
 /* Run a busy loop for some iterations, so that we can verify affinity with htop manually */
 static void* dowork(void* args) {
+#if defined(__x86_64__)
     uint64_t* iterations = (uint64_t*)args;
     __asm__ volatile (
                       "movq %0, %%rax\n"
@@ -33,6 +34,11 @@ static void* dowork(void* args) {
                       "cmp $0, %%rax\n"
                       "jne loop\n"
                       : /*no outs*/ : "m"(*iterations)  : "rax", "cc");
+#else
+    volatile uint64_t iterations = *(uint64_t*)args;
+    while (iterations != 0)
+        iterations -= 1;
+#endif
 
     int ret = pthread_barrier_wait(&barrier);
     if (ret != 0 && ret != PTHREAD_BARRIER_SERIAL_THREAD) {
