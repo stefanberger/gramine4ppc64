@@ -268,6 +268,7 @@ void deliver_signal(siginfo_t* info, PAL_CONTEXT* context) {
             }
         }
     } else {
+        debug("1: calling __handle_one_signal\n");
         __handle_one_signal(tcb, signal);
         __handle_signals(tcb);
     }
@@ -747,6 +748,9 @@ static void __handle_one_signal(shim_tcb_t* tcb, struct shim_signal* signal) {
 
     if (signal->pal_context)
         ucontext_to_pal_context(signal->pal_context, &signal->context);
+
+    if (thread->wakeup_after_handler_run)
+        thread_wakeup(thread);
 }
 
 void __handle_signals(shim_tcb_t* tcb) {
@@ -784,6 +788,7 @@ void __handle_signals(shim_tcb_t* tcb) {
             __store_context(tcb, NULL, signal);
         }
 
+        debug("2: calling __handle_one_signal\n");
         __handle_one_signal(tcb, signal);
         free(signal);
     }
