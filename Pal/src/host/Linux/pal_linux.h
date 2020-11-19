@@ -5,7 +5,9 @@
 #define PAL_LINUX_H
 
 #include <asm/fcntl.h>
+#if !defined(__powerpc64__)
 #include <asm/stat.h>
+#endif
 #include <linux/mman.h>
 #include <sigset.h>
 #include <sys/syscall.h>
