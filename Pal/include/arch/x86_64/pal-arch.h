@@ -32,6 +32,9 @@ typedef struct pal_tcb {
     /* data private to PAL implementation follows this struct. */
 } PAL_TCB;
 
+typedef struct pal_tcb_trailer {
+} PAL_TCB_TRAILER;
+
 static inline void pal_tcb_arch_init(PAL_TCB* tcb __attribute__((unused))) {
     /* nothing to do */
 }

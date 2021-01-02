@@ -154,7 +154,11 @@ typedef struct pal_tcb_linux {
         int        (*callback)(void*);
         void*      param;
     };
+    PAL_TCB_TRAILER trailer; /* arch-specific */
 } PAL_TCB_LINUX;
+
+void pal_tcb_linux_init(PAL_TCB_LINUX* tcb, PAL_HANDLE handle, void* alt_stack,
+                        int (*callback)(void*), void* param);
 
 int pal_thread_init(void* tcbptr);
 
