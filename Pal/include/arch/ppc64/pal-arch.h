@@ -10,6 +10,8 @@
 #ifndef PAL_ARCH_H
 #define PAL_ARCH_H
 
+#include <assert.h>
+
 #define PAGE_SIZE       (1 << 16)
 #define PRESET_PAGESIZE PAGE_SIZE
 
@@ -64,6 +66,13 @@ typedef struct pal_tcb {
     tcbhead_t glibc_tcb;
 } PAL_TCB;
 
+static_assert(offsetof(PAL_TCB, glibc_tcb.stack_guard) ==
+              sizeof(PAL_TCB) - sizeof(void*) /* dtv */ - sizeof(uintptr_t) /* stack_guard */,
+              "stack guard is at wrong offset in PAL_TCB");
+
+#define STACK_PROTECTOR_CANARY_DEFAULT  0xbadbadbadbadUL
+
+__attribute__((__optimize__("-fno-stack-protector")))
 static inline void pal_tcb_arch_init(PAL_TCB* tcb) {
     tcb->glibc_tcb.LibOS_TCB = tcb;
 }

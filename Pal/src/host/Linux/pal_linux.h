@@ -156,6 +156,9 @@ typedef struct pal_tcb_linux {
     };
 } PAL_TCB_LINUX;
 
+void pal_tcb_linux_init(PAL_TCB_LINUX* tcb, PAL_HANDLE handle, void* alt_stack,
+                        int (*callback)(void*), void* param);
+
 int pal_thread_init(void* tcbptr);
 
 static inline PAL_TCB_LINUX* get_tcb_linux(void) {
@@ -167,6 +170,8 @@ static inline void pal_set_tcb_stack_canary(PAL_TCB_LINUX* tcbptr, uint64_t cana
     ((char*)&canary)[0] = 0; /* prevent C-string-based stack leaks from exposing the cookie */
 #ifdef __x86_64__
     tcbptr->common.stack_protector_canary = canary;
+#elif defined __powerpc64__
+    tcbptr->common.glibc_tcb.stack_guard = canary;
 #else
 #error "unsupported architecture"
 #endif
