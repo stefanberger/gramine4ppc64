@@ -64,6 +64,11 @@ typedef struct pal_tcb {
     tcbhead_t glibc_tcb;
 } PAL_TCB;
 
+typedef struct pal_tcb_trailer {
+    uintptr_t stack_guard; /* must be 2nd last */
+    void *dtv; /* DTV pointer; must be last */
+} PAL_TCB_TRAILER;
+
 static inline void pal_tcb_arch_init(PAL_TCB* tcb) {
     tcb->glibc_tcb.LibOS_TCB = tcb;
 }

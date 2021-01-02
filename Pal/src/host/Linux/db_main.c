@@ -142,6 +142,17 @@ noreturn static void print_usage_and_exit(const char* argv_0) {
     _DkProcessExit(1);
 }
 
+void pal_tcb_linux_init(PAL_TCB_LINUX* tcb, PAL_HANDLE handle, void* alt_stack,
+                        int (*callback)(void*), void* param)
+{
+    tcb->common.self = &tcb->common;
+    tcb->handle      = handle;
+    tcb->alt_stack   = alt_stack; // Stack bottom
+    tcb->callback    = callback;
+    tcb->param       = param;
+    pal_tcb_arch_init(&tcb->common);
+}
+
 noreturn void pal_linux_main(void* initial_rsp, void* fini_callback) {
     __UNUSED(fini_callback);  // TODO: We should call `fini_callback` at the end.
     int ret;
@@ -207,12 +218,7 @@ noreturn void pal_linux_main(void* initial_rsp, void* fini_callback) {
 
     // Initialize TCB at the top of the alternative stack.
     PAL_TCB_LINUX* tcb = alt_stack + ALT_STACK_SIZE - sizeof(PAL_TCB_LINUX);
-    tcb->common.self = &tcb->common;
-    tcb->handle      = first_thread;
-    tcb->alt_stack   = alt_stack; // Stack bottom
-    tcb->callback    = NULL;
-    tcb->param       = NULL;
-    pal_tcb_arch_init(&tcb->common);
+    pal_tcb_linux_init(tcb, first_thread, alt_stack, NULL, NULL);
     ret = pal_thread_init(tcb);
     if (ret < 0)
         INIT_FAIL(unix_to_pal_error(-ret), "pal_thread_init() failed");
