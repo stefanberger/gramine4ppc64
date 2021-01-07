@@ -27,6 +27,9 @@ ifeq ($(ARCH),x86_64)
 CFLAGS += $(call cc-option, -fstack-protector-strong -mstack-protector-guard=tls \
 	                        -mstack-protector-guard-reg=%gs -mstack-protector-guard-offset=8)
 endif
+ifeq ($(ARCH),ppc64)
+CFLAGS += $(call cc-option, -fstack-protector-strong)
+endif
 
 # Some of the code uses alignof on expressions, which is a GNU extension.
 # Silence Clang - it complains but does support it.
