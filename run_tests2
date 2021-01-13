@@ -46,7 +46,7 @@ x86_64|ppc64le)
 	make -j$(nproc)
 	bash -c "./pal_loader ./nginx -c conf/nginx-graphene.conf" & PID=$!
 	sleep 3
-	./benchmark-http.sh 127.0.0.1:8002 || { ERROR=1; RESULT="FAIL"; }
+	../common_tools/benchmark-http.sh 127.0.0.1:8002 || { ERROR=1; RESULT="FAIL"; }
 	# kill bash and nginx processes
 	kill -SIGKILL $(ps --ppid $PID -o pid=) $PID
 	echo ">>>>> ${TEST}: $RESULT <<<<<"
