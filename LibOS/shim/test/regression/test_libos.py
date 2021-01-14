@@ -105,6 +105,8 @@ class TC_01_Bootstrap(RegressionTestCase):
         self.assertIn('argv[0] = bootstrap_pie', stdout)
 
     def test_110_basic_bootstrapping_cpp(self):
+        if not os.path.exists('bootstrap_cpp'):
+            return
         stdout, _ = self.run_binary(['bootstrap_cpp'])
         self.assertIn('User Program Started', stdout)
 
@@ -636,6 +638,8 @@ class TC_50_GDB(RegressionTestCase):
         # While the stack trace in SGX is unbroken, it currently starts at _start inside
         # enclave, instead of including eclave entry.
 
+        if not os.path.exists('debug'):
+            return
         stdout, _ = self.run_gdb(['debug'], 'debug.gdb')
 
         backtrace_1 = self.find('backtrace 1', stdout)
@@ -663,6 +667,8 @@ class TC_50_GDB(RegressionTestCase):
     def test_010_regs_x86_64(self):
         # To run this test manually, use:
         # GDB=1 GDB_SCRIPT=debug_regs-x86_64.gdb ./pal_loader debug_regs-x86_64
+        if not os.path.exists('debug_regs-x86_64'):
+            return
 
         stdout, _ = self.run_gdb(['debug_regs-x86_64'], 'debug_regs-x86_64.gdb')
 
