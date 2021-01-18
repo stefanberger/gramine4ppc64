@@ -96,44 +96,6 @@ index a6b80f93957199e1ef2bcbbcc12302830caae978..92ac9703f750755e350c86fc13fd3823
    /* Now that the object is fully initialized add it to the object list.  */
    _dl_add_to_namespace_list (l, nsid);
  
-diff --git a/elf/rtld.c b/elf/rtld.c
-index 553cfbd1b74e05467e3c30e291f694ce40c4b0f4..09a0826d2d8fac85e358fbb9a08bb5c67e97b537 100644
---- a/elf/rtld.c
-+++ b/elf/rtld.c
-@@ -458,6 +458,23 @@ _dl_start_final (void *arg, struct dl_start_final_info *info)
-   return start_addr;
- }
- 
-+/* For Graphene, check if Glibc version matches the compatible SHIM
-+ * library. If not, tell the user to update Glibc. */
-+#include "glibc-version.h"
-+
-+const unsigned int glibc_version __attribute__((weak)) = GLIBC_VERSION;
-+
-+static void
-+check_glibc_version (void)
-+{
-+  if (glibc_version != GLIBC_VERSION)
-+    {
-+      _dl_fatal_printf ("Warning from Graphene: "
-+                        "Glibc version is incorrect. Please rebuild Glibc.\n");
-+      _exit (1);
-+    }
-+}
-+
- static ElfW(Addr) __attribute_used__
- _dl_start (void *arg)
- {
-@@ -528,6 +545,9 @@ _dl_start (void *arg)
-      therefore need not test whether we have to allocate the array
-      for the relocation results (as done in dl-reloc.c).  */
- 
-+  /* For Graphene, check if the glibc version is correct. */
-+  check_glibc_version();
-+
-   /* Now life is sane; we can call functions and access global data.
-      Set up to use the operating system facilities, and find out from
-      the operating system's program loader where to find the program
 diff --git a/sysdeps/gnu/errlist-compat.awk b/sysdeps/gnu/errlist-compat.awk
 index 07334c63d81cb3b0dca848aa28c6a80292059bfb..2093438c050443920da0fcafe3083d7270f9bb24 100644
 --- a/sysdeps/gnu/errlist-compat.awk
