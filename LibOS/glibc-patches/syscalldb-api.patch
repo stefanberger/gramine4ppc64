@@ -36,11 +36,12 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..47b17de10f831f28b645686995c5df007bb375d3
 --- /dev/null
 +++ b/syscalldb.c
-@@ -0,0 +1,11 @@
+@@ -0,0 +1,13 @@
 +#include "syscalldb.h"
 +#include <stdarg.h>
 +#include <errno.h>
 +
++#ifdef __x86_64__
 +int register_library (const char * name, unsigned long load_address)
 +	__attribute__((weak));
 +
@@ -48,6 +49,7 @@ index 0000000000000000000000000000000000000000..47b17de10f831f28b645686995c5df00
 +{
 +	return 0;
 +}
++#endif
 diff --git a/syscalldb.h b/syscalldb.h
 new file mode 100644
 index 0000000000000000000000000000000000000000..4914e280d8cd6a62ab1ea4c9aa41601763167e7d
