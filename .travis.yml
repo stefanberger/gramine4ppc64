@@ -14,6 +14,7 @@ addons:
         - python3-scipy
         - python3-setuptools
         - python3-lxml
+        - quilt
 script:
   - make -j$(nproc)
     && sudo pip3 install pytest
