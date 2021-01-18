@@ -1,7 +1,7 @@
 ---
  syscallas.S |   16 ++++++++++++++++
- syscalldb.h |   34 ++++++++++++++++++++++++++++++++++
- 2 files changed, 50 insertions(+)
+ syscalldb.h |   42 ++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 58 insertions(+)
 
 Index: glibc-2.31/syscallas.S
 ===================================================================
@@ -45,7 +45,7 @@ Index: glibc-2.31/syscalldb.h
  # if defined(PSEUDO) && defined(SYSCALL_NAME) && defined(SYSCALL_SYMBOL)
  #  define SYSCALLDB                     \
      subq $128, %rsp;                    \
-@@ -15,11 +16,42 @@
+@@ -17,11 +18,50 @@
      callq *syscalldb@GOTPCREL(%rip)
  # endif
  
@@ -71,8 +71,16 @@ Index: glibc-2.31/syscalldb.h
 +    std 0,16(1);         /* save lr */           \
 +    ld 9,-FRAMESIZE(1);  /* restore syscall nr */\
 +    stdu 1,-FRAMESIZE(1);                        \
-+    bl syscalldb;                                \
-+    nop;                                         \
++    /* call syscalld using tcbhead_t->LibOS */   \
++    std 2,24(1);                                 \
++    subi 12,13,0x7000+14*8;                      \
++    /* pointer to PAL_TCB in tcbhead_t */        \
++    ld 12,0(12);                                 \
++    /* our special offset in PAL_TCB for syscalldb */ \
++    ld 12,32(12);                                \
++    mtctr 12;                                    \
++    bctrl;                                       \
++    ld 2,24(1);                                  \
 +    addi 1,1,FRAMESIZE;                          \
 +    ld 0,16(1);         /* restore lr */         \
 +    mtlr 0;
@@ -87,8 +95,8 @@ Index: glibc-2.31/syscalldb.h
 +#if defined(__i386__) || defined(__x86_64__)
  #define SYSCALLDB                           \
      "subq $128, %%rsp\n\t"                  \
-     "callq *syscalldb@GOTPCREL(%%rip)\n\t"  \
-@@ -28,6 +60,8 @@ asm (
+     ".cfi_adjust_cfa_offset 128\n\t"        \
+@@ -32,6 +72,8 @@ asm (
  #define SYSCALLDB_ASM                       \
      "callq *syscalldb@GOTPCREL(%rip)\n\t"
  
