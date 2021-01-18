@@ -70,6 +70,8 @@ static inline tcbhead_t *r13_to_tcbhead_t(uint64_t r13) {
 
 typedef struct pal_tcb {
     struct pal_tcb* self;
+    /* an unused field we need for offset purposes */
+    uint64_t unused;
     /* uint64_t for alignment */
     uint8_t libos_tcb[PAL_LIBOS_TCB_SIZE];
     /* data private to PAL implementation follows this struct. */
