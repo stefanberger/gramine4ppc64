@@ -104,9 +104,12 @@ $(GLIBC_SRC)/.configured: $(GLIBC_PATCHES) $(GLIBC_SRC).tar.gz $(GLIBC_DEPS)
 	$(RM) -r $(GLIBC_SRC)
 	tar -mxzf $(GLIBC_SRC).tar.gz
 	cd $(GLIBC_SRC) && \
+	mkdir patches && \
 	for p in $(GLIBC_PATCHES); do \
 		echo applying $$p; \
-		patch -p1 -l < ../$$p || exit 255; \
+		echo patch -p1 -l < ../$$p || exit 255; \
+		quilt import ../$$p || exit 255; \
+		quilt push || exit 255; \
 	done
 	touch $@
 
@@ -171,7 +174,7 @@ $(GCC_SRC)/.configured: $(GCC_PATCHES) $(GCC_SRC).tar.gz $(GCC_DEPS)
 	cd $(GCC_SRC) && \
 	for p in $(GCC_PATCHES); do \
 		echo applying $$p; \
-		patch -p1 -l < ../$$p || exit 255; \
+		echo patch -p1 -l < ../$$p || exit 255; \
 	done
 	cd $(GCC_SRC) && ./contrib/download_prerequisites
 	touch $@
