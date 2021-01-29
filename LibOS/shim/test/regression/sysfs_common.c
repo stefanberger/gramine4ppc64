@@ -145,7 +145,7 @@ int main(int argc, char** argv) {
         if (strncmp(dirent->d_name, "node", 4) == 0) {
             char* endp;
             unsigned long nr = strtoul(dirent->d_name + 4,  &endp, 10);
-            if (nr != _SC_ULONG_MAX && endp != dirent64->d_name + 4 && *endp == '\0')
+            if (nr != _SC_ULONG_MAX && endp != dirent->d_name + 4 && *endp == '\0')
                 count++;
         }
     }
