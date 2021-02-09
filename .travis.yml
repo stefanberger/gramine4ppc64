@@ -15,7 +15,7 @@ addons:
         - python3-setuptools
         - python3-lxml
 script:
-  - make -j$(nproc)
+  - make -j$(nproc) || make -j$(nproc)
     && sudo pip3 install pytest
     && export PYTHONVERSION=python3.6 INSTALL_DEPS=1
     && if [ ! -c /dev/kmsg ]; then sed -i "/devkmsg/d" LibOS/shim/test/regression/manifest.template; fi
