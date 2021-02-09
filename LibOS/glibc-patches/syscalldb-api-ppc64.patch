@@ -1,7 +1,7 @@
 ---
- syscallas.S |   16 ++++++++++++++++
- syscalldb.h |   37 +++++++++++++++++++++++++++++++++++++
- 2 files changed, 53 insertions(+)
+ syscallas.S |   16 +++++++++++++
+ syscalldb.h |   72 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 88 insertions(+)
 
 Index: glibc-2.31/syscallas.S
 ===================================================================
@@ -37,16 +37,25 @@ Index: glibc-2.31/syscalldb.h
 ===================================================================
 --- glibc-2.31.orig/syscalldb.h
 +++ glibc-2.31/syscalldb.h
-@@ -1,6 +1,8 @@
+@@ -1,6 +1,17 @@
  #ifndef _SYSCALLDB_H_
  #define _SYSCALLDB_H_
  
++#define SHIM_SYSCALLDB_OFFSET      32
++#define SHIM_SYSCALLDB_OFFSET_STR  "32"
++
++#define SHIM_REGISTER_LIBRARY_OFFSET 40
++
++#if defined(__powerpc64__)
++#define TCBHEAD_LIBOS_PTR_FROM_END_OFFSET (14 * 8)
++#endif
++
 +#if defined(__x86_64__)
 +
  #ifdef __ASSEMBLER__
  
  .include "syscalldb_macro.S"
-@@ -13,4 +15,39 @@ asm (".include \"syscalldb_macro.S\"");
+@@ -13,4 +24,65 @@ asm (".include \"syscalldb_macro.S\"");
  
  #endif /* __ASSEMBLER__ */
  
@@ -75,13 +84,39 @@ Index: glibc-2.31/syscalldb.h
 +    std 0,16(1);         /* save lr */           \
 +    ld 9,-FRAMESIZE(1);  /* restore syscall nr */\
 +    stdu 1,-FRAMESIZE(1);                        \
-+    bl syscalldb;                                \
-+    nop;                                         \
++    /* call syscalld using tcbhead_t->LibOS */   \
++    std 2,24(1);                                 \
++    subi 12,13,0x7000+14*8;                      \
++    /* pointer to PAL_TCB in tcbhead_t */        \
++    ld 12,0(12);                                 \
++    /* our special offset in PAL_TCB for syscalldb */ \
++    ld 12,32(12);                                \
++    /* address of function must be in r12 */     \
++    mtctr 12;                                    \
++    bctrl;                                       \
++    ld 2,24(1);                                  \
 +    addi 1,1,FRAMESIZE;                          \
 +    ld 0,16(1);         /* restore lr */         \
 +    mtlr 0;
 +
-+#endif /* __ASSEMBLER__ */
++#else /* __ASSEMBLER__ */
++
++static inline int register_library(const char* name, unsigned long load_address)
++{
++    typedef int(*shim_register_library_func)(const char *, unsigned long);
++    shim_register_library_func shim_register_library;
++
++    __asm__ __volatile__("subi %0,13,%1\n\t"
++                         "ld %0,0(%0)\n\t"
++                         "ld %0,%2(%0)\n\t"
++                         : "=&r" (shim_register_library)
++                         : "i" (0x7000 + TCBHEAD_LIBOS_PTR_FROM_END_OFFSET),
++                           "i" (SHIM_REGISTER_LIBRARY_OFFSET)
++                         :);
++    return shim_register_library(name, load_address);
++}
++
++#endif
 +
 +#endif /* __powerpc64 */
 +
