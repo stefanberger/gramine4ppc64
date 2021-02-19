@@ -21,24 +21,25 @@
 #define VSR_HANDLER_LO		0x1122334455667788ULL
 #define VSR_HANDLER_HI		0x99aabbccddeeff00ULL
 
-#define VSR2_REG 		35 /* this one must be >= 32 */
+#define VSR2_REG		35 /* this one must be >= 32 */
 #define VSR2_MAIN_LO		0x1122334455667788ULL
 #define VSR2_MAIN_HI		0x99aabbccddeeff00ULL
 #define VSR2_HANDLER_LO		0xcafecafecafecafeULL
 #define VSR2_HANDLER_HI		0xbadebadebadebadeULL
 
-#define VRSAVE_MAIN             0x12345678UL
-#define VRSAVE_HANDLER          0x87654321UL
+#define VRSAVE_MAIN		0x12345678UL
+#define VRSAVE_HANDLER		0x87654321UL
 
-#define VSCR_MAIN               0x00010000UL
-#define VSCR_HANDLER            0x00010001UL
+#define VSCR_MAIN		0x00010000UL
+#define VSCR_HANDLER		0x00010001UL
 
 static unsigned int good;
+
 #define GOOD_FP			(1 << 0)
 #define GOOD_VSR		(1 << 1)
 #define GOOD_VSR2		(1 << 2)
-#define GOOD_VRSAVE             (1 << 3)
-#define GOOD_VSCR               (1 << 4)
+#define GOOD_VRSAVE		(1 << 3)
+#define GOOD_VSCR		(1 << 4)
 
 static void __attribute__((noinline)) set_vsr(unsigned long lo, unsigned long hi) {
     unsigned long data[2] = { lo, hi };
@@ -62,7 +63,6 @@ static void __attribute__((noinline)) get_vsr(unsigned long *lo, unsigned long *
         : "r" (&data)
         : "r11", "memory"
     );
-
     *lo = data[0];
     *hi = data[1];
 }
@@ -89,7 +89,6 @@ static void __attribute__((noinline)) get_vsr2(unsigned long *lo, unsigned long 
         : "r" (&data)
         : "r11", "memory"
     );
-
     *lo = data[0];
     *hi = data[1];
 }
@@ -114,7 +113,6 @@ static unsigned long __attribute__((noinline)) get_vrsave(void) {
     );
     return vrsave;
 }
-
 static void __attribute__((noinline)) set_vscr(unsigned long vscr) {
     unsigned long data[2] = { 0, vscr };
 
@@ -127,7 +125,6 @@ static void __attribute__((noinline)) set_vscr(unsigned long vscr) {
         : "v0", "vs32", "r11", "vscr"
     );
 }
-
 static unsigned long __attribute__((noinline)) get_vscr(void) {
     unsigned long data[2];
 
@@ -142,6 +139,17 @@ static unsigned long __attribute__((noinline)) get_vscr(void) {
     return data[1];
 }
 
+struct local_vscr
+{
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    unsigned int __pad[3];
+    unsigned int vscr_word;
+#else
+    unsigned int vscr_word;
+    unsigned int __pad[3];
+#endif
+};
+
 static void handler(int signum, siginfo_t* si, void* puc) {
     ucontext_t* uc = puc;
     mcontext_t* mc = &uc->uc_mcontext;
@@ -149,7 +157,6 @@ static void handler(int signum, siginfo_t* si, void* puc) {
     double* fpnum = (double*)&mc->__fp_regs[FR_REG];
     if (*fpnum == FR_MAIN)
         good |= GOOD_FP;
-
     *fpnum = FR_HANDLER;
 
     vrregset_t *v_regs = mc->__v_regs;
@@ -177,13 +184,14 @@ static void handler(int signum, siginfo_t* si, void* puc) {
         good |= GOOD_VRSAVE;
     v_regs->__vrsave = VRSAVE_HANDLER;
 
-    unsigned int vscr = v_regs->__vscr.__vscr_word;
-    /* doesn't seem to work on Linux */
+    struct local_vscr *lvscr = (struct local_vscr *)(&v_regs->__vscr);
+    unsigned int vscr = lvscr->vscr_word;
+
     if (vscr == VSCR_MAIN)
         good |= GOOD_VSCR;
     else
         printf("in handler: vscr = 0x%x expected = 0x%lx\n", vscr, VSCR_MAIN);
-    v_regs->__vscr.__vscr_word = VSCR_HANDLER;
+    lvscr->vscr_word = VSCR_HANDLER;
 }
 
 int main() {
@@ -191,7 +199,6 @@ int main() {
         .sa_sigaction = handler,
         .sa_flags = SA_SIGINFO,
     };
-
     int ret = sigaction(SIGINT, &action, NULL);
     if (ret < 0) {
         fprintf(stderr, "sigaction failed\n");
@@ -206,7 +213,6 @@ int main() {
     //printf("vscr before: 0x%lx\n", get_vscr());
 
     kill(getpid(), SIGINT);
-
     if (!(good & GOOD_FP)) {
         printf("'Float' did not show proper value in signal handler\n");
         ret = 1;
@@ -219,12 +225,10 @@ int main() {
 
     unsigned long vsr_lo, vsr_hi;
     get_vsr(&vsr_lo, &vsr_hi);
-
     if (!(good & GOOD_VSR)) {
         printf("'VSR%u' did not show proper value in signal handler\n", VSR_REG);
         ret = 1;
     }
-
     if (vsr_lo != VSR_HANDLER_LO || vsr_hi != VSR_HANDLER_HI) {
         printf("Context switch failed: VSR%u has wrong value from handler\n", VSR_REG);
         ret = 1;
@@ -232,12 +236,10 @@ int main() {
 
     unsigned long vsr2_lo, vsr2_hi;
     get_vsr2(&vsr2_lo, &vsr2_hi);
-
     if (!(good & GOOD_VSR2)) {
         printf("'VSR%u' did not show proper value in signal handler\n", VSR2_REG);
         ret = 1;
     }
-
     if (vsr2_lo != VSR2_HANDLER_LO || vsr2_hi != VSR2_HANDLER_HI) {
         printf("Context switch failed: VSR%u has wrong value from handler\n", VSR2_REG);
         printf("vsr2_lo: 0x%lx [0x%llx]  vsr2_hi: 0x%lx [0x%llx]\n",
@@ -250,27 +252,23 @@ int main() {
         printf("'VRSAVE' did not show proper value in signal handler\n");
         ret = 1;
     }
-
     if (vrsave != VRSAVE_HANDLER) {
        printf("Context switch failed: VRSAVE has wrong value from handler\n");
        ret = 1;
     }
-    //printf("vscr: 0x%lx  vrsave: 0x%lx\n", get_vscr(), get_vrsave());
 
+    //printf("vscr: 0x%lx  vrsave: 0x%lx\n", get_vscr(), get_vrsave());
     unsigned long vscr = get_vscr();
-    sleep(1);
     vscr = get_vscr();
     if (!(good & GOOD_VSCR)) {
         printf("'VSCR' did not show proper value in signal handler\n");
         ret = 1;
     }
-
     if (vscr != VSCR_HANDLER) {
        printf("Context switch failed: VSCR has wrong value from handler\n");
        printf("vscr: 0x%lx  vrsave: 0x%lx\n", vscr, get_vrsave());
        ret = 1;
     }
-
     if (!ret)
         printf("TEST OK\n");
 
