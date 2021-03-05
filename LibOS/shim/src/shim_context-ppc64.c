@@ -321,7 +321,6 @@ void restart_syscall(PAL_CONTEXT* context, uint64_t sysnr) {
 }
 
 bool maybe_emulate_syscall(PAL_CONTEXT* context) {
-    // FIXME: implement
     __UNUSED(context);
     debug("%s: not implemented!\n", __func__);
     die_or_inf_loop();

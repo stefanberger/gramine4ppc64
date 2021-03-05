@@ -24,9 +24,8 @@
  * registers: r0, r3-r12, lr, ctr, xer, cr0-cr1, cr5-cr7 (+some fp registers)
  * So we have to store: r9 - r12, lr, ctr, xer, cr1, cr5-cr7
  *
- * We do an ABI compliant call to Graphene's syscalldb with r9 holding the
+ * We do an ABI-compliant call to Graphene's syscalldb with r9 holding the
  * syscall number (rather than r0) and registers r3-r8 holding parameters.
- * This way we don't need to worry about the runtimer linker clobbering r0.
  */
 /* FIXME: we may need to store more registers at a SAFE PLACE! */
 # define SYSCALLDB_R9(FRAMESIZE)                 \
@@ -69,4 +68,3 @@ static inline int shim_register_library(const char* name, unsigned long load_add
 #endif /* __ASSEMBLER__ */
 
 #endif /* SHIM_ENTRY_API_H_ */
-

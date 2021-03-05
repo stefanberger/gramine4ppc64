@@ -17,7 +17,7 @@ typedef struct {
     unsigned long __val[NUM_SIGS / (8 * sizeof(unsigned long))];
 } __sigset_t;
 
-// FIXME: Check this
-#define RED_ZONE_SIZE 	4096
+// see: https://elixir.bootlin.com/linux/v5.11/source/arch/powerpc/include/asm/ptrace.h#L84
+#define RED_ZONE_SIZE 	4096 /* FIXME: should be 512, but causes crashes */
 
 #endif /* _SHIM_TYPES_ARCH_H_ */
