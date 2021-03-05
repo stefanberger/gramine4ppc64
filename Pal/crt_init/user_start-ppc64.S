@@ -28,11 +28,6 @@
    License along with the GNU C Library; if not, see
    <https://www.gnu.org/licenses/>.  */
 
-#define ASM_SIZE_DIRECTIVE(name) .size name,.-name
-
-#define FUNC_LABEL(X) X
-#define JUMPTARGET(name) FUNC_LABEL(name)
-
 #ifdef PIC
 	.section ".data.rel.ro.local","aw"
 #else

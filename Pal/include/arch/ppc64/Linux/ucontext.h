@@ -25,8 +25,6 @@
 
 /* We need the signal context definitions even if they are not used
    included in <signal.h>.  */
-// FIXME: can remove?
-#include <sigcontext.h>
 
 struct pt_regs {
 	unsigned long gpr[32];
