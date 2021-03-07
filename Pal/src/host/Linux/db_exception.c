@@ -23,7 +23,9 @@
 #include "pal_linux.h"
 #include "pal_linux_defs.h"
 #include "pal_security.h"
+#if defined(__x86_64__)
 #include "sigset.h"
+#endif
 #include "ucontext.h"
 
 #ifndef SIGHANDLER_FUNCTION

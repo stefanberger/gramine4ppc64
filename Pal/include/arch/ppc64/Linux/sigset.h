@@ -22,10 +22,6 @@
    02111-1307 USA.  */
 
 
-/*
- * rt_sigprocmask: https://elixir.bootlin.com/linux/v5.11.3/source/kernel/signal.c#L3084
- * rt_sigaction:   https://elixir.bootlin.com/linux/v5.11.3/source/kernel/signal.c#L4313
- */
 
 #define _SIGSET_H_types 1
 #define _SIGSET_H_fns   1
@@ -42,16 +38,6 @@ typedef int __sig_atomic_t;
 typedef struct {
     unsigned long int __val[_SIGSET_NWORDS];
 } __sigset_t;
-static_assert(sizeof(__sigset_t) == 8, "sizeof(__sigset_t) must be 8");
-
-// https://elixir.bootlin.com/linux/v5.11.3/source/include/linux/compat.h#L142
-struct compat_sigaction {
-    void (*sa_handler)(int);
-    unsigned long sa_flags;
-    void (*sa_restorer)(void); // ppc64 has it but doesn't see to use it
-    __sigset_t sa_mask;
-};
-static_assert(sizeof(struct compat_sigaction) == 32, "sizeof(compat_sigaction) must be 32");
 
 /* Return a mask that includes the bit for SIG only.  */
 #define __sigmask(sig) (((unsigned long int)1) << (((sig) - 1) % (8 * sizeof(unsigned long int))))
@@ -107,6 +93,18 @@ __SIGSETFN(__sigdelset, ((__set->__val[__word] &= ~__mask), 0), )
 #include "sysdep-arch.h"
 #include <asm/signal.h>
 
+static_assert(sizeof(__sigset_t) == 8, "sizeof(__sigset_t) must be 8");
+
+// https://elixir.bootlin.com/linux/v5.11.3/source/include/linux/compat.h#L142
+struct compat_sigaction {
+    void (*sa_handler)(int);
+    unsigned long sa_flags;
+    void (*sa_restorer)(void); // ppc64 has it but doesn't see to use it
+    __sigset_t sa_mask;
+};
+static_assert(sizeof(struct compat_sigaction) == 32, "sizeof(compat_sigaction) must be 32");
+
+// rt_sigprocmask: https://elixir.bootlin.com/linux/v5.11.3/source/kernel/signal.c#L3084
 static inline int arch_do_rt_sigprocmask(int how, int sig) {
     __sigset_t mask;
     __sigemptyset(&mask);
@@ -115,6 +113,7 @@ static inline int arch_do_rt_sigprocmask(int how, int sig) {
     return INLINE_SYSCALL(rt_sigprocmask, 4, how, &mask, NULL, sizeof(__sigset_t) /* = 8 */);
 }
 
+// rt_sigaction:   https://elixir.bootlin.com/linux/v5.11.3/source/kernel/signal.c#L4313
 static inline int arch_do_rt_sigaction(int sig, void* handler,
                                        const int* async_signals, size_t num_async_signals,
                                        const void* restore_rt) {
