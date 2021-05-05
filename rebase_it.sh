@@ -52,6 +52,11 @@ do
 		exit 1
 	fi
 	make -j$(nproc) DEBUG=1 || { exit 1; }
+	meson build -Ddirect=enabled || { exit 1; }
+	ninja -C build
+	sudo ninja -C build install
+	export PYTHONPATH=${PWD}/python
+	
 	./run_tests0 || { exit 1; }
 	./run_tests1 || { exit 1; }
 	./run_tests2 || { exit 1; }
