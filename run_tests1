@@ -41,10 +41,4 @@ ERROR=0 \
     &&   make &>/dev/null && make check || { ERROR=1; RESULT="FAIL"; } \
     &&   echo ">>>>> ${TEST}: $RESULT <<<<<" \
     && popd &>/dev/null \
-    && pushd Examples/capnproto &>/dev/null \
-    &&   TEST="capnproto"; echo ">>>>>> $TEST <<<<<<"; RESULT="PASS" \
-    &&   if [ -n "${INSTALL_DEPS}" ]; then sudo apt-get -y install libcapnp-dev capnproto &>/dev/null; fi \
-    &&   make &>/dev/null && ./pal_loader addressbook write &>/dev/null || { ERROR=1; RESULT="FAIL"; } \
-    &&   echo ">>>>> ${TEST}: $RESULT <<<<<" \
-    && popd &>/dev/null \
     && exit $ERROR
