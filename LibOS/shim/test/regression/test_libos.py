@@ -764,7 +764,7 @@ class TC_80_Socket(RegressionTestCase):
         self.assertIn('read on FIFO: Hello from write end of FIFO!', stdout)
 
     def test_100_socket_unix(self):
-        stdout, _ = self.run_binary(['unix'])
+        stdout, _ = self.run_binary(['unix'], timeout=20)
         self.assertIn('Data: This is packet 0', stdout)
         self.assertIn('Data: This is packet 1', stdout)
         self.assertIn('Data: This is packet 2', stdout)
