@@ -716,7 +716,7 @@ static int _shim_do_futex(uint32_t* uaddr, int op, uint32_t val, void* utime, ui
             if (test_user_memory(user_timeout, sizeof(*user_timeout), /*write=*/false)) {
                 return -EFAULT;
             }
-            timeout = timespec_to_us((struct timespec*)utime);
+            timeout = timespec_to_us(user_timeout);
         } else {
             struct timespec64* user_timeout = utime;
             if (test_user_memory(user_timeout, sizeof(*user_timeout), /*write=*/false)) {

@@ -173,7 +173,7 @@ int write_exact(PAL_HANDLE handle, void* buf, size_t size);
 static inline uint64_t timespec_to_us(const struct __kernel_timespec* ts) {
     return ts->tv_sec * TIME_US_IN_S + ts->tv_nsec / TIME_NS_IN_US;
 }
-static inline timespec64_to_us(const struct timespec64* ts) {
+static inline uint64_t timespec64_to_us(const struct timespec64* ts) {
     return ts->tv_sec * TIME_US_IN_S + (uint64_t)ts->tv_nsec / TIME_NS_IN_US;
 }
 
