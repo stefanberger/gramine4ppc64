@@ -55,6 +55,9 @@ do
 	meson build -Ddirect=enabled || { exit 1; }
 	ninja -C build || { exit 1; }
 	sudo ninja -C build install || { exit 1; }
+	# temp?
+	cp build/LibOS/shim/src/libsysdb.so ./Runtime/
+	
 	export PYTHONPATH=${PWD}/python
 
 	./run_tests0 || { exit 1; }
