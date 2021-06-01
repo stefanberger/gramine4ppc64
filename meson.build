@@ -69,9 +69,9 @@ subdir('Scripts')
 # at offset 0x8.
 cflags_custom_stack_protector = [
     '-fstack-protector-strong',
-    '-mstack-protector-guard=tls',
-    '-mstack-protector-guard-reg=%gs',
-    '-mstack-protector-guard-offset=8',
+#    '-mstack-protector-guard=tls',
+#    '-mstack-protector-guard-reg=%gs',
+#    '-mstack-protector-guard-offset=8',
 ]
 if not cc.has_multi_arguments(cflags_custom_stack_protector)
     cflags_custom_stack_protector = '-fno-stack-protector'
