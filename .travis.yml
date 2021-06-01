@@ -23,6 +23,7 @@ script:
     && meson build -Ddirect=enabled
     && ninja -C build
     && sudo ninja -C build install
+    && cp build/LibOS/shim/src/libsysdb.so ./Runtime/
     && sudo pip3 install pytest
     && export PYTHONVERSION=python3.6 INSTALL_DEPS=1 PYTHONPATH="${PWD}/python"
     && if [ ! -c /dev/kmsg ]; then sed -i "/devkmsg/d" LibOS/shim/test/regression/manifest.template; fi
