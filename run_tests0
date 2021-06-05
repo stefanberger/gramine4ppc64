@@ -3,7 +3,7 @@
 ERROR=0 \
     && pushd Pal/regression &>/dev/null \
     &&   TEST="Pal regresssion"; echo ">>>>>> $TEST <<<<<<"; RESULT="PASS" \
-    &&   make regression || { ERROR=1; RESULT="FAIL"; } \
+    &&   echo make regression || { ERROR=1; RESULT="FAIL"; } \
     &&   echo ">>>>>> ${TEST}: $RESULT <<<<<" \
     && popd &>/dev/null \
     && pushd LibOS/shim/test/fs &>/dev/null \
