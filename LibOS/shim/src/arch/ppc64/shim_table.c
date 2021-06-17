@@ -203,7 +203,7 @@ shim_fp shim_table[LIBOS_SYSCALL_BOUND] = {
     (shim_fp)shim_do_rt_sigaction,
     (shim_fp)shim_do_rt_sigprocmask,
     (shim_fp)shim_do_rt_sigpending,		/* 175 */
-    (shim_fp)0, // shim_do_rt_sigtimedwait,
+    (shim_fp)shim_do_rt_sigtimedwait,
     (shim_fp)0, // shim_do_rt_sigqueueinfo,
     (shim_fp)shim_do_rt_sigsuspend,
     (shim_fp)shim_do_pread64,
