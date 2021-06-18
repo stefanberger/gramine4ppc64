@@ -41,7 +41,11 @@ struct pal_sec g_pal_sec;
 size_t g_pal_internal_mem_size = 0;
 char* g_pal_internal_mem_addr = NULL;
 
+#ifdef __powerpc64__
+static const size_t g_page_size = PRESET_PAGESIZE;
+#else
 const size_t g_page_size = PRESET_PAGESIZE;
+#endif
 
 static int g_uid, g_gid;
 static ElfW(Addr) g_sysinfo_ehdr;

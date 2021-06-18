@@ -48,6 +48,9 @@ int _DkVirtualMemoryAlloc(void** paddr, size_t size, int alloc_type, int prot) {
     void* addr = *paddr;
 
     if (alloc_type & PAL_ALLOC_INTERNAL) {
+#ifdef __powerpc64__
+        size_t g_page_size = 0x10000;
+#endif
         size = ALIGN_UP(size, g_page_size);
         spinlock_lock(&g_pal_internal_mem_lock);
         if (size > g_pal_internal_mem_size - g_pal_internal_mem_used) {
