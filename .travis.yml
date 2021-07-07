@@ -25,7 +25,6 @@ script:
     && sudo ninja -C build install
     && sudo pip3 install pytest
     && export INSTALL_DEPS=1
-    && if [ ! -c /dev/kmsg ]; then sed -i "/devkmsg/d" LibOS/shim/test/regression/manifest.template; fi
     && ./run_tests0
     && ./run_tests1
     && ./run_tests2
