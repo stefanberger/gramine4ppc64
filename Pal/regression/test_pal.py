@@ -127,7 +127,6 @@ class TC_01_Bootstrap(RegressionTestCase):
         self.assertIn('argv[3] = c', stderr)
         self.assertIn('argv[4] = d', stderr)
 
-    #@unittest.skipIf(ON_PPC, 'does not currently work on ppc')
     def test_102_cpuinfo(self):
 
         _, stderr = self.run_binary(['Bootstrap'])

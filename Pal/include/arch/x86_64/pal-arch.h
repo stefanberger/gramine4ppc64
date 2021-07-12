@@ -276,12 +276,6 @@ static inline void pal_context_copy(PAL_CONTEXT* dst, PAL_CONTEXT* src) {
     }
 }
 
-typedef struct siginfo siginfo_t;
-static inline void siginfo_to_pal_context(PAL_CONTEXT* context, siginfo_t *info) {
-    (void)context;
-    (void)info;
-}
-
 enum {
     HUGEPAGES_2M = 0,
     HUGEPAGES_1G,
