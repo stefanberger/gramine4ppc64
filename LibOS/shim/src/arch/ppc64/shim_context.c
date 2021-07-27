@@ -152,7 +152,8 @@ static noreturn void return_with_context(PAL_CONTEXT* context) {
 }
 
 
-/* Glib'c passes us the thread's function to call and the parameter to pass via the stack
+/* Glibc passes us the thread's function to call and the parameter to pass via the stack
+ * (see modifications in glibc)
  */
 static void fixup_child_context_thread(PAL_CONTEXT* context, uint64_t r13) {
     void *stack = (void *)pal_context_get_sp(context);

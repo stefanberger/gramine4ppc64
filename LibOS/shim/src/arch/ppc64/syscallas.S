@@ -185,8 +185,10 @@ syscalldb:
 
 	# storing VSRS clobbers f0 and v0 ...
 	SAVE_VSRS(32, %r1)
+#if 0
 	# ... we immediately restore them
 	LOAD_F0_V0(32, %r1)
+#endif
 
 	addis	%r2, %r12, (.TOC. - 0b)@ha
 	addi	%r2, %r2, (.TOC. - 0b)@l
