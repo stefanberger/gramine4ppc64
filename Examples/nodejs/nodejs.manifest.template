@@ -28,11 +28,6 @@ fs.mount.lib3.type = "chroot"
 fs.mount.lib3.path = "/usr/{{ arch_libdir }}"
 fs.mount.lib3.uri = "file:/usr/{{ arch_libdir }}"
 
-# Mount /usr/bin
-fs.mount.bin.type = "chroot"
-fs.mount.bin.path = "/usr/bin"
-fs.mount.bin.uri = "file:/usr/bin"
-
 sgx.nonpie_binary = true
 # Node.js expects around 1.7GB of heap on startup, see https://github.com/nodejs/node/issues/13018
 sgx.enclave_size = "2G"
