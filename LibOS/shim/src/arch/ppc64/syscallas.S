@@ -194,7 +194,9 @@ syscalldb:
 	addi	%r2, %r2, (.TOC. - 0b)@l
 
 	addi	%r3, %r1, 32				# r3 points to context now
+#if 0
 	rldicr	%r1, %r1, 0, 59				# ensure 16-byte aligned stack
+#endif
 
 	# call shim_table_display with context ptr in r3; this will NOT return
 	b	shim_table_dispatch

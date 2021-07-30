@@ -21,7 +21,9 @@ shim_start:
 	stdu	%r1, -48(%r1)	// keep 16-byte stack alignment
 
 	mr	%r31, %r1	// save our stack pointer
+#if 0
 	rldicr	%r1, %r1, 0, 59	// ensure 16-byte stack alignment
+#endif
 
 	bl	shim_init
 	nop
