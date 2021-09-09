@@ -94,6 +94,12 @@ $(foreach lib,$(GLIBC_TARGET),$(eval $(call LN_SF_TO_RUNTIME_DIR_template,$(lib)
 GLIBC_PATCHES = \
 	glibc-patches/$(GLIBC_SRC).patch
 
+GLIBC_PATCHES_2.31 = \
+	glibc-patches/hp-timing-2.31.patch
+
+GLIBC_PATCHES_2.33 = \
+	glibc-patches/hp-timing-2.33.patch
+
 GLIBC_PATCHES_2.34 = \
 	glibc-patches/hp-timing-2.34.patch
 
