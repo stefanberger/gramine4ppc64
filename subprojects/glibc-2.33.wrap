@@ -1,0 +1,7 @@
+[wrap-file]
+directory = glibc-2.33
+source_url = https://ftp.gnu.org/gnu/glibc/glibc-2.33.tar.gz
+source_fallback_url = https://packages.grapheneproject.io/distfiles/glibc-2.33.tar.gz
+source_filename = glibc-2.33.tar.gz
+source_hash = ad7dbed6b0cde9ddc90e84856da7e2c1f976a5e791cdee947d8dbb0392fc76cf
+patch_directory = glibc-2.33
