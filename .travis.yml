@@ -4,20 +4,17 @@ sudo: required
 addons:
   apt:
       packages:
+        - libssl-dev
         - meson
         - ninja-build
-        - python3-pip
-        - python3.6
-        - npm
-        - node-gyp
-        - nodejs-dev
-        - libssl1.0-dev
+        - python3
         - python3-click
         - python3-jinja2
+        - python3-lxml
         - python3-numpy
+        - python3-pip
         - python3-scipy
         - python3-setuptools
-        - python3-lxml
 script:
   - make -j$(nproc)
     && meson build -Ddirect=enabled
@@ -31,10 +28,17 @@ script:
 
 matrix:
   include:
-    - name: Build and test on ppc64
+    - name: Build and test on ppc64 bionic
       os: linux
       arch: ppc64le
       dist: bionic
       env: PYTHONVERSION=python3.6
       before_script:
         - sed -i 's/GLIBC_VERSION ?= .*/GLIBC_VERSION ?= 2.31/' LibOS/Makefile
+    - name: Build and test on ppc64 focal
+      os: linux
+      arch: ppc64le
+      dist: focal
+      env: PYTHONVERSION=python3.8
+      before_script:
+        - sed -i 's/GLIBC_VERSION ?= .*/GLIBC_VERSION ?= 2.33/' LibOS/Makefile
