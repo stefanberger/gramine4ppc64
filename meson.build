@@ -234,7 +234,6 @@ subdir('LibOS')
 subdir('python')
 subdir('tools')
 
-#subproject('glibc-2.34')
-subproject('glibc-2.33')
+subproject('glibc-2.34')
 
 run_target('clang-format', command: [meson_clang_format_prog])

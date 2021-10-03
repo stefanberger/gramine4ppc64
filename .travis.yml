@@ -41,5 +41,5 @@ matrix:
       dist: focal
       env: PYTHONVERSION=python3.8
       before_script:
-        - sed -i "s/glibc-2.*/glibc-2.33')/" meson.build
+        - sed -i "s/glibc-2.*/glibc-2.34')/" meson.build
         - python3 -m pip install 'meson>=0.55,<0.56'
