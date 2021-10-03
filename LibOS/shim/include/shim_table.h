@@ -28,6 +28,10 @@ long shim_do_fstat(int fd, struct stat* statbuf);
 long shim_do_lstat(const char* file, struct stat* stat);
 long shim_do_statfs(const char* path, struct statfs* buf);
 long shim_do_fstatfs(int fd, struct statfs* buf);
+#if defined(__powerpc64__)
+long shim_do_statfs64(const char* path, size_t bufsize, struct statfs64* buf);
+long shim_do_fstatfs64(int fd, size_t bufsize, struct statfs64* buf);
+#endif
 long shim_do_poll(struct pollfd* fds, nfds_t nfds, int timeout);
 long shim_do_lseek(int fd, off_t offset, int origin);
 #if defined(__powerpc64__)

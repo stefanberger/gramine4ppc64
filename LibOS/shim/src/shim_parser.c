@@ -330,6 +330,12 @@ struct parser_table {
                      parse_pointer_arg}},
     [__NR_fstatfs] = {.slow = false, .name = "fstatfs", .parser = {parse_long_arg,
                       parse_integer_arg, parse_pointer_arg}},
+#if defined(__powerpc64__)
+    [__NR_statfs64] = {.slow = false, .name = "statfs64", .parser = {parse_long_arg, parse_string_arg,
+                     parse_long_arg, parse_pointer_arg}},
+    [__NR_fstatfs64] = {.slow = false, .name = "fstatfs64", .parser = {parse_long_arg,
+                      parse_integer_arg, parse_long_arg, parse_pointer_arg}},
+#endif
     [__NR_sysfs] = {.slow = false, .name = "sysfs", .parser = {NULL}},
     [__NR_getpriority] = {.slow = false, .name = "getpriority", .parser = {parse_long_arg,
                           parse_integer_arg, parse_integer_arg}},

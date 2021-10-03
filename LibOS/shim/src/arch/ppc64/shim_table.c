@@ -279,8 +279,8 @@ shim_fp shim_table[LIBOS_SYSCALL_BOUND] = {
     (shim_fp)0, // ppc64_swapcontext
     [__NR_tgkill]                 = (shim_fp)shim_do_tgkill,			/* 250 */
     (shim_fp)0, //shim_do_utimes,
-    [__NR_statfs64]               = (shim_fp)shim_do_statfs, // statfs64
-    [__NR_fstatfs64]              = (shim_fp)shim_do_fstatfs,// fstatfs64
+    [__NR_statfs64]               = (shim_fp)shim_do_statfs64, // statfs64
+    [__NR_fstatfs64]              = (shim_fp)shim_do_fstatfs64,// fstatfs64
     (shim_fp)0,
     (shim_fp)0, // shim_do_rtas			/* 255 */
     (shim_fp)0,
