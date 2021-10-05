@@ -6,6 +6,7 @@ addons:
       packages:
         - libssl-dev
         - ninja-build
+        - protobuf-c-compiler
         - python3
         - python3-click
         - python3-jinja2
