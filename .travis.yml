@@ -18,7 +18,7 @@ addons:
 script:
   - make -j$(nproc)
     && meson build -Ddirect=enabled
-    && ninja -C build &>build.log || tail -n 200 build.log
+    && ninja -v -C build | tee build.log | gawk '!(NR % 10)' || tail -n 200 build.log
     && sudo ninja -C build install &>build.lg || tail -n 200 build.log
     && sudo pip3 install pytest
     && export INSTALL_DEPS=1
