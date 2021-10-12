@@ -16,8 +16,7 @@ addons:
         - python3-scipy
         - python3-setuptools
 script:
-  - make -j$(nproc)
-    && meson build -Ddirect=enabled
+  - meson build -Ddirect=enabled
     && ninja -v -C build | tee build.log | gawk '!(NR % 10)' || tail -n 200 build.log
     && sudo ninja -C build install &>build.lg || tail -n 200 build.log
     && sudo pip3 install pytest
