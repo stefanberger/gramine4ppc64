@@ -16,9 +16,8 @@ addons:
         - python3-scipy
         - python3-setuptools
 script:
-  - meson build -Ddirect=enabled
-    && ninja -v -C build | tee build.log || tail -n 200 build.log
-    && sudo ninja -C build install &>build.lg || tail -n 200 build.log
+  - ./build.sh
+    && sudo ninja -C build install &>build.log || tail -n 200 build.log
     && sudo pip3 install pytest
     && export INSTALL_DEPS=1
     && ./run_tests0
