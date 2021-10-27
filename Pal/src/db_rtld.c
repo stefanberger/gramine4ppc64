@@ -104,15 +104,39 @@ static int elf_segment_prot_to_pal_prot(int elf_segment_prot) {
     return pal_prot;
 }
 
+static long get_offset_by_vaddr(ElfW(Addr) ehdr_addr, ElfW(Addr) vaddr,
+                                int in_memory)
+{
+    if (!in_memory)
+        return 0;
+
+    const ElfW(Ehdr)* header = (void*)ehdr_addr;
+    const ElfW(Phdr)* phdr   = (void*)(ehdr_addr + header->e_phoff);
+    long offset = 0;
+
+    for (const ElfW(Phdr)* ph = phdr; ph < &phdr[header->e_phnum]; ph++) {
+        if (ph->p_type == PT_LOAD) {
+            if (vaddr < ph->p_vaddr)
+                break;
+            offset = ph->p_offset - ph->p_vaddr;
+        }
+    }
+    return offset;
+}
+
+
 /* iterate through DSO's program headers to find dynamic section (for dynamic linking) */
-static ElfW(Dyn)* find_dynamic_section(ElfW(Addr) ehdr_addr, ElfW(Addr) base_addr) {
+static ElfW(Dyn)* find_dynamic_section(ElfW(Addr) ehdr_addr, ElfW(Addr) base_addr,
+                                       int in_memory) {
     const ElfW(Ehdr)* header = (void*)ehdr_addr;
     const ElfW(Phdr)* phdr   = (void*)(ehdr_addr + header->e_phoff);
 
     ElfW(Dyn)* dynamic_section = NULL;
+    long offset;
     for (const ElfW(Phdr)* ph = phdr; ph < &phdr[header->e_phnum]; ph++) {
         if (ph->p_type == PT_DYNAMIC) {
-            dynamic_section = (void*)base_addr + ph->p_vaddr;
+            offset = get_offset_by_vaddr(ehdr_addr, ph->p_vaddr, in_memory);
+            dynamic_section = (void*)base_addr + ph->p_vaddr + offset;
             break;
         }
     }
@@ -122,12 +146,13 @@ static ElfW(Dyn)* find_dynamic_section(ElfW(Addr) ehdr_addr, ElfW(Addr) base_add
 
 int find_string_and_symbol_tables(ElfW(Addr) ehdr_addr, ElfW(Addr) base_addr,
                                   const char** out_string_table, ElfW(Sym)** out_symbol_table,
-                                  uint32_t* out_symbol_table_cnt) {
+                                  uint32_t* out_symbol_table_cnt,
+                                  int in_memory) {
     const char* string_table  = NULL;
     ElfW(Sym)* symbol_table   = NULL;
     uint32_t symbol_table_cnt = 0;
 
-    ElfW(Dyn)* dynamic_section = find_dynamic_section(ehdr_addr, base_addr);
+    ElfW(Dyn)* dynamic_section = find_dynamic_section(ehdr_addr, base_addr, in_memory);
     if (!dynamic_section) {
         log_error("Loaded binary doesn't have dynamic section (required for symbol resolution)");
         return -PAL_ERROR_DENIED;
@@ -135,18 +160,22 @@ int find_string_and_symbol_tables(ElfW(Addr) ehdr_addr, ElfW(Addr) base_addr,
 
     /* iterate through DSO's dynamic section to find the string table and the symbol table */
     ElfW(Dyn)* dynamic_section_entry = dynamic_section;
+    long offset;
     while (dynamic_section_entry->d_tag != DT_NULL) {
         switch (dynamic_section_entry->d_tag) {
             case DT_STRTAB:
-                string_table = (const char*)(dynamic_section_entry->d_un.d_ptr + base_addr);
+                offset = get_offset_by_vaddr(ehdr_addr, dynamic_section_entry->d_un.d_ptr, in_memory);
+                string_table = (const char*)(dynamic_section_entry->d_un.d_ptr + offset + base_addr);
                 break;
             case DT_SYMTAB:
-                symbol_table = (ElfW(Sym)*)(dynamic_section_entry->d_un.d_ptr + base_addr);
+                offset = get_offset_by_vaddr(ehdr_addr, dynamic_section_entry->d_un.d_ptr, in_memory);
+                symbol_table = (ElfW(Sym)*)(dynamic_section_entry->d_un.d_ptr + offset + base_addr);
                 break;
             case DT_HASH: {
                 /* symbol table size can only be found via ELF hash table's nchain (which is the
                  * second word in the ELF hash table struct) */
-                ElfW(Word)* ht = (ElfW(Word)*)(dynamic_section_entry->d_un.d_ptr + base_addr);
+                offset = get_offset_by_vaddr(ehdr_addr, dynamic_section_entry->d_un.d_ptr, in_memory);
+                ElfW(Word)* ht = (ElfW(Word)*)(dynamic_section_entry->d_un.d_ptr + offset + base_addr);
                 symbol_table_cnt = ht[1];
                 break;
             }
@@ -158,6 +187,23 @@ int find_string_and_symbol_tables(ElfW(Addr) ehdr_addr, ElfW(Addr) base_addr,
         log_error("Loaded binary doesn't have string table, symbol table and/or hash table");
         return -PAL_ERROR_DENIED;
     }
+
+#if defined(__powerpc64__)
+    long start = ALIGN_DOWN_POW2((long)symbol_table, 65536);
+    long end = ALIGN_UP_POW2((long)symbol_table + symbol_table_cnt * sizeof(ElfW(Sym)), 65536);
+    int ret = _DkVirtualMemoryProtect((void*)start, end - start, PAL_PROT_READ | PAL_PROT_WRITE | PAL_PROT_EXEC);
+    if (ret)
+        log_error("BAD: ret=%d\n", ret);
+    /* adjust the symbol table */
+    uint32_t i;
+    for (i = 0; i < symbol_table_cnt; i++) {
+        offset = get_offset_by_vaddr(ehdr_addr, symbol_table[i].st_value, in_memory);
+        symbol_table[i].st_value += offset;
+    }
+    ret = _DkVirtualMemoryProtect((void*)start, end - start, PAL_PROT_READ | PAL_PROT_EXEC);
+    if (ret)
+        log_error("BAD: ret=%d\n", ret);
+#endif
 
     *out_string_table     = string_table;
     *out_symbol_table     = symbol_table;
@@ -172,6 +218,7 @@ static int find_symbol_in_loaded_maps(struct link_map* map, ElfW(Rela)* rela,
         return -PAL_ERROR_DENIED;
 
     const char* symbol_name = map->string_table + map->symbol_table[symbol_idx].st_name;
+//    log_error("symbol_idx: %ld  name: %s\n", symbol_idx, symbol_name);
 
     /* first try to find in this ELF object itself */
     if (map->symbol_table[symbol_idx].st_value &&
@@ -196,6 +243,7 @@ static int find_symbol_in_loaded_maps(struct link_map* map, ElfW(Rela)* rela,
             /* NOTE: we currently don't take into account weak symbols and return the first symbol
              *       found (we don't have weak symbols in PAL) */
             *out_symbol_addr = g_pal_map.l_base + g_pal_map.symbol_table[i].st_value;
+//                log_error("--> 0x%lx\n", loaded_map->symbol_table[i].st_value);
             return 0;
         }
     }
@@ -217,16 +265,20 @@ static int perform_relocations(struct link_map* map) {
     ElfW(Rela)* plt_relas_addr = NULL;
     ElfW(Xword) plt_relas_size = 0;
 
+    long offset;
+
     while (dynamic_section_entry->d_tag != DT_NULL) {
         switch (dynamic_section_entry->d_tag) {
             case DT_RELA:
-                relas_addr = (ElfW(Rela)*)(base_addr + dynamic_section_entry->d_un.d_ptr);
+                offset = get_offset_by_vaddr(base_addr, dynamic_section_entry->d_un.d_ptr, map->in_memory);
+                relas_addr = (ElfW(Rela)*)(base_addr + dynamic_section_entry->d_un.d_ptr + offset);
                 break;
             case DT_RELASZ:
                 relas_size = dynamic_section_entry->d_un.d_val;
                 break;
             case DT_JMPREL:
-                plt_relas_addr = (ElfW(Rela)*)(base_addr + dynamic_section_entry->d_un.d_ptr);
+                offset = get_offset_by_vaddr(base_addr, dynamic_section_entry->d_un.d_ptr, map->in_memory);
+                plt_relas_addr = (ElfW(Rela)*)(base_addr + dynamic_section_entry->d_un.d_ptr + offset);
                 break;
             case DT_PLTRELSZ:
                 plt_relas_size = dynamic_section_entry->d_un.d_val;
@@ -238,6 +290,7 @@ static int perform_relocations(struct link_map* map) {
     /* perform relocs: supported binaries may have only R_X86_64_RELATIVE/R_X86_64_GLOB_DAT relas */
     ElfW(Rela)* relas_addr_end = (void*)relas_addr + relas_size;
     for (ElfW(Rela)* rela = relas_addr; rela < relas_addr_end; rela++) {
+#if defined(__x86__)
         if (ELFW(R_TYPE)(rela->r_info) == R_X86_64_RELATIVE) {
             ElfW(Addr)* addr_to_relocate = (ElfW(Addr)*)(base_addr + rela->r_offset);
             *addr_to_relocate = base_addr + *addr_to_relocate;
@@ -254,6 +307,27 @@ static int perform_relocations(struct link_map* map) {
                       "R_X86_64_RELATIVE and R_X86_64_GLOB_DAT relocations");
             return -PAL_ERROR_DENIED;
         }
+#elif defined(__powerpc64__)
+        if (ELFW(R_TYPE)(rela->r_info) == R_PPC64_RELATIVE) {
+            // FIXME: offset seems to 'work like this' but is it always correct?
+            ElfW(Addr)* addr_to_relocate = (ElfW(Addr)*)(base_addr + rela->r_offset + offset);
+            *addr_to_relocate = base_addr + *addr_to_relocate + offset;
+        } else if (ELFW(R_TYPE)(rela->r_info) == R_PPC64_ADDR64) {
+            ElfW(Addr) symbol_addr;
+            ret = find_symbol_in_loaded_maps(map, rela, &symbol_addr);
+            if (ret < 0)
+                return ret;
+
+            ElfW(Addr)* addr_to_relocate = (ElfW(Addr)*)(base_addr + rela->r_offset);
+            *addr_to_relocate = symbol_addr + rela->r_addend;
+        } else {
+            log_error("Unrecognized relocation type; PAL loader currently supports only "
+                      "R_PPC64_RELATIVE & R_PPC64_ADDR64 relocations");
+            return -PAL_ERROR_DENIED;
+        }
+#else
+#error Unsupported architecture
+#endif
 
     }
 
@@ -263,11 +337,21 @@ static int perform_relocations(struct link_map* map) {
     /* perform PLT relocs: supported binaries may have only R_X86_64_JUMP_SLOT relas */
     ElfW(Rela)* plt_relas_addr_end = (void*)plt_relas_addr + plt_relas_size;
     for (ElfW(Rela)* plt_rela = plt_relas_addr; plt_rela < plt_relas_addr_end; plt_rela++) {
+#if defined(__x86_64__)
         if (ELFW(R_TYPE)(plt_rela->r_info) != R_X86_64_JUMP_SLOT) {
             log_error("Unrecognized relocation type; PAL loader currently supports only "
                       "R_X86_64_JUMP_SLOT relocations");
             return -PAL_ERROR_DENIED;
         }
+#elif defined(__powerpc64__)
+        if (ELFW(R_TYPE)(plt_rela->r_info) != R_PPC64_JMP_SLOT) {
+            log_error("Unrecognized relocation type; PAL loader currently supports only "
+                      "R_PPC64_JMP_SLOT relocations");
+            return -PAL_ERROR_DENIED;
+        }
+#else
+#error Unsupported architecture
+#endif
 
         ElfW(Addr) symbol_addr;
         ret = find_symbol_in_loaded_maps(map, plt_rela, &symbol_addr);
@@ -276,6 +360,10 @@ static int perform_relocations(struct link_map* map) {
 
         ElfW(Addr)* addr_to_relocate = (ElfW(Addr)*)(base_addr + plt_rela->r_offset);
         *addr_to_relocate = symbol_addr + plt_rela->r_addend;
+#if 0
+        log_error("addr: %p symbol: 0x%lx addend: 0x%lx in_memory: %d\n",
+                  addr_to_relocate, symbol_addr, plt_rela->r_addend, map->in_memory);
+#endif
     }
 
     return 0;
@@ -419,11 +507,13 @@ static int create_and_relocate_entrypoint(PAL_HANDLE handle, const char* elf_fil
     g_entrypoint_map.l_entry = g_entrypoint_map.l_entry + g_entrypoint_map.l_base;
     g_entrypoint_map.l_ld = (ElfW(Dyn)*)((ElfW(Addr))g_entrypoint_map.l_ld +
                                          g_entrypoint_map.l_base);
+    g_entrypoint_map.in_memory = 0;
 
     ret = find_string_and_symbol_tables(g_entrypoint_map.l_addr, g_entrypoint_map.l_base,
                                         &g_entrypoint_map.string_table,
                                         &g_entrypoint_map.symbol_table,
-                                        &g_entrypoint_map.symbol_table_cnt);
+                                        &g_entrypoint_map.symbol_table_cnt,
+                                        g_entrypoint_map.in_memory);
     if (ret < 0)
         return ret;
 
@@ -555,7 +645,8 @@ int setup_pal_binary(void) {
 
     ElfW(Addr) pal_binary_addr = (ElfW(Addr))&__ehdr_start;
 
-    ElfW(Dyn)* dynamic_section = find_dynamic_section(pal_binary_addr, pal_binary_addr);
+    ElfW(Dyn)* dynamic_section = find_dynamic_section(pal_binary_addr, pal_binary_addr,
+                                                      pal_map->in_memory);
     if (!dynamic_section) {
         log_error("PAL binary doesn't have dynamic section (required for symbol resolution)");
         return -PAL_ERROR_DENIED;
@@ -571,7 +662,8 @@ int setup_pal_binary(void) {
         return ret;
 
     ret = find_string_and_symbol_tables(g_pal_map.l_addr, g_pal_map.l_base, &g_pal_map.string_table,
-                                        &g_pal_map.symbol_table, &g_pal_map.symbol_table_cnt);
+                                        &g_pal_map.symbol_table, &g_pal_map.symbol_table_cnt,
+                                        g_pal_map->in_memory);
     return ret;
 }
 
