@@ -43,6 +43,8 @@ struct link_map {
     const char* string_table;
     elf_sym_t* symbol_table;
     uint32_t symbol_table_cnt;
+
+    int in_memory;
 };
 
 /* for GDB debugging */
@@ -56,6 +58,7 @@ void set_pal_binary_name(const char* name);
 int load_entrypoint(const char* uri);
 int find_string_and_symbol_tables(elf_addr_t ehdr_addr, elf_addr_t base_addr,
                                   const char** out_string_table, elf_sym_t** out_symbol_table,
-                                  uint32_t* out_symbol_table_cnt);
+                                  uint32_t* out_symbol_table_cnt,
+                                  int in_memory);
 
 noreturn void start_execution(const char** arguments, const char** environs);
