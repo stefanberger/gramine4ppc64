@@ -111,7 +111,7 @@ static ElfW(Dyn)* find_dynamic_section(ElfW(Addr) ehdr_addr, ElfW(Addr) base_add
     ElfW(Dyn)* dynamic_section = NULL;
     for (const ElfW(Phdr)* ph = phdr; ph < &phdr[header->e_phnum]; ph++) {
         if (ph->p_type == PT_DYNAMIC) {
-            dynamic_section = (void*)base_addr + ph->p_vaddr;
+            dynamic_section = (void*)base_addr + ph->p_offset;//ph->p_vaddr;
             break;
         }
     }
@@ -137,15 +137,15 @@ int find_string_and_symbol_tables(ElfW(Addr) ehdr_addr, ElfW(Addr) base_addr,
     while (dynamic_section_entry->d_tag != DT_NULL) {
         switch (dynamic_section_entry->d_tag) {
             case DT_STRTAB:
-                string_table = (const char*)(dynamic_section_entry->d_un.d_ptr + base_addr);
+                string_table = (const char*)((dynamic_section_entry->d_un.d_ptr & 0xffff) + base_addr);
                 break;
             case DT_SYMTAB:
-                symbol_table = (ElfW(Sym)*)(dynamic_section_entry->d_un.d_ptr + base_addr);
+                symbol_table = (ElfW(Sym)*)((dynamic_section_entry->d_un.d_ptr & 0xffff) + base_addr);
                 break;
             case DT_HASH: {
                 /* symbol table size can only be found via ELF hash table's nchain (which is the
                  * second word in the ELF hash table struct) */
-                ElfW(Word)* ht = (ElfW(Word)*)(dynamic_section_entry->d_un.d_ptr + base_addr);
+                ElfW(Word)* ht = (ElfW(Word)*)((dynamic_section_entry->d_un.d_ptr & 0xffff) + base_addr);
                 symbol_table_cnt = ht[1];
                 break;
             }
@@ -216,7 +216,7 @@ static int perform_relocations(struct link_map* map) {
     while (dynamic_section_entry->d_tag != DT_NULL) {
         switch (dynamic_section_entry->d_tag) {
             case DT_RELA:
-                relas_addr = (ElfW(Rela)*)(base_addr + dynamic_section_entry->d_un.d_ptr);
+                relas_addr = (ElfW(Rela)*)(base_addr + (dynamic_section_entry->d_un.d_ptr & 0xffff));
                 break;
             case DT_RELASZ:
                 relas_size = dynamic_section_entry->d_un.d_val;
@@ -234,6 +234,7 @@ static int perform_relocations(struct link_map* map) {
     /* perform relocs: supported binaries may have only R_X86_64_RELATIVE/R_X86_64_GLOB_DAT relas */
     ElfW(Rela)* relas_addr_end = (void*)relas_addr + relas_size;
     for (ElfW(Rela)* rela = relas_addr; rela < relas_addr_end; rela++) {
+#if defined(__x86__)
         if (ELFW(R_TYPE)(rela->r_info) == R_X86_64_RELATIVE) {
             ElfW(Addr)* addr_to_relocate = (ElfW(Addr)*)(base_addr + rela->r_offset);
             *addr_to_relocate = base_addr + *addr_to_relocate;
@@ -250,6 +251,16 @@ static int perform_relocations(struct link_map* map) {
                       "R_X86_64_RELATIVE and R_X86_64_GLOB_DAT relocations");
             return -PAL_ERROR_DENIED;
         }
+#elif defined(__powerpc64__)
+        if (ELFW(R_TYPE)(rela->r_info) == R_PPC64_RELATIVE) {
+            ElfW(Addr)* addr_to_relocate = (ElfW(Addr)*)(base_addr + rela->r_offset);
+            *addr_to_relocate = base_addr + *addr_to_relocate;
+        } else {
+            log_error("Unrecognized relocation type; PAL loader currently supports only "
+                      "R_PPC64_RELATIVE relocations");
+            return -PAL_ERROR_DENIED;
+        }
+#endif
 
     }
 
