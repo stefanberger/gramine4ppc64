@@ -19,6 +19,7 @@
 #include <stddef.h>
 
 #include "cpu.h"
+#include "elf-x86_64.h"
 #include "elf/elf.h"
 #include "linux_utils.h"
 #include "sgx_internal.h"
