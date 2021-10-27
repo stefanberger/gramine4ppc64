@@ -49,7 +49,7 @@ int setup_vdso(ElfW(Addr) base_addr) {
     uint32_t symbol_table_cnt = 0;
 
     ret = find_string_and_symbol_tables(base_addr, base_addr, &string_table, &symbol_table,
-                                        &symbol_table_cnt);
+                                        &symbol_table_cnt, 0);
     if (ret < 0) {
         log_warning("The VDSO unexpectedly doesn't have string table or symbol table.");
         return 0;
