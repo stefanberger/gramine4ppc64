@@ -336,6 +336,8 @@ noreturn void pal_linux_main(void* initial_rsp, void* fini_callback) {
          */
         disable_vdso = true;
     }
+#elif defined (__powerpc64__)
+    disable_vdso = true;
 #endif
 
     if (sysinfo_ehdr && !disable_vdso) {
