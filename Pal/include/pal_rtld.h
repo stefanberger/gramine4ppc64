@@ -32,6 +32,8 @@ struct link_map {
 
     /* Typical case: INTERNAL type is for PAL binary, PRELOAD for LibOS lib, EXEC for PAL test. */
     enum elf_object_type l_type;
+
+    int in_memory;
 };
 
 extern struct link_map* g_loaded_maps;
@@ -46,7 +48,8 @@ int load_elf_object(const char* uri, enum elf_object_type type);
 int setup_pal_binary(struct link_map* pal_map);
 int find_string_and_symbol_tables(ElfW(Addr) ehdr_addr, ElfW(Addr) base_addr,
                                   const char** out_string_table, ElfW(Sym)** out_symbol_table,
-                                  uint32_t* out_symbol_table_cnt);
+                                  uint32_t* out_symbol_table_cnt,
+                                  int in_memory);
 
 noreturn void start_execution(const char** arguments, const char** environs);
 
