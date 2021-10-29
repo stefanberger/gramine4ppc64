@@ -286,11 +286,9 @@ noreturn void pal_linux_main(void* initial_rsp, void* fini_callback) {
         INIT_FAIL(unix_to_pal_error(-ret), "pal_thread_init() failed");
 
     if (g_sysinfo_ehdr) {
-#if defined(__x86_64__)
         ret = setup_vdso(g_sysinfo_ehdr);
         if (ret < 0)
             INIT_FAIL(-ret, "Setup of VDSO failed");
-#endif
     }
 
     uintptr_t vdso_start = 0;
