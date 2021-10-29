@@ -21,9 +21,9 @@
 #include "pal_internal.h"
 #include "pal_linux_defs.h"
 #include "pal_linux_error.h"
-#include "pal_rtld.h"
 #include "stat.h"
 #include "syscall.h"
+#include "sysdeps/generic/ldsodefs.h"
 
 struct timespec;
 struct timeval;
@@ -55,7 +55,9 @@ bool is_in_vdso(uintptr_t addr);
 int get_vdso_and_vvar_ranges(uintptr_t* vdso_start, uintptr_t* vdso_end, uintptr_t* vvar_start,
                              uintptr_t* vvar_end);
 
-int setup_vdso(ElfW(Addr) base_addr);
+struct link_map;
+void setup_pal_map(struct link_map* map);
+void setup_vdso_map(ElfW(Addr) addr);
 
 /* set/unset CLOEXEC flags of all fds in a handle */
 int handle_set_cloexec(PAL_HANDLE handle, bool enable);
