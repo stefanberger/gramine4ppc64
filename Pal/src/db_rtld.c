@@ -643,11 +643,12 @@ int setup_pal_binary(void) {
 
     g_pal_map.l_prev = NULL;
     g_pal_map.l_next = NULL;
+    g_pal_map.in_memory = 1;
 
     ElfW(Addr) pal_binary_addr = (ElfW(Addr))&__ehdr_start;
 
     ElfW(Dyn)* dynamic_section = find_dynamic_section(pal_binary_addr, pal_binary_addr,
-                                                      pal_map->in_memory);
+                                                      g_pal_map.in_memory);
     if (!dynamic_section) {
         log_error("PAL binary doesn't have dynamic section (required for symbol resolution)");
         return -PAL_ERROR_DENIED;
@@ -664,7 +665,7 @@ int setup_pal_binary(void) {
 
     ret = find_string_and_symbol_tables(g_pal_map.l_addr, g_pal_map.l_base, &g_pal_map.string_table,
                                         &g_pal_map.symbol_table, &g_pal_map.symbol_table_cnt,
-                                        g_pal_map->in_memory);
+                                        g_pal_map.in_memory);
     return ret;
 }
 
@@ -770,6 +771,20 @@ noreturn void start_execution(const char** arguments, const char** environs) {
                      :
                      : "r"(g_entrypoint_map.l_entry), "r"(stack_entries)
                      : "memory");
+#elif defined __powerpc64__
+    // FIXME: Should call DkExitGroup but if adding if here the PAL binary cannot be relocated
+    // This call to exit_group / DkExitGroup could go into Pal/regression/crt_init/arch/ppc64/user_start.S
+    // and the bctrl would then be a bctr
+    __asm__ volatile("mr 3, %1\n"
+                     "mr 12, %0\n"
+                     "mtctr 12\n"
+                     "bctrl\n"
+                     "nop\n"
+                     "li 0, 234\n" // exit_group
+                     "sc\n"
+                     :
+                     : "r"(g_entrypoint_map.l_entry), "r"(stack_entries)
+                     : "r3", "r12", "ctr", "memory");
 #else
 #error "unsupported architecture"
 #endif
