@@ -8,7 +8,6 @@
 
 /* Offsets of shim_tcb entry vectors relative to pal_tcb */
 #define GRAMINE_SYSCALL_OFFSET           24 /* void* syscalldb */
-#define GRAMINE_CALL_OFFSET              32 // FIXME: remove
 
 /* Magic syscall number for Gramine custom calls */
 #define GRAMINE_CUSTOM_SYSCALL_NR 0x100000 /* FIXME: unused on ppc64 */
@@ -61,18 +60,19 @@ enum {
 };
 
 static inline int gramine_call(int number, unsigned long arg1, unsigned long arg2) {
-    // FIXME: Replace this with usage of SYCALLBD_R9 using GRAMINE_CUSTOM_SYSCALL_NR
-    typedef int(*gramine_call_func)(int number, unsigned long arg1, unsigned long arg2);
-    gramine_call_func gramine_call_fn;
+    typedef int(*syscalldb_func)(unsigned long arg1, unsigned long arg2, unsigned long arg3,
+                                 unsigned long arg4, unsigned long arg5, unsigned long arg6,
+                                 unsigned long syscall_nr);
+    syscalldb_func syscalldb_fn;
 
     __asm__ __volatile__("subi %0,13,%1\n\t"
                          "ld %0,0(%0)\n\t"
                          "ld %0,%2(%0)\n\t"
-                         : "=&r" (gramine_call_fn)
+                         : "=&r" (syscalldb_fn)
                          : "i" (0x7000 + TCBHEAD_LIBOS_PTR_FROM_END_OFFSET),
-                           "i" (GRAMINE_CALL_OFFSET)
+                           "i" (GRAMINE_SYSCALL_OFFSET)
                          :);
-    return gramine_call_fn(number, arg1, arg2);
+    return syscalldb_fn(number, arg1, arg2, 0, 0, 0, GRAMINE_CUSTOM_SYSCALL_NR);
 }
 
 static inline int gramine_register_library(const char* name, unsigned long load_address) {
