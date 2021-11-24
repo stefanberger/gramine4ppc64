@@ -18,6 +18,10 @@ shim_start:
 	ld	%r3, 0(%r6)	// argc
 	addi	%r4, %r6, 8	// argv
 
+	slwi	%r5, %r3, 3	// argc * 8
+	add	%r5, %r5, %r4	// envp = argv + argc * 8
+	addi	%r5, %r5, 8
+
 	stdu	%r1, -48(%r1)	// keep 16-byte stack alignment
 
 	mr	%r31, %r1	// save our stack pointer
