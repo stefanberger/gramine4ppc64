@@ -182,7 +182,6 @@ noreturn void pal_linux_main(void* initial_rsp, void* fini_callback) {
     }
 
     /* relocate PAL */
-    g_pal_map.in_memory = 1;
     ret = setup_pal_binary();
     if (ret < 0)
         INIT_FAIL(-ret, "Relocation of the PAL binary failed");
