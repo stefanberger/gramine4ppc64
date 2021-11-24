@@ -21,9 +21,6 @@ struct shim_tcb {
 
     /* Function pointer for patched code calling into Gramine. */
     void*               syscalldb;
-#if defined(__powerpc64__)
-    void*               handle_call;
-#endif
 
     struct shim_thread* tp;
     void*               libos_stack_bottom;
@@ -38,19 +35,10 @@ struct shim_tcb {
 static_assert(
     offsetof(PAL_TCB, libos_tcb) + offsetof(shim_tcb_t, syscalldb) == GRAMINE_SYSCALL_OFFSET,
     "GRAMINE_SYSCALL_OFFSET must match");
-#if defined(__powerpc64__)
-static_assert(
-    offsetof(PAL_TCB, libos_tcb) + offsetof(shim_tcb_t, handle_call) ==
-        GRAMINE_CALL_OFFSET,
-    "GRAMINE_CALL_OFFSET must match");
-#endif
 
 static inline void __shim_tcb_init(shim_tcb_t* shim_tcb) {
     shim_tcb->self = shim_tcb;
     shim_tcb->syscalldb = &syscalldb;
-#if defined(__powerpc64__)
-    shim_tcb->handle_call = &handle_call;
-#endif
     shim_tcb->context.syscall_nr = -1;
     shim_tcb->vma_cache = NULL;
 }
