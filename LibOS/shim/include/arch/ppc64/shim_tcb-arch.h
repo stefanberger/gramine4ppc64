@@ -9,7 +9,7 @@
 #include "api.h"
 #include "pal.h"
 
-#include "shim_entry_api.h"
+#include "gramine_entry_api.h"
 
 static_assert(TCBHEAD_LIBOS_PTR_FROM_END_OFFSET + offsetof(tcbhead_t, LibOS_TCB) ==
               sizeof(tcbhead_t), "TCBHEAD_LIBOS_PTR_FROM_END_OFFSET is wrong");
