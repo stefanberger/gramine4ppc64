@@ -113,10 +113,10 @@ manifests = [
   "sighandler_divbyzero",
 ]
 
-[arch.ppc64]
+[arch.ppc64le]
 
 manifests = [
-  "sighander_contextswitch",
+  "sighandler_contextswitch",
 ]
 
 [sgx]

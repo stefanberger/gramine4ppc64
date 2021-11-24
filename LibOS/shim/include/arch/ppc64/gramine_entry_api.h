@@ -3,12 +3,15 @@
  *                    Stefan Berger <stefanb@linux.ibm.com>
  */
 
-#ifndef SHIM_ENTRY_API_H_
-#define SHIM_ENTRY_API_H_
+#ifndef GRAMINE_ENTRY_API_H_
+#define GRAMINE_ENTRY_API_H_
 
 /* Offsets of shim_tcb entry vectors relative to pal_tcb */
-#define SHIM_SYSCALLDB_OFFSET         24
-#define SHIM_CALL_OFFSET              32
+#define GRAMINE_SYSCALL_OFFSET           24 /* void* syscalldb */
+#define GRAMINE_CALL_OFFSET              32 // FIXME: remove
+
+/* Magic syscall number for Gramine custom calls */
+#define GRAMINE_CUSTOM_SYSCALL_NR 0x100000 /* FIXME: unused on ppc64 */
 
 /* offset of LIBOS_PTR from tcbhead_t's end */
 #define TCBHEAD_LIBOS_PTR_FROM_END_OFFSET (14 * 8)
@@ -40,7 +43,7 @@
     /* pointer to PAL_TCB in tcbhead_t */        \
     ld 12,0(12);                                 \
     /* our special offset in PAL_TCB for syscalldb */ \
-    ld 12,SHIM_SYSCALLDB_OFFSET(12);             \
+    ld 12,GRAMINE_SYSCALL_OFFSET(12);             \
     /* address of function must be in r12 */     \
     mtctr 12;                                    \
     bctrl;                                       \
@@ -53,32 +56,33 @@
 
 /* Custom call numbers */
 enum {
-    SHIM_CALL_REGISTER_LIBRARY = 1,
-    SHIM_CALL_RUN_TEST,
+    GRAMINE_CALL_REGISTER_LIBRARY = 1,
+    GRAMINE_CALL_RUN_TEST,
 };
 
-static inline int shim_call(int number, unsigned long arg1, unsigned long arg2) {
-    typedef int(*shim_call_func)(int number, unsigned long arg1, unsigned long arg2);
-    shim_call_func shim_call_fn;
+static inline int gramine_call(int number, unsigned long arg1, unsigned long arg2) {
+    // FIXME: Replace this with usage of SYCALLBD_R9 using GRAMINE_CUSTOM_SYSCALL_NR
+    typedef int(*gramine_call_func)(int number, unsigned long arg1, unsigned long arg2);
+    gramine_call_func gramine_call_fn;
 
     __asm__ __volatile__("subi %0,13,%1\n\t"
                          "ld %0,0(%0)\n\t"
                          "ld %0,%2(%0)\n\t"
-                         : "=&r" (shim_call_fn)
+                         : "=&r" (gramine_call_fn)
                          : "i" (0x7000 + TCBHEAD_LIBOS_PTR_FROM_END_OFFSET),
-                           "i" (SHIM_CALL_OFFSET)
+                           "i" (GRAMINE_CALL_OFFSET)
                          :);
-    return shim_call_fn(number, arg1, arg2);
+    return gramine_call_fn(number, arg1, arg2);
 }
 
-static inline int shim_register_library(const char* name, unsigned long load_address) {
-    return shim_call(SHIM_CALL_REGISTER_LIBRARY, (unsigned long)name, load_address);
+static inline int gramine_register_library(const char* name, unsigned long load_address) {
+    return gramine_call(GRAMINE_CALL_REGISTER_LIBRARY, (unsigned long)name, load_address);
 }
 
-static inline int shim_run_test(const char* test_name) {
-    return shim_call(SHIM_CALL_RUN_TEST, (unsigned long)test_name, 0);
+static inline int gramine_run_test(const char* test_name) {
+    return gramine_call(GRAMINE_CALL_RUN_TEST, (unsigned long)test_name, 0);
 }
 
 #endif /* __ASSEMBLER__ */
 
-#endif /* SHIM_ENTRY_API_H_ */
+#endif /* GRAMINE_ENTRY_API_H_ */
