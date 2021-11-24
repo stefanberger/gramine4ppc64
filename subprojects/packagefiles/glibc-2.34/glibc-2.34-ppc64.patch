@@ -260,7 +260,7 @@ index a29652feaf..b1fc96d51a 100644
 +	// pointer to PAL_TCB with tcbhead_t
 +	ld   r12,0(r12)
 +	// our special offset in PAL_TCB containing syscalldb address
-+	ld   r12,SHIM_SYSCALLDB_OFFSET(r12)
++	ld   r12,GRAMINE_SYSCALL_OFFSET(r12)
 +	// function address must be in r12
 +	mtctr r12
 +	bctrl
@@ -289,7 +289,7 @@ index 4b9d43c636..e81c877393 100644
  #include <sysdeps/unix/sysv/linux/sysdep.h>
  #include <sysdeps/unix/powerpc/sysdep.h>
  #include <tls.h>
-+#include <shim_entry_api.h>
++#include <gramine_entry_api.h>
 +
  /* Define __set_errno() for INLINE_SYSCALL macro below.  */
  #include <errno.h>
@@ -335,7 +335,7 @@ index 4b9d43c636..e81c877393 100644
 +                         "ld %0,%2(%0)\n\t"					\
 +                         : "=&r" (syscalldb)					\
 +                         : "i" (0x7000 + TCBHEAD_LIBOS_PTR_FROM_END_OFFSET),	\
-+                           "i" (SHIM_SYSCALLDB_OFFSET)				\
++                           "i" (GRAMINE_SYSCALL_OFFSET)			\
 +                         :);							\
 +    r3 = syscalldb(r3, r4, r5, r6, r7, r8, r0);					\
 +    __asm__ __volatile__("mfcr %0\n\t" : "=&r" (r0) ::);			\
