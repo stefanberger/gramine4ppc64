@@ -3,7 +3,7 @@
 
 sudo rm -rf build
 mkdir build
-meson build -Ddirect=enabled -Dtests=enabled || { exit 1; }
+meson build -Dmusl=disabled -Ddirect=enabled -Dtests=enabled || { exit 1; }
 ninja -v -C build &
 ninja_pid=$!
 while :; do
