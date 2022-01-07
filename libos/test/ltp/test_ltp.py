@@ -69,6 +69,7 @@ class Config:
                 'timeout': '30',
             },
         )
+        self.machine = os.uname().machine
 
         for path in config_paths:
             with open(path, 'r') as f:
@@ -82,8 +83,17 @@ class Config:
                         raise ValueError(
                             'wildcard sections like {!r} can only contain "skip", not {!r}'.format(
                                 name, key))
-                if section.get('skip'):
+                if self.__skip_test(section):
                     self.skip_patterns.append(name)
+
+    def __skip_test(self, section):
+        """Determine whether to skip this test based on 'skip' config in section."""
+        skips = section.get('skip')
+        if skips:
+            skip_list = [ e.strip() for e in skips.split(',') ]
+            if 'yes' in skip_list or self.machine in skip_list:
+                return True
+        return False
 
     def get(self, tag):
         """Find a section for given tag.
@@ -93,7 +103,7 @@ class Config:
         """
         if self.cfg.has_section(tag):
             section = self.cfg[tag]
-            if section.get('skip'):
+            if self.__skip_test(section):
                 return None
             return section
 
