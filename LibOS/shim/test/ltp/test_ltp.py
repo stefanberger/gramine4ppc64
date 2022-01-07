@@ -60,6 +60,8 @@ class Config:
     """
 
     def __init__(self, config_paths):
+        machine = os.uname().machine
+
         self.cfg = configparser.ConfigParser(
             converters={
                 'path': pathlib.Path,
@@ -82,8 +84,11 @@ class Config:
                         raise ValueError(
                             'wildcard sections like {!r} can only contain "skip", not {!r}'.format(
                                 name, key))
-                if section.get('skip'):
-                    self.skip_patterns.append(name)
+                skips = section.get('skip')
+                if skips:
+                    skip_list = [ e.strip() for e in skips.split(',') ]
+                    if 'yes' in skip_list or machine in skip_list:
+                        self.skip_patterns.append(name)
 
     def get(self, tag):
         """Find a section for given tag.
