@@ -187,14 +187,6 @@ static inline void pal_context_copy(PAL_CONTEXT* dst, PAL_CONTEXT* src) {
 
 /* holds /proc/cpuinfo data */
 struct pal_cpu_info {
-    /* Number of logical cores available in the host */
-    PAL_NUM online_logical_cores;
-    /* Max number of logical cores available in the host */
-    PAL_NUM possible_logical_cores;
-    /* Number of physical cores in a socket (physical package) */
-    PAL_NUM physical_cores_per_socket;
-    /* array of "logical core -> socket" mappings; has online_logical_cores elements */
-    int* cpu_socket;
     const char* processor;
     const char* cpu;
     const char* clock;
