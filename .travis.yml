@@ -17,6 +17,9 @@ addons:
         - python3-setuptools
         - python3-toml
 script:
+  - ls /sys/devices/system/node/ || true
+  - cat /sys/devices/system/node/node*/cpulist || true
+  - cat /sys/devices/system/node/node*/cpulist | od -tx1 || true
   - ./build.sh
     && sudo ninja -C build install &>build.log || tail -n 200 build.log
     && sudo pip3 install pytest

@@ -261,6 +261,7 @@ static int get_cache_topo_info(size_t cache_indices_cnt, size_t core_idx,
         if (ret < 0)
             goto fail;
         ret = get_hw_resource_value(filename, &cache_info_arr[cache_idx].level);
+        log_error("%s @ %u: ret=%d\n", __func__, __LINE__, ret);
         if (ret < 0)
             goto fail;
 
@@ -269,6 +270,7 @@ static int get_cache_topo_info(size_t cache_indices_cnt, size_t core_idx,
         if (ret < 0)
             goto fail;
         ret = read_file_buffer(filename, type, sizeof(type) - 1);
+        log_error("%s @ %u: ret=%d\n", __func__, __LINE__, ret);
         if (ret < 0)
             goto fail;
         type[ret] = '\0';
@@ -288,6 +290,7 @@ static int get_cache_topo_info(size_t cache_indices_cnt, size_t core_idx,
         if (ret < 0)
             goto fail;
         ret = get_hw_resource_value(filename, &cache_info_arr[cache_idx].size);
+        log_error("%s @ %u: ret=%d\n", __func__, __LINE__, ret);
         if (ret < 0)
             goto fail;
 
@@ -332,11 +335,13 @@ fail:
 static int get_core_topo_info(struct pal_topo_info* topo_info) {
     int ret = get_hw_resource_range("/sys/devices/system/cpu/online",
                                     &topo_info->online_logical_cores);
+    log_error("%s @ %u: ret=%d\n", __func__, __LINE__, ret);
     if (ret < 0)
         return ret;
 
     ret = get_hw_resource_range("/sys/devices/system/cpu/possible",
                                 &topo_info->possible_logical_cores);
+    log_error("%s @ %u: ret=%d\n", __func__, __LINE__, ret);
     if (ret < 0)
         return ret;
 
@@ -356,6 +361,7 @@ static int get_core_topo_info(struct pal_topo_info* topo_info) {
     }
 
     ret = get_cache_levels_cnt("/sys/devices/system/cpu/cpu0/cache", &topo_info->cache_indices_cnt);
+    log_error("%s @ %u: ret=%d\n", __func__, __LINE__, ret);
     if (ret < 0)
         return ret;
 
@@ -379,6 +385,7 @@ static int get_core_topo_info(struct pal_topo_info* topo_info) {
 
             size_t is_logical_core_online = 0;
             ret = get_hw_resource_value(filename, &is_logical_core_online);
+            log_error("%s @ %u: ret=%d\n", __func__, __LINE__, ret);
             if (ret < 0)
                 goto out;
             core_topo_arr[idx].is_logical_core_online = (bool)is_logical_core_online;
@@ -391,6 +398,7 @@ static int get_core_topo_info(struct pal_topo_info* topo_info) {
         if (ret < 0)
             goto out;
         ret = get_hw_resource_value(filename, &core_topo_arr[idx].core_id);
+        log_error("%s @ %u: ret=%d\n", __func__, __LINE__, ret);
         if (ret < 0)
             goto out;
 
@@ -398,6 +406,7 @@ static int get_core_topo_info(struct pal_topo_info* topo_info) {
         if (ret < 0)
             goto out;
         ret = get_hw_resource_range(filename, &core_topo_arr[idx].core_siblings);
+        log_error("%s @ %u: ret=%d\n", __func__, __LINE__, ret);
         if (ret < 0)
             goto out;
 
@@ -405,6 +414,7 @@ static int get_core_topo_info(struct pal_topo_info* topo_info) {
         if (ret < 0)
             goto out;
         ret = get_hw_resource_range(filename, &core_topo_arr[idx].thread_siblings);
+        log_error("%s @ %u: ret=%d\n", __func__, __LINE__, ret);
         if (ret < 0)
             goto out;
 
@@ -412,6 +422,7 @@ static int get_core_topo_info(struct pal_topo_info* topo_info) {
         if (ret < 0)
             goto out;
         ret = get_hw_resource_value(filename, &core_topo_arr[idx].socket_id);
+        log_error("%s @ %u: ret=%d\n", __func__, __LINE__, ret);
         if (ret < 0)
             goto out;
 
@@ -420,6 +431,7 @@ static int get_core_topo_info(struct pal_topo_info* topo_info) {
 
         ret = get_cache_topo_info(topo_info->cache_indices_cnt, idx,
                                   &core_topo_arr[idx].cache_info_arr);
+        log_error("%s @ %u: ret=%d\n", __func__, __LINE__, ret);
         if (ret < 0)
             goto out;
     }
@@ -454,6 +466,7 @@ static int get_numa_topo_info(struct pal_topo_info* topo_info) {
             if (ret < 0)
                 goto out;
             ret = get_hw_resource_range(filename, &numa_topo_arr[idx].cpumap);
+            log_error("%s @ %u: ret=%d\n", __func__, __LINE__, ret);
             if (ret == 0)
                 break;
             sidx++;
@@ -465,6 +478,7 @@ static int get_numa_topo_info(struct pal_topo_info* topo_info) {
         if (ret < 0)
             goto out;
         ret = get_hw_resource_range(filename, &numa_topo_arr[idx].distance);
+        log_error("%s @ %u: ret=%d\n", __func__, __LINE__, ret);
         if (ret < 0)
             goto out;
 
@@ -484,11 +498,13 @@ out:
 int get_topology_info(struct pal_topo_info* topo_info) {
     /* Get CPU topology information */
     int ret = get_core_topo_info(topo_info);
+        log_error("%s @ %u: ret=%d\n", __func__, __LINE__, ret);
     if (ret < 0)
         return ret;
 
     /* Get NUMA topology information */
     ret = get_numa_topo_info(topo_info);
+        log_error("%s @ %u: ret=%d\n", __func__, __LINE__, ret);
     if (ret < 0)
         return ret;
 
