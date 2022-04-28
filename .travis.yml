@@ -5,6 +5,7 @@ addons:
   apt:
       packages:
         - libssl-dev
+        - nasm
         - ninja-build
         - protobuf-c-compiler
         - python3
