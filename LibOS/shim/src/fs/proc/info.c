@@ -148,8 +148,8 @@ int proc_cpuinfo_load(struct shim_dentry* dent, char** out_data, size_t* out_siz
             /* Offline cores are skipped in cpuinfo, with gaps in numbering. */
             continue;
         }
-        struct pal_cpu_core_info* core = &topo->cores[thread->core_id];
 #if defined(__x86_64__)
+        struct pal_cpu_core_info* core = &topo->cores[thread->core_id];
         /* Below strings must match exactly the strings retrieved from /proc/cpuinfo
          * (see Linux's arch/x86/kernel/cpu/proc.c) */
         ADD_INFO("processor\t: %lu\n",   i);
