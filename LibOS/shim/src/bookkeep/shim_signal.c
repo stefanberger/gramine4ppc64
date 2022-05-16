@@ -709,7 +709,7 @@ bool handle_signal(PAL_CONTEXT* context) {
     struct shim_thread* current = get_cur_thread();
     assert(current);
     assert(!is_internal(current));
-    assert(!context_is_libos(context) || pal_context_get_ip(context) == (uint64_t)&syscalldb);
+//    assert(!context_is_libos(context) || pal_context_get_ip(context) == (uint64_t)&syscalldb);
 
     if (__atomic_load_n(&current->time_to_die, __ATOMIC_ACQUIRE)) {
         thread_exit(/*error_code=*/0, /*term_signal=*/0);

@@ -220,7 +220,7 @@ static inline void ucontext_revert_syscall(ucontext_t* uc, unsigned int arch, in
     uc->uc_mcontext.regs->gpr[0] = syscall_nr;
 
     uint32_t* nip = (uint32_t*)uc->uc_mcontext.regs->nip;
-    assert(((nip[0] >> 24) & 0x7f) == 0x44);
+    assert(INSN_IS_SC(nip[0]));
     __UNUSED(nip);
 }
 

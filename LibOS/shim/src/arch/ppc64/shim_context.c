@@ -19,6 +19,7 @@
 #include "ucontext.h"
 #include "shim_table-arch.h"
 #include "rt_sigreturn_wrapper.h"
+#include "emulate_syscall_wrapper.h"
 
 #define CR0_SO (0x80000000 >> 3)  /* summary overflow; indicates syscall error */
 
@@ -314,9 +315,39 @@ void restart_syscall(PAL_CONTEXT* context, uint64_t sysnr) {
 }
 
 bool maybe_emulate_syscall(PAL_CONTEXT* context) {
-    __UNUSED(context);
-    log_debug("%s: not implemented!", __func__);
-    die_or_inf_loop();
+    uint32_t* nip = (uint32_t*)context->gpregs.nip;
+    log_always("%s @ %u: nip = %p  *nip: 0x%0x  gpr0: %ld\n", __func__, __LINE__, nip, *nip, context->gpregs.gpr[0]);
+
+    if (INSN_IS_SC(nip[0])) {
+        uint64_t stack = context->gpregs.gpr[1];
+        log_always("%s @ %u: original stack: 0x%lx", __func__, __LINE__, stack);
+        log_always("xxx nip: 0x%lx link: 0x%lx", context->gpregs.nip, context->gpregs.link);
+#if 1
+        stack -= RED_ZONE_SIZE;
+
+        struct stackframe *stackframe = (struct stackframe *)stack;
+        stackframe->backchain = (void*)context->gpregs.gpr[1];
+        stackframe->lr_save = context->gpregs.link;
+        stackframe->toc_save = context->gpregs.gpr[2];
+        stackframe->parm_save[0] = context->gpregs.gpr[12];
+        stackframe->parm_save[1] = (uint64_t)nip + 4;
+
+        stack -= 48;
+
+#endif
+        log_always("%s @ %u: stack to expect in emulate_syscall_wrapper: 0x%lx", __func__, __LINE__, stack);
+
+        // after emulation of the syscall resume at instruction after 'sc'
+//        context->gpregs.link = (uint64_t)nip + 4;
+        context->gpregs.link = (uint64_t)emulate_syscall_wrapper;
+//        log_always("%s @ %u: link: 0x%lx %p", __func__, __LINE__, context->gpregs.link, emulate_syscall_wrapper);
+        pal_context_set_syscall(context, context->gpregs.gpr[0]);
+        context->gpregs.gpr[1] = stack;
+        context->gpregs.nip = (uint64_t)&syscalldb;
+        context->gpregs.gpr[12] = (uint64_t)&syscalldb;
+        return true;
+    }
+    return false;
 }
 
 void shim_xstate_init(void) {
