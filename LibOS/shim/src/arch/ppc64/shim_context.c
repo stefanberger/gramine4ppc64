@@ -318,7 +318,7 @@ void restart_syscall(PAL_CONTEXT* context, uint64_t sysnr) {
 static void finish_return_from_syscall_emulation(PAL_CONTEXT* context) {
     uint64_t stack = context->gpregs.gpr[1];
 
-    stack += 64;
+    stack += FRAME_MIN_SIZE;
 
     struct stackframe* stackframe = (struct stackframe*)stack;
     context->gpregs.link = stackframe->lr_save;
@@ -359,7 +359,7 @@ static void setup_syscall_emulation(PAL_CONTEXT* context) {
     stackframe->parm_save[1] = (uint64_t)nip + 4;
     stackframe->parm_save[2] = context->gpregs.ctr;
 
-    stack -= 64;
+    stack -= FRAME_MIN_SIZE;
 
     /*
      * After emulation of the syscall resume in return_form_syscall_emulation
