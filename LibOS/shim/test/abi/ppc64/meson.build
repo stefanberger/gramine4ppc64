@@ -1,5 +1,5 @@
 common_lib = static_library('common_lib',
-    'common.c',
+    '../common/common.c',
     'test_exit.S',
     include_directories: join_paths('../../../include/arch', host_machine.cpu_family()),
 )
