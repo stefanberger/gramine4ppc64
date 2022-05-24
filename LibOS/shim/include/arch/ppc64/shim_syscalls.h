@@ -2,7 +2,7 @@
 /* Copyright (C) 2020 IBM Corporation */
 
 /*
- * shim_sysdep-ppc64.h
+ * shim_syscalls.h
  */
 
 #ifndef SHIM_SYSCALLS_H_

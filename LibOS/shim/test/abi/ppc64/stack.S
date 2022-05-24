@@ -7,6 +7,5 @@
 	.type _start, @function
 	.align 0x10
 _start:
-	mr	%r3, %r1
-	andi.	%r3, %r3, 0xf
+	andi.	%r3, %r1, 0xf
 	b	test_exit

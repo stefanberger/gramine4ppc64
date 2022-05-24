@@ -26,5 +26,4 @@ struct timespec64 {
     long tv_nsec;
 };
 
-
 #endif /* _SHIM_TYPES_ARCH_H_ */
