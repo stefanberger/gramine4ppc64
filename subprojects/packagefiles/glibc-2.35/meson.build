@@ -79,7 +79,7 @@ glibc = custom_target('glibc',
     input: [
         'glibc-2.35/configure',
         'glibc-2.35.patch',
-        'glibc-2.34-ppc64.patch',
+        'glibc-2.35-ppc64.patch',
         'hp-timing-2.35.patch',
     ],
 
