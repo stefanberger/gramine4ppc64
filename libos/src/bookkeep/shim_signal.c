@@ -624,12 +624,12 @@ uintptr_t get_stack_for_sighandler(uintptr_t sp, bool use_altstack) {
 
     if (!use_altstack || alt_stack->ss_flags & SS_DISABLE || alt_stack->ss_size == 0) {
         /* No alternative stack. */
-        return sp - RED_ZONE_SIZE;
+        return sp - RED_ZONE_SIZE_LG;
     }
 
     if (is_on_altstack(sp, alt_stack)) {
         /* We are currently running on alternative stack - just reuse it. */
-        return sp - RED_ZONE_SIZE;
+        return sp - RED_ZONE_SIZE_LG;
     }
 
     return (uintptr_t)alt_stack->ss_sp + alt_stack->ss_size;

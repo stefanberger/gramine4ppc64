@@ -279,8 +279,8 @@ libos_syscall_t libos_syscall_table[LIBOS_SYSCALL_BOUND] = {
     (libos_syscall_t)0, // ppc64_swapcontext
     [__NR_tgkill]                 = (libos_syscall_t)libos_syscall_tgkill,		/* 250 */
     (libos_syscall_t)0, //libos_syscall_utimes,
-    [__NR_statfs64]               = (libos_syscall_t)libos_syscall_statfs64, // statfs64
-    [__NR_fstatfs64]              = (libos_syscall_t)libos_syscall_fstatfs64,// fstatfs64
+    [__NR_statfs64]               = (libos_syscall_t)libos_syscall_statfs64,
+    [__NR_fstatfs64]              = (libos_syscall_t)libos_syscall_fstatfs64,
     (libos_syscall_t)0,
     (libos_syscall_t)0, // libos_syscall_rtas						/* 255 */
     (libos_syscall_t)0,
@@ -430,10 +430,10 @@ libos_syscall_t libos_syscall_table[LIBOS_SYSCALL_BOUND] = {
     (libos_syscall_t)0,									/* 400 */
     (libos_syscall_t)0,
     (libos_syscall_t)0,
-    [__NR_clock_gettime64]      = (libos_syscall_t)libos_syscall_clock_gettime64,
+    [__NR_clock_gettime64]        = (libos_syscall_t)libos_syscall_clock_gettime64,
     (libos_syscall_t)0,
     (libos_syscall_t)0,									/* 405 */
-    [__NR_clock_getres_time64]  = (libos_syscall_t)libos_syscall_clock_getres_time64,
+    [__NR_clock_getres_time64]    = (libos_syscall_t)libos_syscall_clock_getres_time64,
     [__NR_clock_nanosleep_time64] = (libos_syscall_t)libos_syscall_clock_nanosleep_time64,
     (libos_syscall_t)0,
     (libos_syscall_t)0,
@@ -449,7 +449,7 @@ libos_syscall_t libos_syscall_table[LIBOS_SYSCALL_BOUND] = {
     (libos_syscall_t)0,
     (libos_syscall_t)0,//libos_syscall_semtimedop_time64,				/* 420 */
     (libos_syscall_t)0,
-    [__NR_futex_time64]         = (libos_syscall_t)libos_syscall_futex_time64,
+    [__NR_futex_time64]           = (libos_syscall_t)libos_syscall_futex_time64,
     (libos_syscall_t)0,
     (libos_syscall_t)0,
 };
@@ -463,7 +463,6 @@ noreturn void libos_syscall_table_dispatch(PAL_CONTEXT *context) {
     log_debug("Calling Syscall %lu.  r3=0x%lx r4=0x%lx r5=0x%lx r6=0x%lx r7=0x%lx r8=0x%lx",
           syscallnr, ALL_SYSCALL_ARGS(context));
     log_debug("%s: SYSCALLNR: %ld, FUNCTION to return to: 0x%lx", __func__, syscallnr, context->gpregs.link);
-#endif
     if (syscallnr == __NR_fork || syscallnr == __NR_vfork || syscallnr == __NR_clone) {
         log_debug("SYSCALLNR: %ld  SP = 0x%lx, IP = 0x%lx, R2 = 0x%lx, R12 = 0x%lx, R13 = 0x%lx",
                   syscallnr, context->gpregs.gpr[1], context->gpregs.nip,
@@ -473,6 +472,7 @@ noreturn void libos_syscall_table_dispatch(PAL_CONTEXT *context) {
                   context->xtregs.vrsave, context->xtregs.fpscr,
                   context->xtregs.vscr.a, context->xtregs.vscr.b);
     }
+#endif
 
     switch (syscallnr) {
     case __NR_fork:

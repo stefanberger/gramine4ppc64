@@ -378,11 +378,13 @@ bool maybe_emulate_syscall(PAL_CONTEXT* context) {
     uint32_t* nip = (uint32_t*)context->gpregs.nip;
 
     if (INSN_IS_SC(nip[0])) {
-        if (context->gpregs.gpr[0] == GRAMINE_CUSTOM_SYSCALL_RETURN_FROM_SYSCALL_EMULATION)
+        switch (context->gpregs.gpr[0]) {
+        case GRAMINE_CUSTOM_SYSCALL_RETURN_FROM_SYSCALL_EMULATION:
             finish_return_from_syscall_emulation(context);
-        else
+            break;
+        default:
             setup_syscall_emulation(context);
-
+        }
         return true;
     }
     return false;
