@@ -182,12 +182,9 @@ static int read_cache_info(struct pal_cache_info* ci, size_t thread_idx, size_t 
     ret = snprintf(path, sizeof(path),
                    "/sys/devices/system/cpu/cpu%zu/cache/index%zu/coherency_line_size",
                    thread_idx, cache_idx);
-#if defined(__x86_64__)
     if (ret < 0)
         return ret;
-#else
-    ret = 0;
-#endif
+
     ret = get_hw_resource_value(path, &ci->coherency_line_size);
     if (ret < 0)
         return ret;
