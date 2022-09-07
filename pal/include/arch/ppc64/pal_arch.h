@@ -177,6 +177,10 @@ static inline void pal_context_copy(PAL_CONTEXT* dst, PAL_CONTEXT* src) {
     *dst = *src;
 }
 
+static inline unsigned long count_ulong_bits_set(unsigned long x) {
+    return __builtin_popcountl(x);
+}
+
 /* holds /proc/cpuinfo data */
 struct pal_cpu_info {
     const char* processor;
