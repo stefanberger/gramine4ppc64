@@ -454,7 +454,7 @@ libos_syscall_t libos_syscall_table[LIBOS_SYSCALL_BOUND] = {
     (libos_syscall_t)0,
 };
 
-noreturn void libos_syscall_table_dispatch(PAL_CONTEXT *context) {
+noreturn void libos_syscall_table_dispatch(PAL_CONTEXT* context) {
     /* after a restart_syscall we need to adjust nip to be able to resume properly */
     context->gpregs.nip = context->gpregs.link;
 
@@ -483,4 +483,3 @@ noreturn void libos_syscall_table_dispatch(PAL_CONTEXT *context) {
 
     libos_emulate_syscall(context);
 }
-
