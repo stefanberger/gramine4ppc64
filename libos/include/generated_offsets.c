@@ -18,6 +18,9 @@ const struct generated_offset generated_offsets[] = {
     DEFINE(LIBOS_XSTATE_ALIGN, LIBOS_XSTATE_ALIGN),
     DEFINE(RED_ZONE_SIZE, RED_ZONE_SIZE),
 #elif defined(__powerpc64__)
+    OFFSET_T(LIBOS_TCB_OFF, PAL_TCB, libos_tcb),
+    OFFSET_T(LIBOS_TCB_LIBOS_STACK_OFF, libos_tcb_t, libos_stack_bottom),
+
     OFFSET_T(SHIM_REGS_GPR0, PAL_CONTEXT, gpregs.gpr[0]),
     OFFSET_T(SHIM_REGS_GPR1, PAL_CONTEXT, gpregs.gpr[1]),
     OFFSET_T(SHIM_REGS_GPR2, PAL_CONTEXT, gpregs.gpr[2]),

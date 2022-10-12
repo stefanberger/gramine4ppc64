@@ -9,6 +9,7 @@
 
 #include <libos_defs.h>
 #include "asm_offsets.h"
+#include "gramine_entry_api.h"
 
 #define SAVE_GPRS(OFFSET, FRAME, R1_FIXUP)		\
 	std	%r0, OFFSET+SHIM_REGS_GPR0(FRAME);	\
@@ -186,6 +187,12 @@ libos_syscall_entry:
 	addi	%r2, %r2, (.TOC. - 0b)@l
 
 	addi	%r3, %r1, 32				# r3 points to context now
+
+	# Use LibOS stack
+	ld	%r4, -0x7000-TCBHEAD_LIBOS_PTR_FROM_END_OFFSET(%r13)
+	ld	%r4, LIBOS_TCB_OFF+LIBOS_TCB_LIBOS_STACK_OFF(%r4)
+	mr	%r1, %r4
+	subi	%r1, %r1, 256
 
 	# call libos_syscall_table_display with context ptr in r3; this will NOT return
 	b	libos_syscall_table_dispatch
