@@ -913,7 +913,7 @@ static bool handle_futex_death(uint32_t* uaddr) {
  * Fetches robust list entry from user memory, checking invalid pointers.
  * Returns 0 on success, negative value on error.
  */
-static bool fetch_robust_entry(struct robust_list** entry, struct robust_list** head) {
+static int fetch_robust_entry(struct robust_list** entry, struct robust_list** head) {
     if (!is_user_memory_readable(head, sizeof(*head))) {
         return -EFAULT;
     }
@@ -938,7 +938,7 @@ void release_robust_list(struct robust_list_head* head) {
     unsigned long limit = ROBUST_LIST_LIMIT;
 
     /* `&head->list.next` does not dereference head, hence is safe. */
-    if (fetch_robust_entry(&entry, &head->list.next)) {
+    if (fetch_robust_entry(&entry, &head->list.next) < 0) {
         return;
     }
 
@@ -947,7 +947,7 @@ void release_robust_list(struct robust_list_head* head) {
     }
     futex_offset = head->futex_offset;
 
-    if (fetch_robust_entry(&pending, &head->list_op_pending)) {
+    if (fetch_robust_entry(&pending, &head->list_op_pending) < 0) {
         return;
     }
 
@@ -956,7 +956,7 @@ void release_robust_list(struct robust_list_head* head) {
         struct robust_list* next_entry;
 
         /* Fetch the next entry before waking the next thread. */
-        bool ret = fetch_robust_entry(&next_entry, &entry->next);
+        int ret = fetch_robust_entry(&next_entry, &entry->next);
 
         if (entry != pending) {
             if (handle_futex_death(entry_to_futex(entry, futex_offset))) {
@@ -964,7 +964,7 @@ void release_robust_list(struct robust_list_head* head) {
             }
         }
 
-        if (ret) {
+        if (ret < 0) {
             return;
         }
 
