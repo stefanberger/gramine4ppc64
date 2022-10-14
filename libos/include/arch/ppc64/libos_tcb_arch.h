@@ -20,6 +20,10 @@ static inline tcbhead_t* r13_to_tcbhead_t(uint64_t r13) {
     return (tcbhead_t*)(r13 - TLS_TCB_OFFSET - sizeof(tcbhead_t));
 }
 
+static inline uint64_t tcbhead_t_to_r13(tcbhead_t *t) {
+    return (uint64_t)t + sizeof(tcbhead_t) + TLS_TCB_OFFSET;
+}
+
 static inline uint64_t get_r13(void) {
     register uint64_t r13 __asm__("r13");
 
@@ -28,6 +32,17 @@ static inline uint64_t get_r13(void) {
 
 static inline tcbhead_t* get_tcbhead_t(void) {
     return r13_to_tcbhead_t(get_r13());
+}
+
+static inline void tcbhead_t_set_r13(tcbhead_t *t) {
+    uint64_t r13 = tcbhead_t_to_r13(t);
+
+    __asm__ __volatile__(
+        "mr %%r13, %0"
+        :
+        : "r"(r13)
+        : "r13"
+    );
 }
 
 static inline PAL_TCB* libos_get_pal_tcb(void) {
@@ -148,3 +163,11 @@ static inline void set_stack_guard(uintptr_t stack_guard) {
 static inline unsigned long get_tls(void) {
     return get_r13();
 }
+
+/* Replace the glibc tcbhead_t TCB at the end of the life of a thread with an on-stack
+ * copy of it so that another thread can free the shared memory of the TLS. On PPC64
+ * the stack canary is in the tcbhead_t and so we need to have a valid glic-like tcb.
+ */
+#define REPLACE_GLIBC_TLS		\
+  tcbhead_t tcbhead = *get_tcbhead_t();	\
+  tcbhead_t_set_r13(&tcbhead);
