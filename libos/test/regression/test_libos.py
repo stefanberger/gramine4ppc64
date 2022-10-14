@@ -190,7 +190,6 @@ class TC_01_Bootstrap(RegressionTestCase):
             ('0' * 93 + ' ') * 15,
             stdout)
 
-    @unittest.skipIf(ON_PPC64, 'exec_same not working on PPC64')
     def test_201_exec_same(self):
         args = ['arg_#%d' % i for i in range(50)]
         stdout, _ = self.run_binary(['exec_same'] + args, timeout=40)
