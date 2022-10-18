@@ -12,6 +12,8 @@
 #include "pal_arch.h"
 #include "syscall.h"
 
+#define ARCH_HIGHEST_ADDR ((1ul << 46) - PAGE_SIZE)   // FIXME: not sure
+
 /* TLS_PAL_TCB_OFFSET is the address offset of PAL_TCB relative to the
  * value of register r13 (if it is not NULL). We have to subtract this
  * value from r13.

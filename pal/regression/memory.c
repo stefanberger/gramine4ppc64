@@ -49,6 +49,37 @@ static void fixup_context_after_read(PAL_CONTEXT* context) {
     pal_context_set_retval(context, 0);
 }
 
+#elif defined(__powerpc64__)
+
+void ret(void) __attribute__((visibility("internal")));
+__asm__ (
+".pushsection .text\n"
+".type mem_write, @function\n"
+".type mem_read, @function\n"
+".type ret, @function\n"
+"mem_write:\n"
+    "stb %r4, 0(%r3)\n"
+"ret:\n"
+    "blr\n"
+"mem_read:\n"
+    "lbz %r3, 0(%r3)\n"
+    "blr\n"
+".popsection\n"
+);
+
+static bool is_pc_at_func(uintptr_t pc, void (*func)(void)) {
+    return pc == (uintptr_t)func;
+}
+
+static void fixup_context_after_write(PAL_CONTEXT* context) {
+    pal_context_set_ip(context, (uintptr_t)ret);
+}
+
+static void fixup_context_after_read(PAL_CONTEXT* context) {
+    pal_context_set_ip(context, (uintptr_t)ret);
+    pal_context_set_retval(context, 0);
+}
+
 #else
 #error Unsupported architecture
 #endif

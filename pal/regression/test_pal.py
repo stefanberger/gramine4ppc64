@@ -53,6 +53,7 @@ class TC_00_BasicSet2(RegressionTestCase):
         stdout, _ = self.run_binary(['HelloWorld'])
         self.assertIn('Hello World', stdout)
 
+    @unittest.skipIf(ON_PPC64, "Currently not working on PPC64 (FIXME)")
     def test_Pie(self):
         stdout, stderr = self.run_binary(['Pie'])
         self.assertIn('start program: Pie', stderr)

@@ -57,9 +57,12 @@ _start:
 	add	%r5, %r4, %r5
 	addi	%r5, %r5, 8	// envp
 
+	lis	%r6, main@ha
+	la	%r6, main@l(%r6)
+
 	stdu	%r1, -32(%r1)	// room on stack
 
-	bl	main
+	bl	pal_regression_start_main
 	nop
 
 	addi	%r1, %r1, 32	// restore original stack
