@@ -16,8 +16,7 @@
 	addi	%r0, %r1, R1_FIXUP;			\
 	std	%r0, OFFSET+SHIM_REGS_GPR1(FRAME);	\
 	std	%r2, OFFSET+SHIM_REGS_GPR2(FRAME);	\
-	std	%r3, OFFSET+SHIM_REGS_GPR3(FRAME);	\
-	std	%r3, OFFSET+SHIM_REGS_ORIG_GPR3(FRAME);	\
+	/* r3 must be stored to GRP3 and ORIG_GPR3 */	\
 	std	%r4, OFFSET+SHIM_REGS_GPR4(FRAME);	\
 	std	%r5, OFFSET+SHIM_REGS_GPR5(FRAME);	\
 	std	%r6, OFFSET+SHIM_REGS_GPR6(FRAME);	\
@@ -162,39 +161,37 @@
 libos_syscall_entry:
 	.cfi_startproc
 0:
-	# we want to store our registers in the blue zone, so extend the
-	# stack to make room on stack for the context we store below
-	stdu	%r1,-SHIM_REGS_SIZE-32(%r1)	# @1: make room on stack
-						# SHIM_REGS_SIZE: sizeof(PAL_CONTEXT)
-						# 32: for normal frame
+	# In case r1 gets used prepare a stackframe
+	subi	%r1, %r1, 32
 
-	# before we clobber any more registers, we store them on the stack's
-	# blue zone now; this will clobber r0 due to r1 fixup and the SPRS,
-	# but it's saved on the stack before
-	SAVE_GPRS(32, %r1, 32+SHIM_REGS_SIZE)
-	SAVE_SPRS(32, %r1)
+	std	%r3, 0(%r1)
 
-	# We need to always save all registers since we may have to build
-	# up a signal stack
-	SAVE_NV_GPRS(32, %r1)
-	# We need to save the stack guard, especially to support fork()
-	SAVE_STACK_GUARD(32, %r1)
+	# Get LibOS stack in %r3 to store Context on
+	ld	%r3, -0x7000 - TCBHEAD_LIBOS_PTR_FROM_END_OFFSET(%r13)
+	ld	%r3, LIBOS_TCB_OFF+LIBOS_TCB_LIBOS_STACK_OFF(%r3)
+	subi	%r3, %r3, SHIM_REGS_SIZE
+
+	SAVE_GPRS(0, %r3, 32)
+	# store original %r3 in Context
+	ld	%r4, 0(%r1)
+	std	%r4, SHIM_REGS_GPR3(%r3)
+	std	%r4, SHIM_REGS_ORIG_GPR3(%r3)
+
+	SAVE_SPRS(0, %r3)
+	# Ssave all registers since we may have to build up a signal stack
+	SAVE_NV_GPRS(0, %r3)
+	# Save the stack guard to support fork()
+	SAVE_STACK_GUARD(0, %r3)
 
 	# storing VSRS clobbers f0 and v0 ...
-	SAVE_VSRS(32, %r1)
+	SAVE_VSRS(0, %r3)
 
 	addis	%r2, %r12, (.TOC. - 0b)@ha
 	addi	%r2, %r2, (.TOC. - 0b)@l
 
-	addi	%r3, %r1, 32				# r3 points to context now
+	subi	%r1, %r3, 256
 
-	# Use LibOS stack
-	ld	%r4, -0x7000-TCBHEAD_LIBOS_PTR_FROM_END_OFFSET(%r13)
-	ld	%r4, LIBOS_TCB_OFF+LIBOS_TCB_LIBOS_STACK_OFF(%r4)
-	mr	%r1, %r4
-	subi	%r1, %r1, 256
-
-	# call libos_syscall_table_display with context ptr in r3; this will NOT return
+	# call libos_syscall_table_dispatch with context ptr in r3; this will NOT return
 	b	libos_syscall_table_dispatch
 
 	.cfi_endproc

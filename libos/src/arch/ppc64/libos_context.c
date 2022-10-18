@@ -172,9 +172,8 @@ void prepare_sigframe(PAL_CONTEXT* context, siginfo_t* siginfo, void* handler, v
     register uint64_t r2 __asm__("r2");
     stackframe->toc_save = r2;
     stackframe->parm_save[0] = (uint64_t)context;
-
-    log_debug("Created sigframe for sig: %d at %p (handler: %p, restorer: %p)",
-              siginfo->si_signo, sigframe, handler, restorer);
+    log_debug("Created sigframe for sig: %d at %p (handler: %p, restorer: %p, context: %p)",
+              siginfo->si_signo, sigframe, handler, restorer, context);
 }
 
 void restore_sigreturn_context(PAL_CONTEXT* context, __sigset_t* new_mask) {
@@ -182,7 +181,7 @@ void restore_sigreturn_context(PAL_CONTEXT* context, __sigset_t* new_mask) {
     stack = ALIGN_UP(stack + sizeof(struct stackframe) + 8, alignof(struct stackframe));
     stack = ALIGN_UP(stack, 0x10);
     struct sigframe* sigframe = (struct sigframe*)stack;
-    log_debug("Restoring sigframe at %p", sigframe);
+    log_debug("Restoring sigframe at %p (context: %p)", sigframe, context);
 
     *new_mask = sigframe->uc.uc_sigmask;
 
@@ -211,7 +210,7 @@ static void finish_return_from_syscall_emulation(PAL_CONTEXT* context) {
     context->gpregs.nip = stackframe->parm_save[1];
     context->gpregs.ctr = stackframe->parm_save[2];
 
-    stack += RED_ZONE_SIZE_SMALL;
+    stack += RED_ZONE_SIZE;
     context->gpregs.gpr[1] = stack;
 }
 
@@ -229,7 +228,7 @@ static void setup_syscall_emulation(PAL_CONTEXT* context) {
 
     /* protect the app's red zone that normal sc handling may leave alone */
     uint64_t stack = context->gpregs.gpr[1];
-    stack -= RED_ZONE_SIZE_SMALL;
+    stack -= RED_ZONE_SIZE;
 
     /* The stack frame setup here is undone in finish_return_from_syscall_emulation */
     struct stackframe* stackframe = (struct stackframe*)stack;

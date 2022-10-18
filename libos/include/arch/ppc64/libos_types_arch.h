@@ -17,5 +17,4 @@ typedef struct {
 } __sigset_t;
 
 // see: https://elixir.bootlin.com/linux/v5.11/source/arch/powerpc/include/asm/ptrace.h#L84
-#define RED_ZONE_SIZE		4096 /* FIXME: should be 512, but causes crashes */
-#define RED_ZONE_SIZE_SMALL	512
+#define RED_ZONE_SIZE		512
