@@ -18,13 +18,15 @@ addons:
         - python3-toml
 script:
   - ./build.sh
-    && sudo ninja -C build install &>build.log || tail -n 200 build.log
+    && sudo ninja -C build &>build.log || tail -n 200 build.log
+    && sudo ninja -C build install
     && sudo pip3 install pytest
-    && export INSTALL_DEPS=1
+    && python3 -c "import sys; print(sys.path)"
+    && export INSTALL_DEPS=1 PATH=$PATH:/usr/local/bin PYTHONPATH=/usr/local/lib/python3.8/site-packages
     && cat /proc/cpuinfo
-    && ./run_tests0
-    && ./run_tests1
-    && ./run_tests2
+    && bash ./run_tests0
+    && bash ./run_tests1
+    && bash ./run_tests2
 
 matrix:
   include:

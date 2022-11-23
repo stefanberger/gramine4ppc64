@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -x
 
+echo PATH=${PATH}
+ls -l /usr/local/bin
+
 ARCH=$(uname -m)
 [ "${ARCH}" == "ppc64le" ] && ARCH=ppc64
 
