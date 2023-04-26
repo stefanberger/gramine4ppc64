@@ -663,7 +663,9 @@ static int do_epoll_wait(int epfd, struct epoll_event* events, int maxevents, in
             if (pal_ret_events[i] & PAL_WAIT_HANG_UP) {
                 this_item_events |= EPOLLHUP;
                 /* add RDHUP event only if user requested for it to be reported */
+#if !defined(__powerpc64__) // nginx gets stuck if EPOLLRDHUP is set
                 this_item_events |= items[i]->events & EPOLLRDHUP;
+#endif
             }
             if (pal_ret_events[i] & PAL_WAIT_READ) {
                 this_item_events |= items[i]->events & (EPOLLIN | EPOLLRDNORM);

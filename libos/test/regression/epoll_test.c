@@ -207,7 +207,11 @@ static void server(int sockfd) {
     /* `EPOLLRDHUP` is always reported together with `EPOLLHUP` in Gramine as its limitation. We
      * thus ignore `EPOLLHUP` here (which is not reported natively) to make the test also work for
      * native. */
+#if defined(__powerpc64__) // see libos_epoll.c:do_epoll_wait for reason to disable it
+    if (r != 1 || (event.events & ~EPOLLHUP) != (EPOLLIN) || event.data.fd != client) {
+#else
     if (r != 1 || (event.events & ~EPOLLHUP) != (EPOLLIN | EPOLLRDHUP) || event.data.fd != client) {
+#endif
         ERR("epoll_wait returned: %d, events: %#x, fd: %d", r, event.events, event.data.fd);
     }
 
