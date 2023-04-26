@@ -185,8 +185,10 @@ static int read_cache_info(struct pal_cache_info* ci, size_t thread_idx, size_t 
     if (ret < 0)
         return ret;
     ret = get_hw_resource_value(path, &ci->coherency_line_size);
+#if defined(__x86_64__) // some ppc64 systems do not have this
     if (ret < 0)
         return ret;
+#endif
 
 #if defined(__x86_64__)
     ret = snprintf(path, sizeof(path),
@@ -214,7 +216,9 @@ static int read_cache_info(struct pal_cache_info* ci, size_t thread_idx, size_t 
 }
 
 static int get_ranges_end(size_t ind, void* _arg) {
-    *(size_t*)_arg = ind + 1; // can overflow, but this function is used only on trusted data
+    __UNUSED(ind);
+    // count the items
+    *(size_t*)_arg += 1; // can overflow, but this function is used only on trusted data
     return 0;
 }
 
@@ -389,9 +393,7 @@ int get_topology_info(struct pal_topo_info* topo_info) {
             ret = read_numbers_from_file(path, distances + i * nodes_cnt, nodes_cnt);
             if (ret < 0)
                  goto fail;
-            sidx++;
-            if (sidx == 2048)
-                goto next;
+            break;
         }
 
         /* Since our sysfs doesn't support writes, set persistent hugepages to their default value
