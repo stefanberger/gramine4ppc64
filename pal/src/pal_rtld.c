@@ -214,6 +214,7 @@ static int verify_dynamic_entries(struct link_map* map) {
     elf_xword_t needed_offset = 0;
     bool needed_offset_found  = false;
 
+#if !defined(__powerpc64__) // FIXME
     while (dynamic_section_entry->d_tag != DT_NULL) {
         switch (dynamic_section_entry->d_tag) {
             case DT_RELACOUNT:
@@ -323,6 +324,7 @@ static int verify_dynamic_entries(struct link_map* map) {
             return -PAL_ERROR_DENIED;
         }
     }
+#endif
 
     return 0;
 }
@@ -445,12 +447,10 @@ static int perform_relocations(struct link_map* map) {
         *addr_to_relocate = symbol_addr + plt_rela->r_addend;
     }
 
-#if 0
     if (relas_count != expected_relas_count) {
         log_error("Expected %ld Rela relocs but got %ld", expected_relas_count, relas_count);
         return -PAL_ERROR_DENIED;
     }
-#endif
 
     return 0;
 }
@@ -600,11 +600,9 @@ static int create_and_relocate_entrypoint(PAL_HANDLE handle, const char* uri,
     g_entrypoint_map.l_ld = (elf_dyn_t*)((elf_addr_t)g_entrypoint_map.l_ld +
                                          g_entrypoint_map.l_base_diff);
 
-#if 0
     ret = verify_dynamic_entries(&g_entrypoint_map);
     if (ret < 0)
         goto out;
-#endif
 
     ret = find_string_and_symbol_tables(g_entrypoint_map.l_map_start, g_entrypoint_map.l_base_diff,
                                         &g_entrypoint_map.string_table,
@@ -775,7 +773,6 @@ int setup_pal_binary(void) {
     if (ret < 0)
         return ret;
 
-#if 0
     /* find soname of PAL binary -- will be used during DT_NEEDED verification of other binaries */
     elf_dyn_t* dynamic_section_entry = dynamic_section;
     elf_xword_t soname_offset = 0;
@@ -793,7 +790,6 @@ int setup_pal_binary(void) {
         return -PAL_ERROR_DENIED;
     }
     g_pal_soname = g_pal_map.string_table + soname_offset;
-#endif
 
     ret = perform_relocations(&g_pal_map);
     return ret;
