@@ -30,6 +30,8 @@ typedef struct {
     /* NEW: pointer to LibOS TCB */
         PAL_TCB *LibOS_TCB; /* keep at offset (-14 * 8) from END! */
 
+        uint64_t hwcap_extn;
+
     /* Reservation for HWCAP data. */
         unsigned int hwcap2;
         unsigned int hwcap; /* not used in LE ABI */
