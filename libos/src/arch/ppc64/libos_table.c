@@ -452,6 +452,19 @@ libos_syscall_t libos_syscall_table[LIBOS_SYSCALL_BOUND] = {
     [__NR_futex_time64]           = (libos_syscall_t)libos_syscall_futex_time64,
     (libos_syscall_t)0,
     (libos_syscall_t)0,
+    (libos_syscall_t)0,									/* 425 */
+    (libos_syscall_t)0,
+    (libos_syscall_t)0,
+    (libos_syscall_t)0,
+    (libos_syscall_t)0,
+    (libos_syscall_t)0,									/* 430 */
+    (libos_syscall_t)0,
+    (libos_syscall_t)0,
+    (libos_syscall_t)0,
+    (libos_syscall_t)0,
+    (libos_syscall_t)0,
+    [__NR_close_range]           = (libos_syscall_t)libos_syscall_close_range,
+    (libos_syscall_t)0,
 };
 
 noreturn void libos_syscall_table_dispatch(PAL_CONTEXT* context) {
