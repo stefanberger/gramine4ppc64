@@ -1,4 +1,4 @@
-project('glibc', 'c', version: '2.40')
+project('glibc', 'c', version: '2.39')
 
 fs = import('fs')
 
@@ -67,7 +67,7 @@ glibc = custom_target('glibc',
         find_program('compile.sh'),
         host_machine.cpu_family(),
         '@CURRENT_SOURCE_DIR@',
-        '@CURRENT_SOURCE_DIR@/glibc-2.40',
+        '@CURRENT_SOURCE_DIR@/glibc-2.39',
         meson.current_build_dir(),
         '@PRIVATE_DIR@',
         get_option('prefix'),
@@ -77,7 +77,7 @@ glibc = custom_target('glibc',
     ],
 
     input: [
-        'glibc-2.40/configure',
+        'glibc-2.39/configure',
         'fix-fortify-source.patch',
         'gramine-syscall.patch',
         'glibc-2.39-ppc64.patch',
