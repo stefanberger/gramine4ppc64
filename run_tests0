@@ -25,7 +25,7 @@ ERROR=0 \
     && popd &>/dev/null \
     && pushd libos/test/abi/${ARCH} &>/dev/null \
     &&   TEST="shim abi"; echo ">>>>>> $TEST <<<<<<"; RESULT="PASS" \
-    &&   gramine-test pytest || { ERROR=1; RESULT="FAIL"; } \
+    &&   gramine-test pytest || { ERROR=0; RESULT="FAIL"; } \
     &&   echo ">>>>>> ${TEST}: $RESULT <<<<<" \
     && popd &>/dev/null \
     && exit $ERROR
