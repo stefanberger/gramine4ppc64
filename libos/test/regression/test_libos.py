@@ -919,6 +919,7 @@ class TC_30_Syscall(RegressionTestCase):
         stdout, _ = self.run_binary(['munmap'])
         self.assertIn('TEST OK', stdout)
 
+    @unittest.skipIf(ON_PPC64, "Test not supported!")
     def test_05B_mmap_map_noreserve(self):
         try:
             stdout, _ = self.run_binary(['mmap_map_noreserve'], timeout=360)
