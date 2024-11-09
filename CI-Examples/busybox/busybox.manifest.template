@@ -12,7 +12,7 @@ loader.env.LD_LIBRARY_PATH = "/lib"
 loader.insecure__use_cmdline_argv = true
 
 fs.mounts = [
-  { path = "/busybox", uri = "file:{{ busybox }}" },
+  { path = "/busybox", uri = "file:busybox" },
   { path = "/lib", uri = "file:{{ gramine.runtimedir() }}" },
 
   # hardcoded mappings of local hostnames to IP addresses, required by e.g. `hostname` applet
@@ -28,6 +28,6 @@ sgx.edmm_enable = {{ 'true' if env.get('EDMM', '0') == '1' else 'false' }}
 sgx.remote_attestation = "{{ ra_type }}"
 
 sgx.trusted_files = [
-  "file:{{ busybox }}",
+  "file:busybox",
   "file:{{ gramine.runtimedir() }}/",
 ]
