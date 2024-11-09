@@ -5,7 +5,6 @@ RUN apt-get update && env DEBIAN_FRONTEND=noninteractive apt-get install -y \
     bc \
     bison \
     build-essential \
-    busybox \
     cargo \
     clang \
     cmake \
