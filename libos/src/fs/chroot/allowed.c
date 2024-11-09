@@ -113,6 +113,7 @@ int register_allowed_file(const char* path) {
     return 0;
 }
 
+#if defined(__x86_64__)
 static int init_one_allowed_file(toml_raw_t toml_allowed_uri_raw, size_t idx) {
     int ret;
 
@@ -169,8 +170,10 @@ out:
     free(toml_allowed_uri_str);
     return ret;
 }
+#endif
 
 int init_allowed_files(void) {
+#if defined(__x86_64__)
     int ret;
 
     assert(g_manifest_root);
@@ -196,6 +199,7 @@ int init_allowed_files(void) {
         if (ret < 0)
             return ret;
     }
+#endif
 
     return 0;
 }
