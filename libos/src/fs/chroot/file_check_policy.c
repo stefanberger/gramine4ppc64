@@ -9,6 +9,7 @@
 enum file_check_policy g_file_check_policy = FILE_CHECK_POLICY_STRICT;
 
 int init_file_check_policy(void) {
+#if defined(__x86_64__)
     int ret;
     char* file_check_policy_str = NULL;
 
@@ -35,5 +36,9 @@ int init_file_check_policy(void) {
 
     log_debug("File check policy: %s", file_check_policy_str);
     free(file_check_policy_str);
+#else
+    g_file_check_policy = FILE_CHECK_POLICY_ALLOW_ALL_BUT_LOG;
+#endif
+
     return 0;
 }
