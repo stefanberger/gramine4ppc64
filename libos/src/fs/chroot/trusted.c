@@ -291,6 +291,7 @@ out:
     return ret;
 }
 
+#if defined(__x86_64__)
 static int register_trusted_file(const char* path, const char* hash_str) {
     if (strlen(hash_str) != sizeof(struct trusted_file_hash) * 2) {
         log_error("Hash (%s) of a trusted file %s is not a SHA256 hash", hash_str, path);
@@ -385,8 +386,10 @@ out:
     free(toml_trusted_sha256_str);
     return ret;
 }
+#endif
 
 int init_trusted_files(void) {
+#if defined(__x86_64__)
     int ret;
 
     assert(g_manifest_root);
@@ -425,6 +428,7 @@ int init_trusted_files(void) {
         if (ret < 0)
             return ret;
     }
+#endif
 
     return 0;
 }
