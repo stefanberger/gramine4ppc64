@@ -59,7 +59,6 @@ RUN apt-get update && apt-get satisfy -y \
 # wget: scripts/download
 # zlib1g-dev: CI-Examples/lighttpd
 RUN apt-get update && apt-get install -y \
-    busybox \
     cargo \
     clang \
     cmake \
