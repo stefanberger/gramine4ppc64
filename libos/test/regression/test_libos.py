@@ -489,6 +489,9 @@ class TC_02_OpenMP(RegressionTestCase):
         # OpenMP simple for loop
         self.assertIn('first: 0, last: 9', stdout)
 
+
+@unittest.skipUnless(HAS_SGX,
+    'These tests are only meaningful on SGX PAL because only SGX supports attestation.')
 class TC_03_FileCheckPolicy(RegressionTestCase):
     @classmethod
     def setUpClass(cls):
