@@ -27,8 +27,8 @@ if [ -n "${GRAMINE_TEST_EXPENSIVE}" ]; then
 		if [ -n "${INSTALL_DEPS}" ]; then sudo apt-get -y install apache2-utils &>/dev/null; fi
 		make
 		make -j$(nproc)
-		bash -c "gramine-direct ./nginx -c" & PID=$!
-		sleep 3
+		bash -c "gramine-direct ./nginx" & PID=$!
+		sleep 20
 		../common_tools/ab-benchmark-http.sh 127.0.0.1:8002 || { ERROR=1; RESULT="FAIL"; }
 		# kill bash and nginx processes
 		kill -SIGKILL $(ps --ppid $PID -o pid=) $PID
@@ -46,8 +46,8 @@ if [ -n "${GRAMINE_TEST_EXPENSIVE}" ]; then
 		make -j$(nproc)
 		[ $? -eq  0 ] && break
 	done
-	bash -c "gramine-direct lighttpd -D -m install/lib -f lighttpd.conf" & PID=$!
-	sleep 1
+	bash -c "gramine-direct lighttpd" & PID=$!
+	sleep 10
 	wget http://127.0.0.1:8003/random/10K.1.html || { ERROR=1; RESULT="FAIL"; }
 	rm -rf 10K.1.html*
 	kill -SIGKILL $PID
@@ -59,8 +59,8 @@ if [ -n "${GRAMINE_TEST_EXPENSIVE}" ]; then
 	pushd CI-Examples/redis &>/dev/null
 	TEST="redis"; echo ">>>>>> $TEST <<<<<<"; RESULT="PASS"
 	make -j$(nproc) MALLOC=libc
-	bash -c "gramine-direct redis-server --save '' --protected-mode no" & PID=$!
-	sleep 1
+	bash -c "gramine-direct redis-server" & PID=$!
+	sleep 3
 	src/src/redis-benchmark || { ERROR=1; RESULT="FAIL"; }
 	kill -SIGKILL $PID
 	echo ">>>>> ${TEST}: $RESULT <<<<<"
