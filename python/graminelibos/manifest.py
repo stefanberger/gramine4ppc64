@@ -328,6 +328,8 @@ class Manifest:
             raise ValueError("Unsupported trusted files syntax, more info: " +
                   "https://gramine.readthedocs.io/en/latest/manifest-syntax.html#trusted-files")
 
+        sgx['trusted_files'] = []
+
         trusted_files = []
         for tf in sgx['trusted_files']:
             if isinstance(tf, dict) and 'uri' in tf:

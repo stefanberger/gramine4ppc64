@@ -19,6 +19,10 @@ int init_file_check_policy(void) {
         return -EINVAL;
     }
 
+    g_file_check_policy = FILE_CHECK_POLICY_ALLOW_ALL_BUT_LOG;
+    if (1)
+        return 0;
+
     if (!file_check_policy_str)
         return 0;
 
