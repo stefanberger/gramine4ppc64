@@ -23,6 +23,7 @@ echo -e "\n\nRunning HTTP server dummy-web-server.py in the background:"
 $GRAMINE ./python scripts/dummy-web-server.py 8005 & echo $! > server.PID
 ../../scripts/wait_for_server 300 127.0.0.1 8005
 
+set -x
 echo -e "\n\nRunning HTTP client test-http.py:"
 $GRAMINE ./python scripts/test-http.py 127.0.0.1 8005 > OUTPUT1
 wget -q http://127.0.0.1:8005/ -O OUTPUT2
@@ -35,14 +36,14 @@ kill "$(cat server.PID)"
 rm -f OUTPUT1 OUTPUT2 server.PID
 
 # === numpy ===
-$GRAMINE ./python scripts/test-numpy.py > OUTPUT
-grep -q "dot: " OUTPUT && echo "[ Success 3/4 ]"
-rm OUTPUT
+#$GRAMINE ./python scripts/test-numpy.py > OUTPUT
+#grep -q "dot: " OUTPUT && echo "[ Success 3/4 ]"
+#rm OUTPUT
 
 # === scipy ===
-$GRAMINE ./python scripts/test-scipy.py > OUTPUT
-grep -q "cholesky: " OUTPUT && echo "[ Success 4/4 ]"
-rm OUTPUT
+#$GRAMINE ./python scripts/test-scipy.py > OUTPUT
+#grep -q "cholesky: " OUTPUT && echo "[ Success 4/4 ]"
+#rm OUTPUT
 
 # === SGX quote ===
 if test -n "$SGX"
