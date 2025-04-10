@@ -18,6 +18,9 @@
  */
 
 #include <endian.h>
+#if defined(__powerpc64__)
+#  include <sys/auxv.h>
+#endif
 
 #include "asan.h"
 #include "elf.h"
@@ -1152,12 +1155,27 @@ noreturn void execute_elf_object(struct link_map* exec_map, void* argp, elf_auxv
     auxp[12].a_type     = AT_EGID;
     auxp[12].a_un.a_val = cur_thread->egid;
 
+#if defined(__powerpc64__)
+    auxp[13].a_type     = AT_HWCAP;
+    auxp[13].a_un.a_val = PPC_FEATURE_64 |
+                          PPC_FEATURE_HAS_VSX |
+                          PPC_FEATURE_HAS_FPU |
+                          PPC_FEATURE_ARCH_2_05 |
+                          PPC_FEATURE_ARCH_2_06;
+    auxp[14].a_type     = AT_HWCAP2;
+    auxp[14].a_un.a_val = PPC_FEATURE2_ARCH_2_07 |
+                          PPC_FEATURE2_ARCH_3_00 |
+                          PPC_FEATURE2_DARN;
+    auxp[15].a_type     = AT_NULL;
+    auxp[15].a_un.a_val = 0;
+#else
     auxp[13].a_type     = AT_NULL;
     auxp[13].a_un.a_val = 0;
+#endif
 
     /* populate extra memory space for aux vector data */
     static_assert(REQUIRED_ELF_AUXV_SPACE >= 16, "not enough space on stack for auxv");
-    elf_addr_t auxp_extra = (elf_addr_t)&auxp[14];
+    elf_addr_t auxp_extra = (elf_addr_t)&auxp[REQUIRED_ELF_AUXV];
 
     elf_addr_t random = auxp_extra; /* random 16B for AT_RANDOM */
     ret = PalRandomBitsRead((void*)random, 16);
