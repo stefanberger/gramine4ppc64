@@ -45,11 +45,13 @@ if host_machine.cpu_family() == 'x86_64'
     ]
 endif
 
+extra_cflags = ''
 if host_machine.cpu_family() == 'ppc64le' or host_machine.cpu_family() == 'ppc64'
     glibc_output_paths += [
         'elf/ld64.so.2',
         'elf/ld.so',
     ]
+    extra_cflags = '-mcpu=power8 -mtune=power8 '
 endif
 
 glibc_output = []
@@ -57,7 +59,6 @@ foreach path : glibc_output_paths
     glibc_output += fs.name(path)
 endforeach
 
-extra_cflags = ''
 if get_option('buildtype') == 'debug' or get_option('buildtype') == 'debugoptimized'
     extra_cflags += '-g'
 endif
